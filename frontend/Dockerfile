@@ -15,4 +15,6 @@ COPY . .
 EXPOSE 5173
 
 # Comando para iniciar o servidor de desenvolvimento
-CMD ["npm", "run", "dev", "--", "--host"]
+# Executa npm install antes para garantir que dependências novas sejam instaladas
+# mesmo se o volume node_modules antigo persistir.
+CMD ["sh", "-c", "npm install && npm run dev -- --host"]

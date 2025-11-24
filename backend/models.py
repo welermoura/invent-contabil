@@ -5,14 +5,14 @@ import enum
 from backend.database import Base
 
 class UserRole(str, enum.Enum):
-    ADMIN = "admin"
-    APPROVER = "approver"
-    OPERATOR = "operator"
+    ADMIN = "ADMIN"
+    APPROVER = "APPROVER"
+    OPERATOR = "OPERATOR"
 
 class ItemStatus(str, enum.Enum):
-    PENDING = "pendente"
-    APPROVED = "aprovado"
-    REJECTED = "rejeitado"
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
 
 class User(Base):
     __tablename__ = "users"
