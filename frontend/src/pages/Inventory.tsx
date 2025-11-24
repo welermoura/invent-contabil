@@ -6,6 +6,7 @@ import { useAuth } from '../AuthContext';
 const Inventory: React.FC = () => {
     const [items, setItems] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
+    const [categories, setCategories] = useState<any[]>([]);
     const { register, handleSubmit, reset } = useForm();
     const { user } = useAuth();
     const [showForm, setShowForm] = useState(false);
@@ -29,9 +30,19 @@ const Inventory: React.FC = () => {
         }
     }
 
+    const fetchCategories = async () => {
+        try {
+            const response = await api.get('/categories/');
+            setCategories(response.data);
+        } catch (error) {
+             console.error("Erro ao carregar categorias", error);
+        }
+    }
+
     useEffect(() => {
         fetchItems();
         fetchBranches();
+        fetchCategories();
     }, []);
 
     const onSubmit = async (data: any) => {
@@ -100,7 +111,11 @@ const Inventory: React.FC = () => {
                         </div>
                         <div>
                             <label className="block text-gray-700">Categoria</label>
-                            <input {...register('category', { required: true })} className="w-full border rounded px-3 py-2" />
+                            <select {...register('category', { required: true })} className="w-full border rounded px-3 py-2">
+                                {categories.map(cat => (
+                                    <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                ))}
+                            </select>
                         </div>
                         <div>
                             <label className="block text-gray-700">Data Compra</label>

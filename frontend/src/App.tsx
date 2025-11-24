@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
+import Branches from './pages/Branches';
+import Categories from './pages/Categories';
 import { AuthProvider, useAuth } from './AuthContext';
 import Notifications from './components/Notifications';
 
@@ -18,6 +20,8 @@ const Layout = () => {
                 <nav className="mt-6">
                     <a href="/" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Dashboard</a>
                     <a href="/inventory" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Inventário</a>
+                    <a href="/branches" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Filiais</a>
+                    <a href="/categories" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Categorias</a>
                     <button onClick={logout} className="block w-full text-left px-6 py-3 text-red-600 hover:bg-gray-100">Sair</button>
                 </nav>
             </aside>
@@ -34,6 +38,8 @@ const AppRoutes = () => {
             <Route element={<Layout />}>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/inventory" element={<Inventory />} />
+                <Route path="/branches" element={<Branches />} />
+                <Route path="/categories" element={<Categories />} />
             </Route>
         </Routes>
      );

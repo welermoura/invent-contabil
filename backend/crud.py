@@ -33,6 +33,18 @@ async def create_branch(db: AsyncSession, branch: schemas.BranchCreate):
     await db.refresh(db_branch)
     return db_branch
 
+# Categories
+async def get_categories(db: AsyncSession, skip: int = 0, limit: int = 100):
+    result = await db.execute(select(models.Category).offset(skip).limit(limit))
+    return result.scalars().all()
+
+async def create_category(db: AsyncSession, category: schemas.CategoryCreate):
+    db_category = models.Category(**category.dict())
+    db.add(db_category)
+    await db.commit()
+    await db.refresh(db_category)
+    return db_category
+
 # Items
 async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: str = None, category: str = None, branch_id: int = None, search: str = None):
     query = select(models.Item)

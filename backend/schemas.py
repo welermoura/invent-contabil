@@ -40,6 +40,19 @@ class BranchResponse(BranchBase):
     class Config:
         from_attributes = True
 
+# Category
+class CategoryBase(BaseModel):
+    name: str
+
+class CategoryCreate(CategoryBase):
+    pass
+
+class CategoryResponse(CategoryBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
 # Item
 class ItemBase(BaseModel):
     description: str
@@ -53,7 +66,7 @@ class ItemBase(BaseModel):
     observations: Optional[str] = None
 
 class ItemCreate(ItemBase):
-    pass
+    category_id: Optional[int] = None
 
 class ItemUpdate(BaseModel):
     description: Optional[str] = None
@@ -69,6 +82,7 @@ class ItemResponse(ItemBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     branch: BranchResponse
+    category_rel: Optional[CategoryResponse] = None
     responsible: Optional[UserResponse] = None
 
     class Config:
