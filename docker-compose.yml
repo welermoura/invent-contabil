@@ -36,7 +36,9 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://localhost:8001
+      # Permite override via variável de ambiente (ex: script start_lan.sh)
+      # Se não definido, usa localhost (acesso local apenas)
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8001}
     depends_on:
       - backend
 
