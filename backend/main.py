@@ -26,7 +26,16 @@ app = FastAPI(title="Inventory Management API")
 
 @app.on_event("startup")
 async def on_startup():
-    await init_db()
+    try:
+        await init_db()
+    except Exception as e:
+        print(f"Startup Error (init_db): {e}")
+        # Não relançar a exceção para permitir que o servidor inicie
+        pass
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "message": "Server is running"}
 
 # Configuração do CORS
 # Permitir todas as origens para facilitar acesso via LAN/IP externo
