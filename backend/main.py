@@ -1,7 +1,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from backend.routers import auth, users, items, dashboard, reports
+from backend.routers import auth, users, items, dashboard, reports, branches
 import os
 
 app = FastAPI(title="Inventory Management API")
@@ -60,6 +60,7 @@ app.include_router(users.router)
 app.include_router(items.router)
 app.include_router(dashboard.router)
 app.include_router(reports.router)
+app.include_router(branches.router)
 
 @app.get("/")
 async def read_root():

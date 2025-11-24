@@ -20,10 +20,11 @@ async def read_items(
     status: Optional[str] = None,
     category: Optional[str] = None,
     branch_id: Optional[int] = None,
+    search: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    return await crud.get_items(db, skip=skip, limit=limit, status=status, category=category, branch_id=branch_id)
+    return await crud.get_items(db, skip=skip, limit=limit, status=status, category=category, branch_id=branch_id, search=search)
 
 @router.post("/", response_model=schemas.ItemResponse)
 async def create_item(
