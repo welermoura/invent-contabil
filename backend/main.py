@@ -2,9 +2,15 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from backend.routers import auth, users, items, dashboard, reports, branches
+from backend.initial_data import init_db
 import os
+import asyncio
 
 app = FastAPI(title="Inventory Management API")
+
+@app.on_event("startup")
+async def on_startup():
+    await init_db()
 
 # Configuração do CORS
 origins = [
