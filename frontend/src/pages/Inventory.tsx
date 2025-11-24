@@ -7,14 +7,27 @@ const Inventory: React.FC = () => {
     const [items, setItems] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
+    const [page, setPage] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const LIMIT = 50; // Itens por página
+
     const { register, handleSubmit, reset } = useForm();
     const { user } = useAuth();
     const [showForm, setShowForm] = useState(false);
 
-    const fetchItems = async (search?: string) => {
+    const fetchItems = async (search?: string, pageNum: number = 0) => {
         try {
-            const params = search ? { search } : {};
+            const params = {
+                search,
+                skip: pageNum * LIMIT,
+                limit: LIMIT
+            };
             const response = await api.get('/items/', { params });
+            if (response.data.length < LIMIT) {
+                setHasMore(false);
+            } else {
+                setHasMore(true);
+            }
             setItems(response.data);
         } catch (error) {
             console.error("Erro ao carregar itens", error);
@@ -40,10 +53,10 @@ const Inventory: React.FC = () => {
     }
 
     useEffect(() => {
-        fetchItems();
+        fetchItems(undefined, page);
         fetchBranches();
         fetchCategories();
-    }, []);
+    }, [page]);
 
     const onSubmit = async (data: any) => {
         const formData = new FormData();
@@ -74,12 +87,20 @@ const Inventory: React.FC = () => {
     const handleStatusChange = async (itemId: number, newStatus: string) => {
         try {
             await api.put(`/items/${itemId}/status?status_update=${newStatus}`);
-            fetchItems();
+            fetchItems(undefined, page);
         } catch (error) {
             console.error("Erro ao atualizar status", error);
             alert("Erro ao atualizar status. Verifique se você tem permissão.");
         }
     }
+
+    const handlePrevPage = () => {
+        if (page > 0) setPage(page - 1);
+    };
+
+    const handleNextPage = () => {
+        if (hasMore) setPage(page + 1);
+    };
 
     return (
         <div className="p-6">
@@ -99,6 +120,24 @@ const Inventory: React.FC = () => {
                         {showForm ? 'Cancelar' : 'Adicionar Item'}
                     </button>
                 </div>
+            </div>
+
+            <div className="flex justify-between mb-4">
+                <button
+                    onClick={handlePrevPage}
+                    disabled={page === 0}
+                    className="bg-gray-300 text-gray-700 px-4 py-2 rounded disabled:opacity-50"
+                >
+                    Anterior
+                </button>
+                <span className="self-center">Página {page + 1}</span>
+                <button
+                    onClick={handleNextPage}
+                    disabled={!hasMore}
+                    className="bg-gray-300 text-gray-700 px-4 py-2 rounded disabled:opacity-50"
+                >
+                    Próxima
+                </button>
             </div>
 
             {showForm && (
