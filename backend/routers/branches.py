@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend import schemas, crud, auth, models
@@ -14,3 +14,14 @@ async def read_branches(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     return await crud.get_branches(db, skip=skip, limit=limit)
+
+@router.post("/", response_model=schemas.BranchResponse)
+async def create_branch(
+    branch: schemas.BranchCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.role != models.UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can create branches")
+
+    return await crud.create_branch(db, branch=branch)
