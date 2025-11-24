@@ -6,8 +6,8 @@ cd backend
 
 # Esperar o banco de dados estar pronto
 echo "Waiting for database to be ready..."
-while ! nc -z db 5432; do
-  sleep 0.1
+while ! python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); s.connect(('db', 5432))" 2>/dev/null; do
+  sleep 1
 done
 echo "Database started"
 
