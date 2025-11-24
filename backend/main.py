@@ -21,7 +21,7 @@ app.add_middleware(
 )
 
 # Servir arquivos estáticos (uploads)
-UPLOAD_DIR = "uploads"
+UPLOAD_DIR = "/app/uploads"
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")

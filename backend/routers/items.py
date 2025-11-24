@@ -9,7 +9,7 @@ from datetime import datetime
 
 router = APIRouter(prefix="/items", tags=["items"])
 
-UPLOAD_DIR = "uploads"
+UPLOAD_DIR = "/app/uploads"
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
@@ -43,10 +43,14 @@ async def create_item(
     # Save file if uploaded
     file_path = None
     if file:
-        file_location = f"{UPLOAD_DIR}/{file.filename}"
+        import os
+        from werkzeug.utils import secure_filename
+        safe_filename = secure_filename(file.filename)
+        file_location = os.path.join(UPLOAD_DIR, safe_filename)
         with open(file_location, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        file_path = file_location
+        # Store relative path for serving
+        file_path = f"uploads/{safe_filename}"
 
     item_data = schemas.ItemCreate(
         description=description,
