@@ -19,8 +19,14 @@ const Login: React.FC = () => {
             const response = await api.post('/token', formData);
             login(response.data.access_token);
             navigate('/');
-        } catch (err) {
-            setError('Credenciais inválidas');
+        } catch (err: any) {
+            if (!err.response) {
+                setError('Erro de conexão com o servidor. Verifique se o backend está rodando.');
+            } else if (err.response.status === 401) {
+                setError('Credenciais inválidas');
+            } else {
+                setError('Erro ao realizar login');
+            }
         }
     };
 
