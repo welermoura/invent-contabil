@@ -28,6 +28,9 @@ ENV PYTHONPATH=/app
 # Expor a porta que o FastAPI vai rodar
 EXPOSE 8000
 
+# Criar diretório de uploads
+RUN mkdir -p /app/uploads
+
 # Copiar o script de inicialização
 COPY start.sh /app/backend/start.sh
 RUN chmod +x /app/backend/start.sh

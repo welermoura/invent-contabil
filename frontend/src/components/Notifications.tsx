@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../AuthContext';
 
 const Notifications: React.FC = () => {
     const { user } = useAuth();
