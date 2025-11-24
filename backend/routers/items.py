@@ -44,8 +44,12 @@ async def create_item(
     file_path = None
     if file:
         import os
-        from werkzeug.utils import secure_filename
-        safe_filename = secure_filename(file.filename)
+        import re
+        # secure_filename replacement to avoid extra dependency
+        filename = file.filename
+        filename = re.sub(r'[^A-Za-z0-9_.-]', '_', filename)
+        safe_filename = filename
+
         file_location = os.path.join(UPLOAD_DIR, safe_filename)
         with open(file_location, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
