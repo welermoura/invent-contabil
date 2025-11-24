@@ -29,10 +29,8 @@ async def on_startup():
     await init_db()
 
 # Configuração do CORS
-origins = [
-    "http://localhost:5173",
-    "http://localhost",
-]
+# Permitir todas as origens para facilitar acesso via LAN/IP externo
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
