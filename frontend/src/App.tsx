@@ -1,15 +1,9 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import Login from './pages/Login';
+import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import { AuthProvider, useAuth } from './AuthContext';
 import Notifications from './components/Notifications';
-
-const PrivateRoute = () => {
-    const { isAuthenticated } = useAuth();
-    return isAuthenticated ? <Outlet /> : <Navigate to="/login" />;
-};
 
 const Layout = () => {
     const { logout, user } = useAuth();
@@ -37,12 +31,9 @@ const Layout = () => {
 const AppRoutes = () => {
      return (
         <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route element={<PrivateRoute />}>
-                <Route element={<Layout />}>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/inventory" element={<Inventory />} />
-                </Route>
+            <Route element={<Layout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/inventory" element={<Inventory />} />
             </Route>
         </Routes>
      );
