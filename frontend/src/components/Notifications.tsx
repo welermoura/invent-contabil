@@ -7,7 +7,9 @@ const Notifications: React.FC = () => {
     useEffect(() => {
         if (!user) return;
 
-        const socket = new WebSocket('ws://localhost:8000/ws/notifications');
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+        const wsUrl = apiUrl.replace(/^http/, 'ws') + '/ws/notifications';
+        const socket = new WebSocket(wsUrl);
 
         socket.onopen = () => {
             console.log('WebSocket Connected');

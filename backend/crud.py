@@ -34,7 +34,7 @@ async def create_branch(db: AsyncSession, branch: schemas.BranchCreate):
     return db_branch
 
 # Items
-async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: str = None, category: str = None, branch_id: int = None):
+async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: str = None, category: str = None, branch_id: int = None, search: str = None):
     query = select(models.Item)
     if status:
         query = query.where(models.Item.status == status)
@@ -42,6 +42,13 @@ async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: s
         query = query.where(models.Item.category == category)
     if branch_id:
         query = query.where(models.Item.branch_id == branch_id)
+    if search:
+        search_filter = f"%{search}%"
+        query = query.where(
+            (models.Item.description.ilike(search_filter)) |
+            (models.Item.serial_number.ilike(search_filter)) |
+            (models.Item.invoice_number.ilike(search_filter))
+        )
 
     result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()

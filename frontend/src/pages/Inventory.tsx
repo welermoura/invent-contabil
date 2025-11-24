@@ -10,20 +10,28 @@ const Inventory: React.FC = () => {
     const { user } = useAuth();
     const [showForm, setShowForm] = useState(false);
 
-    const fetchItems = async () => {
+    const fetchItems = async (search?: string) => {
         try {
-            const response = await api.get('/items/');
+            const params = search ? { search } : {};
+            const response = await api.get('/items/', { params });
             setItems(response.data);
         } catch (error) {
             console.error("Erro ao carregar itens", error);
         }
     };
 
-    // For now we assume branch id 1 exists or mock it
-    // In a real scenario we would fetch branches from /branches endpoint (which we haven't implemented yet but is easy)
+    const fetchBranches = async () => {
+        try {
+            const response = await api.get('/branches/');
+            setBranches(response.data);
+        } catch (error) {
+             console.error("Erro ao carregar filiais", error);
+        }
+    }
 
     useEffect(() => {
         fetchItems();
+        fetchBranches();
     }, []);
 
     const onSubmit = async (data: any) => {
@@ -33,7 +41,7 @@ const Inventory: React.FC = () => {
         formData.append('purchase_date', data.purchase_date);
         formData.append('invoice_value', data.invoice_value);
         formData.append('invoice_number', data.invoice_number);
-        formData.append('branch_id', "1"); // Hardcoded for now
+        formData.append('branch_id', data.branch_id);
         if (data.serial_number) formData.append('serial_number', data.serial_number);
         if (data.observations) formData.append('observations', data.observations);
         if (data.file[0]) formData.append('file', data.file[0]);
@@ -64,14 +72,22 @@ const Inventory: React.FC = () => {
 
     return (
         <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                 <h1 className="text-3xl font-bold">Inventário</h1>
-                <button
-                    onClick={() => setShowForm(!showForm)}
-                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                >
-                    {showForm ? 'Cancelar' : 'Adicionar Item'}
-                </button>
+                 <div className="flex gap-2 w-full md:w-auto">
+                    <input
+                        type="text"
+                        placeholder="Buscar..."
+                        className="border rounded px-3 py-2 flex-grow md:w-64"
+                        onChange={(e) => fetchItems(e.target.value)}
+                    />
+                    <button
+                        onClick={() => setShowForm(!showForm)}
+                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 whitespace-nowrap"
+                    >
+                        {showForm ? 'Cancelar' : 'Adicionar Item'}
+                    </button>
+                </div>
             </div>
 
             {showForm && (
@@ -101,6 +117,14 @@ const Inventory: React.FC = () => {
                         <div>
                             <label className="block text-gray-700">Número Série</label>
                             <input {...register('serial_number')} className="w-full border rounded px-3 py-2" />
+                        </div>
+                        <div>
+                            <label className="block text-gray-700">Filial</label>
+                            <select {...register('branch_id', { required: true })} className="w-full border rounded px-3 py-2">
+                                {branches.map(branch => (
+                                    <option key={branch.id} value={branch.id}>{branch.name}</option>
+                                ))}
+                            </select>
                         </div>
                          <div>
                             <label className="block text-gray-700">Nota Fiscal (Arquivo)</label>
