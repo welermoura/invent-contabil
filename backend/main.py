@@ -1,10 +1,26 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from backend.routers import auth, users, items, dashboard, reports, branches
-from backend.initial_data import init_db
 import os
 import asyncio
+import sys
+
+# Hotfix para compatibilidade passlib / bcrypt > 4.0
+# Evita crash se o container não for reconstruído
+import bcrypt
+if not hasattr(bcrypt, '__about__'):
+    try:
+        from collections import namedtuple
+        Version = namedtuple('Version', ['__version__'])
+        bcrypt.__about__ = Version(__version__=bcrypt.__version__)
+    except Exception:
+        pass
+
+from backend.routers import auth, users, items, dashboard, reports, branches
+from backend.initial_data import init_db
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="Inventory Management API")
 

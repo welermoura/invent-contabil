@@ -12,7 +12,9 @@ done
 echo "Database started"
 
 # Aqui estamos apenas rodando as migrações
+echo "Running migrations..."
 alembic upgrade head
+echo "Migrations finished."
 
 # Iniciar o servidor
 # Note: Host 0.0.0.0 allows external access. Port 8000 is the internal container port.
