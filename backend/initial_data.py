@@ -17,8 +17,18 @@ async def init_db():
                 await crud.create_branch(db, branch_data)
                 logger.info("Default branch created.")
 
-            # Note: Admin user is NOT created here anymore.
-            # It must be created via /setup endpoint on first run.
+            # Check if admin exists
+            user = await crud.get_user_by_email(db, "admin")
+            if not user:
+                logger.info("Creating default admin user (admin/123)...")
+                admin_data = schemas.UserCreate(
+                    name="Admin",
+                    email="admin", # Login simplificado
+                    password="123", # Senha solicitada
+                    role=models.UserRole.ADMIN
+                )
+                await crud.create_user(db, admin_data)
+                logger.info("Default admin created: admin / 123")
 
         except Exception as e:
             logger.error(f"Error during initial data seeding: {e}")

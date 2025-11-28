@@ -1,7 +1,11 @@
 import axios from 'axios';
 
+// Log for debugging network issues
+const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+console.log(`[API] Connecting to Backend at: ${baseURL}`);
+
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+    baseURL: baseURL,
 });
 
 api.interceptors.request.use(
