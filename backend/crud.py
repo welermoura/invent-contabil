@@ -14,11 +14,30 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
         email=user.email,
         name=user.name,
         hashed_password=hashed_password,
-        role=user.role
+        role=user.role,
+        branch_id=user.branch_id
     )
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
+    return db_user
+
+async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100):
+    result = await db.execute(select(models.User).offset(skip).limit(limit))
+    return result.scalars().all()
+
+async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
+    result = await db.execute(select(models.User).where(models.User.id == user_id))
+    db_user = result.scalars().first()
+    if db_user:
+        if user.name: db_user.name = user.name
+        if user.role: db_user.role = user.role
+        if user.branch_id: db_user.branch_id = user.branch_id
+        if user.password:
+            db_user.hashed_password = get_password_hash(user.password)
+
+        await db.commit()
+        await db.refresh(db_user)
     return db_user
 
 # Branches

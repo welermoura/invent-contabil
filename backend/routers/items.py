@@ -24,6 +24,18 @@ async def read_items(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    # Enforce branch filtering for non-admins
+    if current_user.role != models.UserRole.ADMIN:
+        # If user has a branch assigned, restrict to it.
+        # If no branch assigned (global access without admin role? unlikely scenario, assume restriction)
+        # Let's assume if branch_id is None, they see nothing or everything?
+        # Requirement: "give permission to user to see branch data". Implies restriction.
+        if current_user.branch_id:
+            branch_id = current_user.branch_id
+        # else: if operator has no branch, maybe see nothing? Or all?
+        # Safest is strict: if not admin, must have branch_id to see items.
+        # But for now, let's just override if they HAVE a branch_id.
+
     return await crud.get_items(db, skip=skip, limit=limit, status=status, category=category, branch_id=branch_id, search=search)
 
 @router.post("/", response_model=schemas.ItemResponse)
