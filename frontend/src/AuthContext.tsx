@@ -21,9 +21,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<User | null>(null);
 
     useEffect(() => {
-        // Auto-login mock for development (sem login screen)
-        setUser({ email: 'admin@empresa.com', role: 'admin' });
-    }, []);
+        if (token) {
+            try {
+                const decoded: any = jwtDecode(token);
+                // Check expiration
+                if (decoded.exp * 1000 < Date.now()) {
+                    logout();
+                } else {
+                    setUser({ email: decoded.sub, role: decoded.role });
+                }
+            } catch (error) {
+                logout();
+            }
+        }
+    }, [token]);
 
     const login = (newToken: string) => {
         localStorage.setItem('token', newToken);

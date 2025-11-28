@@ -1,11 +1,18 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import Branches from './pages/Branches';
 import Categories from './pages/Categories';
+import Setup from './pages/Setup';
 import { AuthProvider, useAuth } from './AuthContext';
 import Notifications from './components/Notifications';
+
+const PrivateRoute = () => {
+    const { isAuthenticated } = useAuth();
+    return isAuthenticated ? <Outlet /> : <Navigate to="/login" />;
+};
 
 const Layout = () => {
     const { logout, user } = useAuth();
@@ -35,11 +42,15 @@ const Layout = () => {
 const AppRoutes = () => {
      return (
         <Routes>
-            <Route element={<Layout />}>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/inventory" element={<Inventory />} />
-                <Route path="/branches" element={<Branches />} />
-                <Route path="/categories" element={<Categories />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/setup" element={<Setup />} />
+            <Route element={<PrivateRoute />}>
+                <Route element={<Layout />}>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/inventory" element={<Inventory />} />
+                    <Route path="/branches" element={<Branches />} />
+                    <Route path="/categories" element={<Categories />} />
+                </Route>
             </Route>
         </Routes>
      );
