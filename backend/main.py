@@ -18,7 +18,7 @@ if not hasattr(bcrypt, '__about__'):
 
 from backend.routers import auth, users, items, dashboard, reports, branches, categories
 from backend.initial_data import init_db
-from backend.websockets import manager
+from backend.websocket_manager import manager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
