@@ -105,7 +105,7 @@ async def update_item_status(
         raise HTTPException(status_code=404, detail="Item not found")
 
     # Trigger WebSocket notification
-    from backend.websockets import manager
+    from backend.websocket_manager import manager
     await manager.broadcast(f"Item {item.description} status changed to {status_update}")
 
     return item
