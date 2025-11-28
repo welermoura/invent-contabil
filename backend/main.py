@@ -38,14 +38,14 @@ async def health_check():
     return {"status": "ok", "message": "Server is running"}
 
 # Configuração do CORS
-origins = ["*"]
-
+# Permitir tudo (Wildcard) para evitar bloqueios em LAN/Docker
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Servir arquivos estáticos (uploads)
