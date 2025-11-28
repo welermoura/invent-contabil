@@ -18,6 +18,7 @@ if not hasattr(bcrypt, '__about__'):
 
 from backend.routers import auth, users, items, dashboard, reports, branches, categories
 from backend.initial_data import init_db
+from backend.websockets import manager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -30,7 +31,6 @@ async def on_startup():
         await init_db()
     except Exception as e:
         print(f"Startup Error (init_db): {e}")
-        # Não relançar a exceção para permitir que o servidor inicie
         pass
 
 @app.get("/health")
@@ -38,7 +38,6 @@ async def health_check():
     return {"status": "ok", "message": "Server is running"}
 
 # Configuração do CORS
-# Permitir todas as origens para facilitar acesso via LAN/IP externo
 origins = ["*"]
 
 app.add_middleware(
@@ -55,31 +54,12 @@ if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
-# WebSocket Manager
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: list[WebSocket] = []
-
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
-
-    async def broadcast(self, message: str):
-        for connection in self.active_connections:
-            await connection.send_text(message)
-
-manager = ConnectionManager()
-
 @app.websocket("/ws/notifications")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
             data = await websocket.receive_text()
-            # Echo or process if needed
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 

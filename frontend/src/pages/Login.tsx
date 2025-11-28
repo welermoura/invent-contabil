@@ -10,16 +10,18 @@ const Login: React.FC = () => {
     const navigate = useNavigate();
     const [error, setError] = useState('');
 
+    // Restaurando verificação de setup para garantir que o Admin seja criado
     useEffect(() => {
         const checkStatus = async () => {
             try {
-                const response = await api.get('/setup-status');
+                // Tenta verificar se o sistema já tem admin
+                // Timeout curto para não travar a tela se backend estiver offline
+                const response = await api.get('/setup-status', { timeout: 3000 });
                 if (!response.data.is_setup) {
                     navigate('/setup');
                 }
             } catch (error) {
-                // If connection fails, stay here to show error on login attempt or retry
-                console.log("Check status failed, backend might be down");
+                console.log("Check status failed, backend might be down or unreachable");
             }
         };
         checkStatus();
