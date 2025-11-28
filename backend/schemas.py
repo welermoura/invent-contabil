@@ -19,9 +19,17 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    branch_id: Optional[int] = None
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    role: Optional[UserRole] = None
+    branch_id: Optional[int] = None
+    password: Optional[str] = None
 
 class UserResponse(UserBase):
     id: int
+    branch_id: Optional[int] = None
 
     class Config:
         from_attributes = True
