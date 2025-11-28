@@ -1,7 +1,22 @@
 import axios from 'axios';
 
-// Log for debugging network issues
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+// Dynamic Base URL Strategy
+// 1. Try env var (VITE_API_URL)
+// 2. Try constructing from window location (for LAN access without config)
+// 3. Fallback to localhost
+let baseURL = import.meta.env.VITE_API_URL;
+
+if (!baseURL) {
+    if (typeof window !== 'undefined') {
+        const protocol = window.location.protocol;
+        const hostname = window.location.hostname;
+        // Backend port is fixed at 8001 externally
+        baseURL = `${protocol}//${hostname}:8001`;
+    } else {
+        baseURL = 'http://localhost:8001';
+    }
+}
+
 console.log(`[API] Connecting to Backend at: ${baseURL}`);
 
 const api = axios.create({
