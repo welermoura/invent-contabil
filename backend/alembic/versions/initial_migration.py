@@ -80,10 +80,7 @@ def upgrade() -> None:
 
     # Seed data
     op.execute("INSERT INTO branches (name, address) VALUES ('Sede Central', 'Av. Paulista, 1000')")
-    # Senha hash gerada anteriormente: $2b$12$1bjANJgFluJFQ8ZPkO9PX.IsXjwm3OnHUugx4sNLjb/WUvLnYSuAq
-    op.execute("INSERT INTO users (name, email, hashed_password, role) VALUES ('Admin', 'admin@empresa.com', '$2b$12$1bjANJgFluJFQ8ZPkO9PX.IsXjwm3OnHUugx4sNLjb/WUvLnYSuAq', 'ADMIN')")
-    op.execute("INSERT INTO users (name, email, hashed_password, role) VALUES ('Aprovador', 'aprovador@empresa.com', '$2b$12$1bjANJgFluJFQ8ZPkO9PX.IsXjwm3OnHUugx4sNLjb/WUvLnYSuAq', 'APPROVER')")
-    op.execute("INSERT INTO users (name, email, hashed_password, role) VALUES ('Operador', 'operador@empresa.com', '$2b$12$1bjANJgFluJFQ8ZPkO9PX.IsXjwm3OnHUugx4sNLjb/WUvLnYSuAq', 'OPERATOR')")
+    # Note: Users are NOT seeded here anymore to allow the Setup Flow (create master admin on first run) to work.
     # ### end Alembic commands ###
 
 

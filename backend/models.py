@@ -35,12 +35,21 @@ class Branch(Base):
 
     items = relationship("Item", back_populates="branch")
 
+class Category(Base):
+    __tablename__ = "categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True, unique=True)
+
+    items = relationship("Item", back_populates="category_rel")
+
 class Item(Base):
     __tablename__ = "items"
 
     id = Column(Integer, primary_key=True, index=True)
     description = Column(String, index=True)
-    category = Column(String, index=True)
+    category = Column(String, index=True) # Mantendo como string por enquanto para compatibilidade, mas idealmente FK
+    category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     purchase_date = Column(DateTime)
     invoice_value = Column(Float)
     invoice_number = Column(String, index=True)
@@ -54,6 +63,7 @@ class Item(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     branch = relationship("Branch", back_populates="items")
+    category_rel = relationship("Category", back_populates="items")
     responsible = relationship("User", back_populates="items_responsible")
     logs = relationship("Log", back_populates="item")
 
