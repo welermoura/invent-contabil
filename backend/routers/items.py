@@ -27,14 +27,12 @@ async def read_items(
     # Enforce branch filtering for non-admins (Approvers can see all)
     if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
         # If user has a branch assigned, restrict to it.
-        # If no branch assigned (global access without admin role? unlikely scenario, assume restriction)
-        # Let's assume if branch_id is None, they see nothing or everything?
-        # Requirement: "give permission to user to see branch data". Implies restriction.
         if current_user.branch_id:
+            # Overwrite the branch_id filter to strict user's branch
             branch_id = current_user.branch_id
-        # else: if operator has no branch, maybe see nothing? Or all?
-        # Safest is strict: if not admin, must have branch_id to see items.
-        # But for now, let's just override if they HAVE a branch_id.
+
+    # If the user IS Admin or Approver, and they passed a branch_id in the query params (e.g. from Dashboard or Filter),
+    # we honor that filter. If they didn't pass it (branch_id is None), we show ALL items (don't filter by branch).
 
     return await crud.get_items(db, skip=skip, limit=limit, status=status, category=category, branch_id=branch_id, search=search)
 

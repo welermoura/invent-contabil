@@ -9,25 +9,46 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 @router.get("/stats")
 async def get_dashboard_stats(db: AsyncSession = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    # Base Filters based on user role
+    branch_filter = None
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
+         if current_user.branch_id:
+             branch_filter = models.Item.branch_id == current_user.branch_id
+
     # Total Pending Items
-    result_pending = await db.execute(select(func.count(models.Item.id)).where(models.Item.status == models.ItemStatus.PENDING))
+    query_pending = select(func.count(models.Item.id)).where(models.Item.status == models.ItemStatus.PENDING)
+    if branch_filter is not None:
+        query_pending = query_pending.where(branch_filter)
+    result_pending = await db.execute(query_pending)
     pending_count = result_pending.scalar()
 
     # Total Value of Pending Items
-    result_value = await db.execute(select(func.sum(models.Item.invoice_value)).where(models.Item.status == models.ItemStatus.PENDING))
+    query_value = select(func.sum(models.Item.invoice_value)).where(models.Item.status == models.ItemStatus.PENDING)
+    if branch_filter is not None:
+        query_value = query_value.where(branch_filter)
+    result_value = await db.execute(query_value)
     pending_value = result_value.scalar() or 0.0
 
-    # Items by Category
-    result_category = await db.execute(select(models.Item.category, func.count(models.Item.id)).group_by(models.Item.category))
+    # Items by Category (Pending only? Request says "Itens Pendentes" behavior... usually dashboard shows aggregates.
+    # Let's filter aggregates by the user's branch if they are an operator, otherwise all.)
+    query_category = select(models.Item.category, func.count(models.Item.id))
+    # Note: User request implies "Inventory button empty... items pending white page".
+    # The stats should also reflect what they can see.
+    if branch_filter is not None:
+        query_category = query_category.where(branch_filter)
+
+    query_category = query_category.group_by(models.Item.category)
+    result_category = await db.execute(query_category)
     items_by_category = [{"category": row[0], "count": row[1]} for row in result_category.all()]
 
     # Items by Branch
     # We need to join with Branch table to get branch name
-    result_branch = await db.execute(
-        select(models.Branch.name, func.count(models.Item.id))
-        .join(models.Branch, models.Item.branch_id == models.Branch.id)
-        .group_by(models.Branch.name)
-    )
+    query_branch = select(models.Branch.name, func.count(models.Item.id)).join(models.Branch, models.Item.branch_id == models.Branch.id)
+    if branch_filter is not None:
+        query_branch = query_branch.where(branch_filter)
+
+    query_branch = query_branch.group_by(models.Branch.name)
+    result_branch = await db.execute(query_branch)
     items_by_branch = [{"branch": row[0], "count": row[1]} for row in result_branch.all()]
 
     return {
