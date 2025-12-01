@@ -38,7 +38,7 @@ const Branches: React.FC = () => {
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold">Filiais</h1>
-                {user?.role === 'ADMIN' && (
+                {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
                     <button
                         onClick={() => setShowForm(!showForm)}
                         className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
@@ -74,6 +74,7 @@ const Branches: React.FC = () => {
                             <th className="px-6 py-3 text-left">ID</th>
                             <th className="px-6 py-3 text-left">Nome</th>
                             <th className="px-6 py-3 text-left">Endereço</th>
+                            <th className="px-6 py-3 text-left">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -82,6 +83,14 @@ const Branches: React.FC = () => {
                                 <td className="px-6 py-4">{branch.id}</td>
                                 <td className="px-6 py-4">{branch.name}</td>
                                 <td className="px-6 py-4">{branch.address}</td>
+                                <td className="px-6 py-4">
+                                     <a
+                                        href={`/inventory?branch_id=${branch.id}`}
+                                        className="text-blue-600 hover:text-blue-800"
+                                    >
+                                        Ver Itens
+                                    </a>
+                                </td>
                             </tr>
                         ))}
                     </tbody>

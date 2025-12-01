@@ -21,7 +21,7 @@ async def create_branch(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    if current_user.role != models.UserRole.ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem criar filiais")
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem criar filiais")
 
     return await crud.create_branch(db, branch=branch)

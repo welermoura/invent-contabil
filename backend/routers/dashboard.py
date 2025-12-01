@@ -21,8 +21,18 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db), current_user: 
     result_category = await db.execute(select(models.Item.category, func.count(models.Item.id)).group_by(models.Item.category))
     items_by_category = [{"category": row[0], "count": row[1]} for row in result_category.all()]
 
+    # Items by Branch
+    # We need to join with Branch table to get branch name
+    result_branch = await db.execute(
+        select(models.Branch.name, func.count(models.Item.id))
+        .join(models.Branch, models.Item.branch_id == models.Branch.id)
+        .group_by(models.Branch.name)
+    )
+    items_by_branch = [{"branch": row[0], "count": row[1]} for row in result_branch.all()]
+
     return {
         "pending_items_count": pending_count,
         "pending_items_value": pending_value,
-        "items_by_category": items_by_category
+        "items_by_category": items_by_category,
+        "items_by_branch": items_by_branch
     }

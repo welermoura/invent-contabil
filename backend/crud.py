@@ -68,6 +68,7 @@ async def create_category(db: AsyncSession, category: schemas.CategoryCreate):
 async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: str = None, category: str = None, branch_id: int = None, search: str = None):
     query = select(models.Item).options(
         selectinload(models.Item.branch),
+        selectinload(models.Item.transfer_target_branch),
         selectinload(models.Item.category_rel)
     )
     if status:
@@ -105,11 +106,52 @@ async def update_item_status(db: AsyncSession, item_id: int, status: models.Item
     result = await db.execute(select(models.Item).where(models.Item.id == item_id))
     db_item = result.scalars().first()
     if db_item:
-        db_item.status = status
+        # Transfer Logic
+        if db_item.status == models.ItemStatus.TRANSFER_PENDING:
+            if status == models.ItemStatus.APPROVED:
+                # Execute Transfer
+                if db_item.transfer_target_branch_id:
+                    db_item.branch_id = db_item.transfer_target_branch_id
+                    db_item.transfer_target_branch_id = None
+                    db_item.status = models.ItemStatus.APPROVED
+            elif status == models.ItemStatus.REJECTED:
+                # Cancel Transfer
+                db_item.transfer_target_branch_id = None
+                db_item.status = models.ItemStatus.APPROVED # Revert to Approved state
+        else:
+            # Normal Approval
+            db_item.status = status
+
         if fixed_asset_number:
             db_item.fixed_asset_number = fixed_asset_number
+
         # Log the action
         log = models.Log(item_id=item_id, user_id=user_id, action=f"Status changed to {status}")
+        db.add(log)
+        await db.commit()
+        await db.refresh(db_item)
+    return db_item
+
+async def request_write_off(db: AsyncSession, item_id: int, justification: str, user_id: int):
+    result = await db.execute(select(models.Item).where(models.Item.id == item_id))
+    db_item = result.scalars().first()
+    if db_item:
+        db_item.status = models.ItemStatus.WRITE_OFF_PENDING
+
+        log = models.Log(item_id=item_id, user_id=user_id, action=f"Write-off requested. Reason: {justification}")
+        db.add(log)
+        await db.commit()
+        await db.refresh(db_item)
+    return db_item
+
+async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int, user_id: int):
+    result = await db.execute(select(models.Item).where(models.Item.id == item_id))
+    db_item = result.scalars().first()
+    if db_item:
+        db_item.status = models.ItemStatus.TRANSFER_PENDING
+        db_item.transfer_target_branch_id = target_branch_id
+
+        log = models.Log(item_id=item_id, user_id=user_id, action=f"Transfer requested to branch {target_branch_id}")
         db.add(log)
         await db.commit()
         await db.refresh(db_item)
