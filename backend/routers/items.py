@@ -81,14 +81,31 @@ async def create_item(
     )
 
     # Create item
-    db_item = models.Item(**item_data.dict())
-    db_item.invoice_file = file_path
-    db_item.responsible_id = current_user.id
+    try:
+        # Pydantic schema expects category_id, frontend might send category name
+        # If necessary, we could resolve here, but let's assume valid ID or optional
+        # For now, pass dict as is
+        db_item = await crud.create_item(db, item_data)
+        # Note: file path setting is missing in crud.create_item, need to handle it or update crud
+        # Better: Update item with file path after creation or pass to crud
+        if file_path:
+            db_item.invoice_file = file_path
+            db.add(db_item)
+            await db.commit()
+            # Refresh again with relations
+            from sqlalchemy.orm import selectinload
+            from sqlalchemy.future import select
+            query = select(models.Item).where(models.Item.id == db_item.id).options(
+                selectinload(models.Item.branch),
+                selectinload(models.Item.category_rel)
+            )
+            result = await db.execute(query)
+            db_item = result.scalars().first()
 
-    db.add(db_item)
-    await db.commit()
-    await db.refresh(db_item)
-    return db_item
+        return db_item
+    except Exception as e:
+        print(f"Error creating item: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.put("/{item_id}/status", response_model=schemas.ItemResponse)
 async def update_item_status(
