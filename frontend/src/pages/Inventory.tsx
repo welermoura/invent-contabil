@@ -211,7 +211,9 @@ const Inventory: React.FC = () => {
                             <tr key={item.id} className="border-t">
                                 <td className="px-6 py-4">{item.description}</td>
                                 <td className="px-6 py-4">{item.category}</td>
-                                <td className="px-6 py-4">R$ {item.invoice_value.toFixed(2)}</td>
+                                <td className="px-6 py-4">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.invoice_value)}
+                                </td>
                                 <td className="px-6 py-4">
                                     <span className={`px-2 py-1 rounded text-sm ${
                                         item.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' :

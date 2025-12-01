@@ -66,7 +66,10 @@ async def create_category(db: AsyncSession, category: schemas.CategoryCreate):
 
 # Items
 async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: str = None, category: str = None, branch_id: int = None, search: str = None):
-    query = select(models.Item)
+    query = select(models.Item).options(
+        selectinload(models.Item.branch),
+        selectinload(models.Item.category_rel)
+    )
     if status:
         query = query.where(models.Item.status == status)
     if category:
@@ -84,12 +87,19 @@ async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: s
     result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
+from sqlalchemy.orm import selectinload
+
 async def create_item(db: AsyncSession, item: schemas.ItemCreate):
     db_item = models.Item(**item.dict())
     db.add(db_item)
     await db.commit()
-    await db.refresh(db_item)
-    return db_item
+    # Eager load relationships for Pydantic serialization
+    query = select(models.Item).where(models.Item.id == db_item.id).options(
+        selectinload(models.Item.branch),
+        selectinload(models.Item.category_rel)
+    )
+    result = await db.execute(query)
+    return result.scalars().first()
 
 async def update_item_status(db: AsyncSession, item_id: int, status: models.ItemStatus, user_id: int):
     result = await db.execute(select(models.Item).where(models.Item.id == item_id))
