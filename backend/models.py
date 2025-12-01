@@ -58,6 +58,7 @@ class Item(Base):
     invoice_number = Column(String, index=True)
     invoice_file = Column(String, nullable=True) # Path to the file
     serial_number = Column(String, index=True, nullable=True)
+    fixed_asset_number = Column(String, index=True, nullable=True) # Ativo Fixo
     branch_id = Column(Integer, ForeignKey("branches.id"))
     responsible_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     status = Column(Enum(ItemStatus), default=ItemStatus.PENDING)

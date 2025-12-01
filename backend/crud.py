@@ -101,11 +101,13 @@ async def create_item(db: AsyncSession, item: schemas.ItemCreate):
     result = await db.execute(query)
     return result.scalars().first()
 
-async def update_item_status(db: AsyncSession, item_id: int, status: models.ItemStatus, user_id: int):
+async def update_item_status(db: AsyncSession, item_id: int, status: models.ItemStatus, user_id: int, fixed_asset_number: str = None):
     result = await db.execute(select(models.Item).where(models.Item.id == item_id))
     db_item = result.scalars().first()
     if db_item:
         db_item.status = status
+        if fixed_asset_number:
+            db_item.fixed_asset_number = fixed_asset_number
         # Log the action
         log = models.Log(item_id=item_id, user_id=user_id, action=f"Status changed to {status}")
         db.add(log)
