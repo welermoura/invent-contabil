@@ -19,7 +19,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Usuário ou senha incorretos",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -43,7 +43,7 @@ async def setup_admin(user: schemas.UserCreate, db: AsyncSession = Depends(get_d
     count = result.scalar()
 
     if count > 0:
-        raise HTTPException(status_code=403, detail="Setup already completed. Admins exist.")
+        raise HTTPException(status_code=403, detail="Configuração inicial já concluída. Existem administradores cadastrados.")
 
     # Create the master admin
     # Force role to ADMIN
