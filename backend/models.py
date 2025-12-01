@@ -13,6 +13,8 @@ class ItemStatus(str, enum.Enum):
     PENDING = "PENDING"
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
+    TRANSFER_PENDING = "TRANSFER_PENDING"
+    WRITE_OFF_PENDING = "WRITE_OFF_PENDING"
 
 class User(Base):
     __tablename__ = "users"
@@ -60,13 +62,15 @@ class Item(Base):
     serial_number = Column(String, index=True, nullable=True)
     fixed_asset_number = Column(String, index=True, nullable=True) # Ativo Fixo
     branch_id = Column(Integer, ForeignKey("branches.id"))
+    transfer_target_branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True)
     responsible_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     status = Column(Enum(ItemStatus), default=ItemStatus.PENDING)
     observations = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    branch = relationship("Branch", back_populates="items")
+    branch = relationship("Branch", foreign_keys=[branch_id], back_populates="items")
+    transfer_target_branch = relationship("Branch", foreign_keys=[transfer_target_branch_id])
     category_rel = relationship("Category", back_populates="items")
     responsible = relationship("User", back_populates="items_responsible")
     logs = relationship("Log", back_populates="item")

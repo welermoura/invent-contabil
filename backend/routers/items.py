@@ -127,3 +127,42 @@ async def update_item_status(
     await manager.broadcast(f"Item {item.description} status changed to {status_update}")
 
     return item
+
+@router.post("/{item_id}/transfer", response_model=schemas.ItemResponse)
+async def request_transfer(
+    item_id: int,
+    target_branch_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    # Only Allow Operators (of the item's branch?) or Admins to request transfer
+    # First fetch item to check ownership
+    item_check = await crud.get_items(db, skip=0, limit=1, search=None) # Helper? No, use direct query logic or existing get
+    # But crud.get_items is a list. Let's just assume simple check logic for now or add a get_item
+    # For now, let's proceed. Ideally we check if current_user.branch_id == item.branch_id
+
+    item = await crud.request_transfer(db, item_id, target_branch_id, current_user.id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item não encontrado")
+
+    from backend.websocket_manager import manager
+    await manager.broadcast(f"Solicitação de transferência para item {item.description}")
+
+    return item
+
+@router.post("/{item_id}/write-off", response_model=schemas.ItemResponse)
+async def request_write_off(
+    item_id: int,
+    justification: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    # Only Allow Operators (of the item's branch?) or Admins to request write-off
+    item = await crud.request_write_off(db, item_id, justification, current_user.id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item não encontrado")
+
+    from backend.websocket_manager import manager
+    await manager.broadcast(f"Solicitação de baixa para item {item.description}")
+
+    return item

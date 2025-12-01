@@ -92,6 +92,8 @@ class ItemResponse(ItemBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     branch: BranchResponse
+    transfer_target_branch_id: Optional[int] = None
+    transfer_target_branch: Optional[BranchResponse] = None
     category_rel: Optional[CategoryResponse] = None
     responsible: Optional[UserResponse] = None
 
