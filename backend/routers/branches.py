@@ -22,6 +22,6 @@ async def create_branch(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     if current_user.role != models.UserRole.ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can create branches")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem criar filiais")
 
     return await crud.create_branch(db, branch=branch)

@@ -22,6 +22,6 @@ async def create_category(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     if current_user.role != models.UserRole.ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can create categories")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem criar categorias")
 
     return await crud.create_category(db, category=category)

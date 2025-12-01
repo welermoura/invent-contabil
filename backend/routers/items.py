@@ -105,7 +105,7 @@ async def create_item(
         return db_item
     except Exception as e:
         print(f"Error creating item: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=f"Erro ao criar item: {str(e)}")
 
 @router.put("/{item_id}/status", response_model=schemas.ItemResponse)
 async def update_item_status(
@@ -116,11 +116,11 @@ async def update_item_status(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
-         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to approve/reject items")
+         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não autorizado a aprovar/rejeitar itens")
 
     item = await crud.update_item_status(db, item_id, status_update, current_user.id, fixed_asset_number)
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+        raise HTTPException(status_code=404, detail="Item não encontrado")
 
     # Trigger WebSocket notification
     from backend.websocket_manager import manager

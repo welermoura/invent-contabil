@@ -18,7 +18,7 @@ async def read_users(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     if current_user.role != models.UserRole.ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não autorizado")
     return await crud.get_users(db, skip=skip, limit=limit)
 
 @router.post("/", response_model=schemas.UserResponse)
@@ -28,11 +28,11 @@ async def create_user(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     if current_user.role != models.UserRole.ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can create users")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem criar usuários")
 
     db_user = await crud.get_user_by_email(db, email=user.email)
     if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="E-mail já cadastrado")
     return await crud.create_user(db=db, user=user)
 
 @router.put("/{user_id}", response_model=schemas.UserResponse)
@@ -43,9 +43,9 @@ async def update_user(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     if current_user.role != models.UserRole.ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can update users")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem atualizar usuários")
 
     updated_user = await crud.update_user(db, user_id, user)
     if not updated_user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
     return updated_user
