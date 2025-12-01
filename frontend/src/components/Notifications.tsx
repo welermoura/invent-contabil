@@ -7,7 +7,18 @@ const Notifications: React.FC = () => {
     useEffect(() => {
         if (!user) return;
 
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+        let apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+
+        // Smart URL Detection for LAN
+        if (typeof window !== 'undefined') {
+            const hostname = window.location.hostname;
+            if (hostname !== 'localhost' && hostname !== '127.0.0.1' && apiUrl.includes('localhost')) {
+                const protocol = window.location.protocol;
+                apiUrl = `${protocol}//${hostname}:8001`;
+                console.log('[WS] Detected LAN access, overriding localhost WS URL');
+            }
+        }
+
         const wsUrl = apiUrl.replace(/^http/, 'ws') + '/ws/notifications';
         const socket = new WebSocket(wsUrl);
 

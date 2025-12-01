@@ -24,13 +24,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (token) {
             try {
                 const decoded: any = jwtDecode(token);
-                // Check expiration
-                if (decoded.exp * 1000 < Date.now()) {
-                    logout();
-                } else {
-                    setUser({ email: decoded.sub, role: decoded.role });
-                }
+                // Validação de expiração removida para evitar logouts por dessincronia de relógio.
+                // O backend retornará 401 se expirado.
+                setUser({ email: decoded.sub, role: decoded.role });
             } catch (error) {
+                // Se o token for inválido (malformado), logout
                 logout();
             }
         }
