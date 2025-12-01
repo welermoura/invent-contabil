@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
@@ -25,13 +25,13 @@ const Layout = () => {
                     <h1 className="text-2xl font-bold text-blue-600">Inventory</h1>
                     <p className="text-sm text-gray-500 mt-2">Olá, {user?.email}</p>
                 </div>
-                <nav className="mt-6">
-                    <a href="/" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Dashboard</a>
-                    <a href="/inventory" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Inventário</a>
-                    <a href="/branches" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Filiais</a>
-                    <a href="/categories" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Categorias</a>
+                <nav className="mt-6 flex flex-col gap-2">
+                    <Link to="/" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Dashboard</Link>
+                    <Link to="/inventory" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Inventário</Link>
+                    <Link to="/branches" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Filiais</Link>
+                    <Link to="/categories" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Categorias</Link>
                     {user?.role === 'ADMIN' && (
-                        <a href="/users" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Usuários</a>
+                        <Link to="/users" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Usuários</Link>
                     )}
                     <button onClick={logout} className="block w-full text-left px-6 py-3 text-red-600 hover:bg-gray-100">Sair</button>
                 </nav>
