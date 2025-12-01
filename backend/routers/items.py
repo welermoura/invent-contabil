@@ -24,8 +24,8 @@ async def read_items(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    # Enforce branch filtering for non-admins
-    if current_user.role != models.UserRole.ADMIN:
+    # Enforce branch filtering for non-admins (Approvers can see all)
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
         # If user has a branch assigned, restrict to it.
         # If no branch assigned (global access without admin role? unlikely scenario, assume restriction)
         # Let's assume if branch_id is None, they see nothing or everything?
@@ -111,13 +111,14 @@ async def create_item(
 async def update_item_status(
     item_id: int,
     status_update: schemas.ItemStatus,
+    fixed_asset_number: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
          raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to approve/reject items")
 
-    item = await crud.update_item_status(db, item_id, status_update, current_user.id)
+    item = await crud.update_item_status(db, item_id, status_update, current_user.id, fixed_asset_number)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 

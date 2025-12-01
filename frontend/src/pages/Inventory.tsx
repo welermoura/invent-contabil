@@ -15,6 +15,11 @@ const Inventory: React.FC = () => {
     const { user } = useAuth();
     const [showForm, setShowForm] = useState(false);
 
+    // Approval Modal State
+    const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState<any>(null);
+    const [fixedAssetNumber, setFixedAssetNumber] = useState('');
+
     const fetchItems = async (search?: string, pageNum: number = 0) => {
         try {
             const params = {
@@ -84,15 +89,28 @@ const Inventory: React.FC = () => {
         }
     };
 
-    const handleStatusChange = async (itemId: number, newStatus: string) => {
+    const handleStatusChange = async (itemId: number, newStatus: string, fixedAsset?: string) => {
         try {
-            await api.put(`/items/${itemId}/status?status_update=${newStatus}`);
+            let url = `/items/${itemId}/status?status_update=${newStatus}`;
+            if (fixedAsset) {
+                url += `&fixed_asset_number=${fixedAsset}`;
+            }
+            await api.put(url);
             fetchItems(undefined, page);
+            setIsApproveModalOpen(false);
+            setSelectedItem(null);
+            setFixedAssetNumber('');
         } catch (error) {
             console.error("Erro ao atualizar status", error);
             alert("Erro ao atualizar status. Verifique se você tem permissão.");
         }
     }
+
+    const openApproveModal = (item: any) => {
+        setSelectedItem(item);
+        setFixedAssetNumber('');
+        setIsApproveModalOpen(true);
+    };
 
     const handlePrevPage = () => {
         if (page > 0) setPage(page - 1);
@@ -224,16 +242,16 @@ const Inventory: React.FC = () => {
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">
-                                    {(user?.role === 'admin' || user?.role === 'approver') && item.status === 'pendente' && (
+                                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && item.status === 'PENDING' && (
                                         <div className="flex gap-2">
                                             <button
-                                                onClick={() => handleStatusChange(item.id, 'aprovado')}
+                                                onClick={() => openApproveModal(item)}
                                                 className="text-green-600 hover:text-green-800"
                                             >
                                                 Aprovar
                                             </button>
                                             <button
-                                                onClick={() => handleStatusChange(item.id, 'rejeitado')}
+                                                onClick={() => handleStatusChange(item.id, 'REJECTED')}
                                                 className="text-red-600 hover:text-red-800"
                                             >
                                                 Rejeitar
@@ -251,6 +269,46 @@ const Inventory: React.FC = () => {
                     </tbody>
                 </table>
             </div>
+
+            {/* Approval Modal */}
+            {isApproveModalOpen && selectedItem && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+                    <div className="bg-white p-5 rounded-md shadow-lg w-96">
+                        <h3 className="text-lg font-bold mb-4">Aprovar Item</h3>
+                        <p className="mb-4">Item: {selectedItem.description}</p>
+                        <div className="mb-4">
+                            <label className="block text-gray-700 mb-2">Ativo Fixo (Obrigatório)</label>
+                            <input
+                                type="text"
+                                value={fixedAssetNumber}
+                                onChange={(e) => setFixedAssetNumber(e.target.value)}
+                                className="w-full border rounded px-3 py-2"
+                                placeholder="Digite o número do ativo"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={() => setIsApproveModalOpen(false)}
+                                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (!fixedAssetNumber) {
+                                        alert("Número do Ativo Fixo é obrigatório para aprovação.");
+                                        return;
+                                    }
+                                    handleStatusChange(selectedItem.id, 'APPROVED', fixedAssetNumber);
+                                }}
+                                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                            >
+                                Confirmar Aprovação
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

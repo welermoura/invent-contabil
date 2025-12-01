@@ -81,11 +81,13 @@ class ItemUpdate(BaseModel):
     category: Optional[str] = None
     invoice_value: Optional[float] = None
     status: Optional[ItemStatus] = None
+    fixed_asset_number: Optional[str] = None
     observations: Optional[str] = None
 
 class ItemResponse(ItemBase):
     id: int
     status: ItemStatus
+    fixed_asset_number: Optional[str] = None
     invoice_file: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
