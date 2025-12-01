@@ -1,19 +1,19 @@
 import axios from 'axios';
 
 // Dynamic Base URL Strategy
-// 1. Try env var (VITE_API_URL)
-// 2. Try constructing from window location (for LAN access without config)
-// 3. Fallback to localhost
-let baseURL = import.meta.env.VITE_API_URL;
+// 1. Check if we are running in browser
+// 2. If configured URL is localhost but we are on a different IP, force usage of window.location
+// 3. Otherwise use env var or fallback
+let baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
 
-if (!baseURL) {
-    if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    // If user is accessing via IP/Network (not localhost) AND config points to localhost
+    // We override it to use the current hostname (assuming backend is on same host port 8001)
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1' && baseURL.includes('localhost')) {
         const protocol = window.location.protocol;
-        const hostname = window.location.hostname;
-        // Backend port is fixed at 8001 externally
         baseURL = `${protocol}//${hostname}:8001`;
-    } else {
-        baseURL = 'http://localhost:8001';
+        console.log('[API] Detected LAN access, overriding localhost API URL to:', baseURL);
     }
 }
 
