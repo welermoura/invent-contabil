@@ -50,11 +50,11 @@ const Login: React.FC = () => {
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
             <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
-                <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+                <h2 className="text-2xl font-bold mb-6 text-center">Entrar</h2>
                 {error && <div className="text-red-500 mb-4">{error}</div>}
                 <form onSubmit={handleSubmit(onSubmit)}>
                     <div className="mb-4">
-                        <label className="block text-gray-700">Email</label>
+                        <label className="block text-gray-700">E-mail</label>
                         <input
                             {...register('email', { required: true })}
                             className="w-full border rounded px-3 py-2"
