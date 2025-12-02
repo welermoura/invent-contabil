@@ -81,7 +81,7 @@ const Inventory: React.FC = () => {
         fetchItems(undefined, page);
         fetchBranches();
         fetchCategories();
-    }, [page, searchParams]);
+    }, [page, searchParams.toString()]);
 
     const onSubmit = async (data: any) => {
         const formData = new FormData();
