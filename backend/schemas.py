@@ -29,6 +29,9 @@ class UserUpdate(BaseModel):
 
 class UserResponse(UserBase):
     id: int
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    role: Optional[UserRole] = None
     branch_id: Optional[int] = None
 
     class Config:

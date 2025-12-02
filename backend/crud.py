@@ -41,7 +41,9 @@ async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
             db_user.hashed_password = get_password_hash(user.password)
 
         await db.commit()
-        await db.refresh(db_user)
+        # Reload user to ensure clean state and avoid async refresh issues
+        result = await db.execute(select(models.User).where(models.User.id == user_id))
+        db_user = result.scalars().first()
     return db_user
 
 async def delete_user(db: AsyncSession, user_id: int):
