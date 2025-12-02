@@ -36,8 +36,8 @@ class UserResponse(UserBase):
 
 # Branch
 class BranchBase(BaseModel):
-    name: str
-    address: str
+    name: Optional[str] = None
+    address: Optional[str] = None
 
 class BranchCreate(BranchBase):
     pass
@@ -108,7 +108,7 @@ class ItemResponse(ItemBase):
     invoice_file: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
-    branch: BranchResponse
+    branch: Optional[BranchResponse] = None
     transfer_target_branch_id: Optional[int] = None
     transfer_target_branch: Optional[BranchResponse] = None
     category_rel: Optional[CategoryResponse] = None
