@@ -39,9 +39,11 @@ async def health_check():
 
 # Configuração do CORS
 # Permitir tudo (Wildcard) para evitar bloqueios em LAN/Docker
+# Quando allow_credentials=True, não pode usar allow_origins=["*"].
+# Usamos allow_origin_regex para permitir qualquer origem HTTP/HTTPS dinamicamente.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex="https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
