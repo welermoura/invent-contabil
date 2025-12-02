@@ -61,6 +61,18 @@ class CategoryResponse(CategoryBase):
     class Config:
         from_attributes = True
 
+# Log Forward Declaration
+class LogResponse(BaseModel):
+    id: int
+    item_id: int
+    user_id: int
+    action: str
+    timestamp: datetime
+    user: UserResponse
+
+    class Config:
+        from_attributes = True
+
 # Item
 class ItemBase(BaseModel):
     description: str
@@ -96,18 +108,7 @@ class ItemResponse(ItemBase):
     transfer_target_branch: Optional[BranchResponse] = None
     category_rel: Optional[CategoryResponse] = None
     responsible: Optional[UserResponse] = None
-
-    class Config:
-        from_attributes = True
-
-# Log
-class LogResponse(BaseModel):
-    id: int
-    item_id: int
-    user_id: int
-    action: str
-    timestamp: datetime
-    user: UserResponse
+    logs: List[LogResponse] = []
 
     class Config:
         from_attributes = True
