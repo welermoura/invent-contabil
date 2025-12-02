@@ -261,6 +261,14 @@ const Inventory: React.FC = () => {
                     >
                         {showForm ? 'Cancelar' : 'Adicionar Item'}
                     </button>
+                    {user?.role !== 'AUDITOR' && (
+                        <button
+                            onClick={() => setShowForm(!showForm)}
+                            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 whitespace-nowrap"
+                        >
+                            {showForm ? 'Cancelar' : 'Adicionar Item'}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -427,7 +435,7 @@ const Inventory: React.FC = () => {
                                         </div>
                                     )}
 
-                                    {item.status === 'APPROVED' && (
+                                    {item.status === 'APPROVED' && user?.role !== 'AUDITOR' && (
                                         <>
                                             <button
                                                 onClick={() => openTransferModal(item)}

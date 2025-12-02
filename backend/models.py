@@ -8,6 +8,7 @@ class UserRole(str, enum.Enum):
     ADMIN = "ADMIN"
     APPROVER = "APPROVER"
     OPERATOR = "OPERATOR"
+    AUDITOR = "AUDITOR"
 
 class ItemStatus(str, enum.Enum):
     PENDING = "PENDING"

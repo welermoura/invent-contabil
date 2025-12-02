@@ -99,6 +99,11 @@ class ItemUpdate(BaseModel):
 class ItemResponse(ItemBase):
     id: int
     status: ItemStatus
+    description: Optional[str] = None
+    category: Optional[str] = None
+    purchase_date: Optional[datetime] = None
+    invoice_value: Optional[float] = None
+    invoice_number: Optional[str] = None
     fixed_asset_number: Optional[str] = None
     invoice_file: Optional[str] = None
     created_at: datetime
