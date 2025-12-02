@@ -98,14 +98,9 @@ const Dashboard: React.FC = () => {
                                     fill="#82ca9d"
                                     name="Quantidade"
                                     onClick={(data) => {
-                                        // Since we don't have branch ID in the stats yet (only name),
-                                        // we might need to update backend to send ID or filter by name if possible.
-                                        // For now, let's assume we can't link effectively without ID.
-                                        // But backend sends 'branch' (name).
-                                        // Let's rely on backend update or just show the chart.
-                                        // To be safe, I'll skip the link or try to find a way.
-                                        // Actually, I can navigate to /branches
-                                        navigate('/branches');
+                                        if (data && data.branch_id) {
+                                            navigate(`/inventory?branch_id=${data.branch_id}`);
+                                        }
                                     }}
                                     cursor="pointer"
                                 />
