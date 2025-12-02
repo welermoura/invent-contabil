@@ -42,14 +42,14 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db), current_user: 
     items_by_category = [{"category": row[0], "count": row[1]} for row in result_category.all()]
 
     # Items by Branch
-    # We need to join with Branch table to get branch name
-    query_branch = select(models.Branch.name, func.count(models.Item.id)).join(models.Branch, models.Item.branch_id == models.Branch.id)
+    # We need to join with Branch table to get branch name and ID
+    query_branch = select(models.Branch.id, models.Branch.name, func.count(models.Item.id)).join(models.Branch, models.Item.branch_id == models.Branch.id)
     if branch_filter is not None:
         query_branch = query_branch.where(branch_filter)
 
-    query_branch = query_branch.group_by(models.Branch.name)
+    query_branch = query_branch.group_by(models.Branch.id, models.Branch.name)
     result_branch = await db.execute(query_branch)
-    items_by_branch = [{"branch": row[0], "count": row[1]} for row in result_branch.all()]
+    items_by_branch = [{"branch_id": row[0], "branch": row[1], "count": row[2]} for row in result_branch.all()]
 
     return {
         "pending_items_count": pending_count,
