@@ -24,14 +24,14 @@ async def read_items(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    # Enforce branch filtering for non-admins (Approvers can see all)
-    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
+    # Enforce branch filtering for non-admins (Approvers and Auditors can see all)
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER, models.UserRole.AUDITOR]:
         # If user has a branch assigned, restrict to it.
         if current_user.branch_id:
             # Overwrite the branch_id filter to strict user's branch
             branch_id = current_user.branch_id
 
-    # If the user IS Admin or Approver, and they passed a branch_id in the query params (e.g. from Dashboard or Filter),
+    # If the user IS Admin, Approver or Auditor, and they passed a branch_id in the query params (e.g. from Dashboard or Filter),
     # we honor that filter. If they didn't pass it (branch_id is None), we show ALL items (don't filter by branch).
 
     return await crud.get_items(db, skip=skip, limit=limit, status=status, category=category, branch_id=branch_id, search=search)
@@ -50,6 +50,9 @@ async def create_item(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    if current_user.role == models.UserRole.AUDITOR:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Auditores não podem criar itens")
+
     # Save file if uploaded
     file_path = None
     if file:
@@ -133,6 +136,9 @@ async def request_transfer(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    if current_user.role == models.UserRole.AUDITOR:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Auditores não podem solicitar transferências")
+
     # Only Allow Operators (of the item's branch?) or Admins to request transfer
     # First fetch item to check ownership
     item_check = await crud.get_items(db, skip=0, limit=1, search=None) # Helper? No, use direct query logic or existing get
@@ -155,6 +161,9 @@ async def request_write_off(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    if current_user.role == models.UserRole.AUDITOR:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Auditores não podem solicitar baixas")
+
     # Only Allow Operators (of the item's branch?) or Admins to request write-off
     item = await crud.request_write_off(db, item_id, justification, current_user.id)
     if not item:

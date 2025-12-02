@@ -42,7 +42,7 @@ const Dashboard: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded shadow">
-                    <h3 className="text-xl font-semibold mb-4">Itens por Categoria (Pendentes)</h3>
+                    <h3 className="text-xl font-semibold mb-4">Itens por Categoria</h3>
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart
@@ -65,7 +65,7 @@ const Dashboard: React.FC = () => {
                                     name="Quantidade"
                                     onClick={(data) => {
                                         if (data && data.category) {
-                                            navigate(`/inventory?status=PENDING&category=${data.category}`);
+                                            navigate(`/inventory?category=${data.category}`);
                                         }
                                     }}
                                     cursor="pointer"
@@ -98,14 +98,9 @@ const Dashboard: React.FC = () => {
                                     fill="#82ca9d"
                                     name="Quantidade"
                                     onClick={(data) => {
-                                        // Since we don't have branch ID in the stats yet (only name),
-                                        // we might need to update backend to send ID or filter by name if possible.
-                                        // For now, let's assume we can't link effectively without ID.
-                                        // But backend sends 'branch' (name).
-                                        // Let's rely on backend update or just show the chart.
-                                        // To be safe, I'll skip the link or try to find a way.
-                                        // Actually, I can navigate to /branches
-                                        navigate('/branches');
+                                        if (data && data.branch_id) {
+                                            navigate(`/inventory?branch_id=${data.branch_id}`);
+                                        }
                                     }}
                                     cursor="pointer"
                                 />

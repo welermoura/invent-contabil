@@ -8,6 +8,7 @@ class UserRole(str, enum.Enum):
     ADMIN = "ADMIN"
     APPROVER = "APPROVER"
     OPERATOR = "OPERATOR"
+    AUDITOR = "AUDITOR"
 
 class ItemStatus(str, enum.Enum):
     PENDING = "PENDING"
@@ -37,7 +38,7 @@ class Branch(Base):
     name = Column(String, index=True)
     address = Column(String)
 
-    items = relationship("Item", foreign_keys=["Item.branch_id"], back_populates="branch")
+    items = relationship("Item", foreign_keys="[Item.branch_id]", back_populates="branch")
     users = relationship("User", back_populates="branch")
 
 class Category(Base):
@@ -69,11 +70,11 @@ class Item(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    branch = relationship("Branch", foreign_keys=[branch_id], back_populates="items")
-    transfer_target_branch = relationship("Branch", foreign_keys=[transfer_target_branch_id])
-    category_rel = relationship("Category", back_populates="items")
-    responsible = relationship("User", back_populates="items_responsible")
-    logs = relationship("Log", back_populates="item")
+    branch = relationship("Branch", foreign_keys=[branch_id], back_populates="items", lazy="selectin")
+    transfer_target_branch = relationship("Branch", foreign_keys=[transfer_target_branch_id], lazy="selectin")
+    category_rel = relationship("Category", back_populates="items", lazy="selectin")
+    responsible = relationship("User", back_populates="items_responsible", lazy="selectin")
+    logs = relationship("Log", back_populates="item", lazy="selectin")
 
 class Log(Base):
     __tablename__ = "logs"
@@ -85,4 +86,4 @@ class Log(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
     item = relationship("Item", back_populates="logs")
-    user = relationship("User", back_populates="logs")
+    user = relationship("User", back_populates="logs", lazy="selectin")
