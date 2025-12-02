@@ -65,10 +65,10 @@ class CategoryResponse(CategoryBase):
 class LogResponse(BaseModel):
     id: int
     item_id: int
-    user_id: Optional[int] = None
+    user_id: int
     action: str
     timestamp: datetime
-    user: Optional[UserResponse] = None
+    user: UserResponse
 
     class Config:
         from_attributes = True
@@ -104,7 +104,6 @@ class ItemResponse(ItemBase):
     purchase_date: Optional[datetime] = None
     invoice_value: Optional[float] = None
     invoice_number: Optional[str] = None
-    branch_id: Optional[int] = None
     fixed_asset_number: Optional[str] = None
     invoice_file: Optional[str] = None
     created_at: datetime
