@@ -8,6 +8,10 @@ async def get_user_by_email(db: AsyncSession, email: str):
     result = await db.execute(select(models.User).where(models.User.email == email))
     return result.scalars().first()
 
+async def get_user(db: AsyncSession, user_id: int):
+    result = await db.execute(select(models.User).where(models.User.id == user_id))
+    return result.scalars().first()
+
 async def create_user(db: AsyncSession, user: schemas.UserCreate):
     hashed_password = get_password_hash(user.password)
     db_user = models.User(
@@ -39,6 +43,15 @@ async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
         await db.commit()
         await db.refresh(db_user)
     return db_user
+
+async def delete_user(db: AsyncSession, user_id: int):
+    result = await db.execute(select(models.User).where(models.User.id == user_id))
+    db_user = result.scalars().first()
+    if db_user:
+        await db.delete(db_user)
+        await db.commit()
+        return True
+    return False
 
 # Branches
 async def get_branches(db: AsyncSession, skip: int = 0, limit: int = 100):
