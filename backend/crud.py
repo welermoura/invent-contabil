@@ -8,6 +8,10 @@ async def get_user_by_email(db: AsyncSession, email: str):
     result = await db.execute(select(models.User).where(models.User.email == email))
     return result.scalars().first()
 
+async def get_user(db: AsyncSession, user_id: int):
+    result = await db.execute(select(models.User).where(models.User.id == user_id))
+    return result.scalars().first()
+
 async def create_user(db: AsyncSession, user: schemas.UserCreate):
     hashed_password = get_password_hash(user.password)
     db_user = models.User(
@@ -40,6 +44,15 @@ async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
         await db.refresh(db_user)
     return db_user
 
+async def delete_user(db: AsyncSession, user_id: int):
+    result = await db.execute(select(models.User).where(models.User.id == user_id))
+    db_user = result.scalars().first()
+    if db_user:
+        await db.delete(db_user)
+        await db.commit()
+        return True
+    return False
+
 # Branches
 async def get_branches(db: AsyncSession, skip: int = 0, limit: int = 100):
     result = await db.execute(select(models.Branch).offset(skip).limit(limit))
@@ -69,7 +82,8 @@ async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: s
     query = select(models.Item).options(
         selectinload(models.Item.branch),
         selectinload(models.Item.transfer_target_branch),
-        selectinload(models.Item.category_rel)
+        selectinload(models.Item.category_rel),
+        selectinload(models.Item.responsible)
     )
     if status:
         query = query.where(models.Item.status == status)
@@ -97,7 +111,8 @@ async def create_item(db: AsyncSession, item: schemas.ItemCreate):
     # Eager load relationships for Pydantic serialization
     query = select(models.Item).where(models.Item.id == db_item.id).options(
         selectinload(models.Item.branch),
-        selectinload(models.Item.category_rel)
+        selectinload(models.Item.category_rel),
+        selectinload(models.Item.responsible)
     )
     result = await db.execute(query)
     return result.scalars().first()
@@ -129,7 +144,17 @@ async def update_item_status(db: AsyncSession, item_id: int, status: models.Item
         log = models.Log(item_id=item_id, user_id=user_id, action=f"Status changed to {status}")
         db.add(log)
         await db.commit()
-        await db.refresh(db_item)
+
+        # Reload item with relationships to prevent MissingGreenlet
+        query = select(models.Item).where(models.Item.id == item_id).options(
+            selectinload(models.Item.branch),
+            selectinload(models.Item.transfer_target_branch),
+            selectinload(models.Item.category_rel),
+            selectinload(models.Item.responsible)
+        )
+        result = await db.execute(query)
+        db_item = result.scalars().first()
+
     return db_item
 
 async def request_write_off(db: AsyncSession, item_id: int, justification: str, user_id: int):
