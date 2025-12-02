@@ -347,6 +347,7 @@ const Inventory: React.FC = () => {
                         <tr className="bg-gray-100">
                             <th className="px-6 py-3 text-left">Descrição</th>
                             <th className="px-6 py-3 text-left">Categoria</th>
+                            <th className="px-6 py-3 text-left">Filial</th>
                             <th className="px-6 py-3 text-left">Valor</th>
                             <th className="px-6 py-3 text-left">Status</th>
                             <th className="px-6 py-3 text-left">Ações</th>
@@ -357,6 +358,7 @@ const Inventory: React.FC = () => {
                             <tr key={item.id} className="border-t">
                                 <td className="px-6 py-4">{item.description}</td>
                                 <td className="px-6 py-4">{item.category}</td>
+                                <td className="px-6 py-4">{item.branch?.name || '-'}</td>
                                 <td className="px-6 py-4">
                                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.invoice_value)}
                                 </td>
