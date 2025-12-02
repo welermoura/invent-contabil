@@ -8,6 +8,7 @@ class UserRole(str, enum.Enum):
     ADMIN = "ADMIN"
     APPROVER = "APPROVER"
     OPERATOR = "OPERATOR"
+    AUDITOR = "AUDITOR"
 
 class ItemStatus(str, enum.Enum):
     PENDING = "PENDING"
@@ -37,7 +38,7 @@ class Branch(Base):
     name = Column(String, index=True)
     address = Column(String)
 
-    items = relationship("Item", foreign_keys=["Item.branch_id"], back_populates="branch")
+    items = relationship("Item", foreign_keys="[Item.branch_id]", back_populates="branch")
     users = relationship("User", back_populates="branch")
 
 class Category(Base):
