@@ -61,6 +61,18 @@ class CategoryResponse(CategoryBase):
     class Config:
         from_attributes = True
 
+# Log Forward Declaration
+class LogResponse(BaseModel):
+    id: int
+    item_id: int
+    user_id: Optional[int] = None
+    action: str
+    timestamp: datetime
+    user: Optional[UserResponse] = None
+
+    class Config:
+        from_attributes = True
+
 # Item
 class ItemBase(BaseModel):
     description: str
@@ -87,6 +99,11 @@ class ItemUpdate(BaseModel):
 class ItemResponse(ItemBase):
     id: int
     status: ItemStatus
+    description: Optional[str] = None
+    category: Optional[str] = None
+    purchase_date: Optional[datetime] = None
+    invoice_value: Optional[float] = None
+    invoice_number: Optional[str] = None
     fixed_asset_number: Optional[str] = None
     invoice_file: Optional[str] = None
     created_at: datetime
@@ -96,18 +113,7 @@ class ItemResponse(ItemBase):
     transfer_target_branch: Optional[BranchResponse] = None
     category_rel: Optional[CategoryResponse] = None
     responsible: Optional[UserResponse] = None
-
-    class Config:
-        from_attributes = True
-
-# Log
-class LogResponse(BaseModel):
-    id: int
-    item_id: int
-    user_id: int
-    action: str
-    timestamp: datetime
-    user: UserResponse
+    logs: List[LogResponse] = []
 
     class Config:
         from_attributes = True

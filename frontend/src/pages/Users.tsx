@@ -51,6 +51,17 @@ const Users: React.FC = () => {
         }
     };
 
+    const handleDelete = async (userId: number) => {
+        if (!window.confirm("Tem certeza que deseja remover este usuário?")) return;
+        try {
+            await api.delete(`/users/${userId}`);
+            fetchUsers();
+        } catch (error) {
+            console.error("Erro ao remover usuário", error);
+            alert("Erro ao remover usuário.");
+        }
+    };
+
     const handleEdit = (u: any) => {
         setEditingUser(u);
         setShowForm(true);
@@ -93,6 +104,7 @@ const Users: React.FC = () => {
                                 <option value="ADMIN">Administrador</option>
                                 <option value="APPROVER">Aprovador</option>
                                 <option value="OPERATOR">Operador</option>
+                                <option value="AUDITOR">Auditor</option>
                             </select>
                         </div>
                         <div>
@@ -131,8 +143,9 @@ const Users: React.FC = () => {
                                 <td className="px-6 py-4">
                                     {branches.find(b => b.id === u.branch_id)?.name || 'Global'}
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-6 py-4 flex gap-4">
                                     <button onClick={() => handleEdit(u)} className="text-blue-600 hover:text-blue-800">Editar</button>
+                                    <button onClick={() => handleDelete(u.id)} className="text-red-600 hover:text-red-800">Remover</button>
                                 </td>
                             </tr>
                         ))}
