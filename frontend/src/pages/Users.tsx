@@ -90,7 +90,7 @@ const Users: React.FC = () => {
                         <div>
                             <label className="block text-gray-700">Função</label>
                             <select {...register('role')} defaultValue={editingUser?.role || 'OPERATOR'} className="w-full border rounded px-3 py-2">
-                                <option value="ADMIN">Admin</option>
+                                <option value="ADMIN">Administrador</option>
                                 <option value="APPROVER">Aprovador</option>
                                 <option value="OPERATOR">Operador</option>
                             </select>

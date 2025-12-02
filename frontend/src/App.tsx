@@ -22,11 +22,11 @@ const Layout = () => {
             <Notifications />
             <aside className="w-64 bg-white shadow-md">
                 <div className="p-6">
-                    <h1 className="text-2xl font-bold text-blue-600">Inventory</h1>
+                    <h1 className="text-2xl font-bold text-blue-600">Inventário</h1>
                     <p className="text-sm text-gray-500 mt-2">Olá, {user?.email}</p>
                 </div>
                 <nav className="mt-6 flex flex-col gap-2">
-                    <Link to="/" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Dashboard</Link>
+                    <Link to="/" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Painel</Link>
                     <Link to="/inventory" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Inventário</Link>
                     <Link to="/branches" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Filiais</Link>
                     <Link to="/categories" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Categorias</Link>
