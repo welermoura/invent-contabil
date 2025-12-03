@@ -25,6 +25,19 @@ class ItemStatus(str, enum.Enum):
     TRANSFER_PENDING = "TRANSFER_PENDING"
     WRITE_OFF_PENDING = "WRITE_OFF_PENDING"
 
+class Branch(Base):
+    __tablename__ = "branches"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    address = Column(String)
+
+    # Nota: foreign_keys como string lista para evitar erro de inicialização
+    items = relationship("Item", foreign_keys="[Item.branch_id]", back_populates="branch", lazy="selectin")
+    # Restaurado nome users_legacy para tentar compatibilidade com cache teimoso, mas definindo antes de User
+    users_legacy = relationship("User", back_populates="branch", lazy="selectin")
+    users = relationship("User", secondary=user_branches, back_populates="branches", lazy="selectin")
+
 class User(Base):
     __tablename__ = "users"
 
@@ -57,7 +70,7 @@ class Category(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, unique=True)
 
-    items = relationship("Item", back_populates="category_rel")
+    items = relationship("Item", back_populates="category_rel", lazy="selectin")
 
 class Item(Base):
     __tablename__ = "items"
