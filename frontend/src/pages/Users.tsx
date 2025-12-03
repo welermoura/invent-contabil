@@ -51,6 +51,17 @@ const Users: React.FC = () => {
         }
     };
 
+    const handleDelete = async (userId: number) => {
+        if (!window.confirm("Tem certeza que deseja remover este usuário?")) return;
+        try {
+            await api.delete(`/users/${userId}`);
+            fetchUsers();
+        } catch (error) {
+            console.error("Erro ao remover usuário", error);
+            alert("Erro ao remover usuário.");
+        }
+    };
+
     const handleEdit = (u: any) => {
         setEditingUser(u);
         setShowForm(true);
@@ -93,12 +104,17 @@ const Users: React.FC = () => {
                                 <option value="ADMIN">Administrador</option>
                                 <option value="APPROVER">Aprovador</option>
                                 <option value="OPERATOR">Operador</option>
+                                <option value="AUDITOR">Auditor</option>
                             </select>
                         </div>
                         <div>
-                            <label className="block text-gray-700">Filial (Permissão)</label>
-                            <select {...register('branch_id')} defaultValue={editingUser?.branch_id || ''} className="w-full border rounded px-3 py-2">
-                                <option value="">Todas (Apenas Admin)</option>
+                            <label className="block text-gray-700">Filiais (Permissão) - Segure Ctrl para selecionar múltiplas</label>
+                            <select
+                                {...register('branch_ids')}
+                                multiple
+                                defaultValue={editingUser?.branches ? editingUser.branches.map((b: any) => b.id) : (editingUser?.branch_id ? [editingUser.branch_id] : [])}
+                                className="w-full border rounded px-3 py-2 h-32"
+                            >
                                 {branches.map(b => (
                                     <option key={b.id} value={b.id}>{b.name}</option>
                                 ))}
@@ -129,10 +145,14 @@ const Users: React.FC = () => {
                                 <td className="px-6 py-4">{u.email}</td>
                                 <td className="px-6 py-4">{u.role}</td>
                                 <td className="px-6 py-4">
-                                    {branches.find(b => b.id === u.branch_id)?.name || 'Global'}
+                                    {u.branches && u.branches.length > 0
+                                        ? u.branches.map((b: any) => b.name).join(', ')
+                                        : (branches.find(b => b.id === u.branch_id)?.name || 'Global')
+                                    }
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-6 py-4 flex gap-4">
                                     <button onClick={() => handleEdit(u)} className="text-blue-600 hover:text-blue-800">Editar</button>
+                                    <button onClick={() => handleDelete(u.id)} className="text-red-600 hover:text-red-800">Remover</button>
                                 </td>
                             </tr>
                         ))}
