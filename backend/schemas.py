@@ -20,11 +20,13 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
     branch_id: Optional[int] = None
+    branch_ids: Optional[List[int]] = []
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     role: Optional[UserRole] = None
     branch_id: Optional[int] = None
+    branch_ids: Optional[List[int]] = None
     password: Optional[str] = None
 
 class UserResponse(UserBase):
@@ -33,6 +35,7 @@ class UserResponse(UserBase):
     email: Optional[EmailStr] = None
     role: Optional[UserRole] = None
     branch_id: Optional[int] = None
+    branches: List["BranchResponse"] = []
 
     class Config:
         from_attributes = True

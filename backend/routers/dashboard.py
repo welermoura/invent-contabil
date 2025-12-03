@@ -11,9 +11,18 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 async def get_dashboard_stats(db: AsyncSession = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     # Base Filters based on user role
     branch_filter = None
-    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
-         if current_user.branch_id:
-             branch_filter = models.Item.branch_id == current_user.branch_id
+    # AUDITOR também pode ver tudo
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER, models.UserRole.AUDITOR]:
+         # Filtrar por lista de branches permitidas
+         allowed_branches = [b.id for b in current_user.branches]
+         if current_user.branch_id and current_user.branch_id not in allowed_branches:
+             allowed_branches.append(current_user.branch_id)
+
+         if allowed_branches:
+             branch_filter = models.Item.branch_id.in_(allowed_branches)
+         else:
+             # Se não tem branches, não vê nada (filtros impossível)
+             branch_filter = models.Item.id == -1
 
     # Total Pending Items
     query_pending = select(func.count(models.Item.id)).where(models.Item.status == models.ItemStatus.PENDING)
