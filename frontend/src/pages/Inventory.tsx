@@ -441,6 +441,25 @@ const Inventory: React.FC = () => {
                                         </div>
                                     )}
 
+                                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && item.status === 'WRITE_OFF_PENDING' && (
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleStatusChange(item.id, 'WRITTEN_OFF')}
+                                                className="text-red-600 hover:text-red-800 font-bold"
+                                                title="Aprovar Baixa"
+                                            >
+                                                Aprovar Baixa
+                                            </button>
+                                            <button
+                                                onClick={() => handleStatusChange(item.id, 'REJECTED')}
+                                                className="text-blue-600 hover:text-blue-800"
+                                                title="Rejeitar Baixa (Voltar para Aprovado)"
+                                            >
+                                                Rejeitar Baixa
+                                            </button>
+                                        </div>
+                                    )}
+
                                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && item.status === 'TRANSFER_PENDING' && (
                                         <div className="flex gap-2">
                                             <button

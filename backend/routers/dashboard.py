@@ -38,6 +38,13 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db), current_user: 
     result_value = await db.execute(query_value)
     pending_value = result_value.scalar() or 0.0
 
+    # Total Write-off Pending Items
+    query_write_off = select(func.count(models.Item.id)).where(models.Item.status == models.ItemStatus.WRITE_OFF_PENDING)
+    if branch_filter is not None:
+        query_write_off = query_write_off.where(branch_filter)
+    result_write_off = await db.execute(query_write_off)
+    write_off_count = result_write_off.scalar()
+
     # Items by Category (Pending only? Request says "Itens Pendentes" behavior... usually dashboard shows aggregates.
     # Let's filter aggregates by the user's branch if they are an operator, otherwise all.)
     query_category = select(models.Item.category, func.count(models.Item.id))
@@ -63,6 +70,7 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db), current_user: 
     return {
         "pending_items_count": pending_count,
         "pending_items_value": pending_value,
+        "write_off_count": write_off_count,
         "items_by_category": items_by_category,
         "items_by_branch": items_by_branch
     }
