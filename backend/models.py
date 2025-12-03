@@ -40,6 +40,7 @@ class Branch(Base):
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
@@ -66,6 +67,7 @@ class Branch(Base):
 
 class Category(Base):
     __tablename__ = "categories"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, unique=True)
@@ -74,6 +76,7 @@ class Category(Base):
 
 class Item(Base):
     __tablename__ = "items"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     description = Column(String, index=True)
@@ -101,6 +104,7 @@ class Item(Base):
 
 class Log(Base):
     __tablename__ = "logs"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     item_id = Column(Integer, ForeignKey("items.id"))
