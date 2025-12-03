@@ -57,16 +57,6 @@ class User(Base):
     logs = relationship("Log", back_populates="user")
     items_responsible = relationship("Item", back_populates="responsible")
 
-class Branch(Base):
-    __tablename__ = "branches"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    address = Column(String)
-
-    items = relationship("Item", foreign_keys="[Item.branch_id]", back_populates="branch")
-    users = relationship("User", back_populates="branch")
-
 class Category(Base):
     __tablename__ = "categories"
     __table_args__ = {'extend_existing': True}
