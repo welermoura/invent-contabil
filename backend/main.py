@@ -27,6 +27,16 @@ app = FastAPI(title="Inventory Management API")
 
 @app.on_event("startup")
 async def on_startup():
+    print("DEBUG: Application Startup - Reloading Mappers...")
+    try:
+        from sqlalchemy.orm import configure_mappers
+        configure_mappers()
+        print("DEBUG: Mappers Configured Successfully.")
+    except Exception as e:
+        print(f"CRITICAL ERROR: Failed to configure mappers: {e}")
+        # Se falhar mapper, não adianta continuar muito, mas vamos tentar
+        pass
+
     try:
         await init_db()
     except Exception as e:
