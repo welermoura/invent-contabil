@@ -11,9 +11,18 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 async def get_dashboard_stats(db: AsyncSession = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     # Base Filters based on user role
     branch_filter = None
-    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
-         if current_user.branch_id:
-             branch_filter = models.Item.branch_id == current_user.branch_id
+    # AUDITOR também pode ver tudo
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER, models.UserRole.AUDITOR]:
+         # Filtrar por lista de branches permitidas
+         allowed_branches = [b.id for b in current_user.branches]
+         if current_user.branch_id and current_user.branch_id not in allowed_branches:
+             allowed_branches.append(current_user.branch_id)
+
+         if allowed_branches:
+             branch_filter = models.Item.branch_id.in_(allowed_branches)
+         else:
+             # Se não tem branches, não vê nada (filtros impossível)
+             branch_filter = models.Item.id == -1
 
     # Total Pending Items
     query_pending = select(func.count(models.Item.id)).where(models.Item.status == models.ItemStatus.PENDING)
@@ -42,14 +51,14 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db), current_user: 
     items_by_category = [{"category": row[0], "count": row[1]} for row in result_category.all()]
 
     # Items by Branch
-    # We need to join with Branch table to get branch name
-    query_branch = select(models.Branch.name, func.count(models.Item.id)).join(models.Branch, models.Item.branch_id == models.Branch.id)
+    # We need to join with Branch table to get branch name and ID
+    query_branch = select(models.Branch.id, models.Branch.name, func.count(models.Item.id)).join(models.Branch, models.Item.branch_id == models.Branch.id)
     if branch_filter is not None:
         query_branch = query_branch.where(branch_filter)
 
-    query_branch = query_branch.group_by(models.Branch.name)
+    query_branch = query_branch.group_by(models.Branch.id, models.Branch.name)
     result_branch = await db.execute(query_branch)
-    items_by_branch = [{"branch": row[0], "count": row[1]} for row in result_branch.all()]
+    items_by_branch = [{"branch_id": row[0], "branch": row[1], "count": row[2]} for row in result_branch.all()]
 
     return {
         "pending_items_count": pending_count,

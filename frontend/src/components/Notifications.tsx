@@ -37,6 +37,10 @@ const Notifications: React.FC = () => {
             console.log('WebSocket Disconnected');
         };
 
+        socket.onerror = (error) => {
+             console.error('WebSocket Error:', error);
+        };
+
         return () => {
             socket.close();
         };
