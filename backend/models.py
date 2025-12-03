@@ -1,13 +1,22 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey, Text, Enum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey, Text, Enum, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
 from backend.database import Base
 
+# Tabela de associação para User <-> Branch (N:N)
+user_branches = Table(
+    "user_branches",
+    Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+    Column("branch_id", Integer, ForeignKey("branches.id"), primary_key=True),
+)
+
 class UserRole(str, enum.Enum):
     ADMIN = "ADMIN"
     APPROVER = "APPROVER"
     OPERATOR = "OPERATOR"
+    AUDITOR = "AUDITOR"
 
 class ItemStatus(str, enum.Enum):
     PENDING = "PENDING"
@@ -24,9 +33,11 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     role = Column(Enum(UserRole), default=UserRole.OPERATOR)
+    # branch_id mantido para compatibilidade
     branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True)
 
-    branch = relationship("Branch", back_populates="users")
+    legacy_branch_rel = relationship("Branch", back_populates="legacy_users_rel")
+    branches = relationship("Branch", secondary=user_branches, back_populates="users", lazy="selectin")
     logs = relationship("Log", back_populates="user")
     items_responsible = relationship("Item", back_populates="responsible")
 
@@ -37,8 +48,10 @@ class Branch(Base):
     name = Column(String, index=True)
     address = Column(String)
 
-    items = relationship("Item", foreign_keys=["Item.branch_id"], back_populates="branch")
-    users = relationship("User", back_populates="branch")
+    # Nota: foreign_keys como string lista para evitar erro de inicialização
+    items = relationship("Item", foreign_keys="[Item.branch_id]", back_populates="branch", lazy="selectin")
+    legacy_users_rel = relationship("User", back_populates="legacy_branch_rel")
+    users = relationship("User", secondary=user_branches, back_populates="branches")
 
 class Category(Base):
     __tablename__ = "categories"
@@ -53,14 +66,14 @@ class Item(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     description = Column(String, index=True)
-    category = Column(String, index=True) # Mantendo como string por enquanto para compatibilidade, mas idealmente FK
+    category = Column(String, index=True)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     purchase_date = Column(DateTime)
     invoice_value = Column(Float)
     invoice_number = Column(String, index=True)
-    invoice_file = Column(String, nullable=True) # Path to the file
+    invoice_file = Column(String, nullable=True)
     serial_number = Column(String, index=True, nullable=True)
-    fixed_asset_number = Column(String, index=True, nullable=True) # Ativo Fixo
+    fixed_asset_number = Column(String, index=True, nullable=True)
     branch_id = Column(Integer, ForeignKey("branches.id"))
     transfer_target_branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True)
     responsible_id = Column(Integer, ForeignKey("users.id"), nullable=True)
@@ -69,11 +82,11 @@ class Item(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    branch = relationship("Branch", foreign_keys=[branch_id], back_populates="items")
-    transfer_target_branch = relationship("Branch", foreign_keys=[transfer_target_branch_id])
-    category_rel = relationship("Category", back_populates="items")
-    responsible = relationship("User", back_populates="items_responsible")
-    logs = relationship("Log", back_populates="item")
+    branch = relationship("Branch", foreign_keys=[branch_id], back_populates="items", lazy="selectin")
+    transfer_target_branch = relationship("Branch", foreign_keys=[transfer_target_branch_id], lazy="selectin")
+    category_rel = relationship("Category", back_populates="items", lazy="selectin")
+    responsible = relationship("User", back_populates="items_responsible", lazy="selectin")
+    logs = relationship("Log", back_populates="item", lazy="selectin")
 
 class Log(Base):
     __tablename__ = "logs"
@@ -85,4 +98,4 @@ class Log(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
     item = relationship("Item", back_populates="logs")
-    user = relationship("User", back_populates="logs")
+    user = relationship("User", back_populates="logs", lazy="selectin")
