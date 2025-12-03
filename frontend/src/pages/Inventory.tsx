@@ -16,7 +16,7 @@ const Inventory: React.FC = () => {
     const { user } = useAuth();
     const [showForm, setShowForm] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [searchParams] = useSearchParams();
     const [invoiceValueDisplay, setInvoiceValueDisplay] = useState('');
 
     // Filter States
