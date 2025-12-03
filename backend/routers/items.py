@@ -64,6 +64,15 @@ async def create_item(
     if current_user.role == models.UserRole.AUDITOR:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Auditores não podem criar itens")
 
+    # Validate branch permission for OPERATOR
+    if current_user.role == models.UserRole.OPERATOR:
+        allowed_branches = [b.id for b in current_user.branches]
+        if current_user.branch_id and current_user.branch_id not in allowed_branches:
+            allowed_branches.append(current_user.branch_id)
+
+        if branch_id not in allowed_branches:
+            raise HTTPException(status_code=403, detail="Você não tem permissão para criar itens nesta filial")
+
     # Save file if uploaded
     file_path = None
     if file:

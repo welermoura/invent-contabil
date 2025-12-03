@@ -13,7 +13,8 @@ class TokenData(BaseModel):
 
 # User
 class UserBase(BaseModel):
-    email: EmailStr
+    # Alterado de EmailStr para str para permitir login "admin" simplificado
+    email: str
     name: str
     role: UserRole = UserRole.OPERATOR
 
@@ -32,7 +33,7 @@ class UserUpdate(BaseModel):
 class UserResponse(UserBase):
     id: int
     name: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     role: Optional[UserRole] = None
     branch_id: Optional[int] = None
     branches: List["BranchResponse"] = []
