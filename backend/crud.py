@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from backend import models, schemas
 from backend.auth import get_password_hash
 
@@ -27,6 +28,7 @@ async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100):
     return result.scalars().all()
 
 async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
+    # Using explicit select to ensure clean session state
     result = await db.execute(select(models.User).where(models.User.id == user_id))
     db_user = result.scalars().first()
     if db_user:
@@ -37,8 +39,19 @@ async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
             db_user.hashed_password = get_password_hash(user.password)
 
         await db.commit()
-        await db.refresh(db_user)
+        # Reloading via execute to match patterns that avoid greenlet issues, though refresh usually works here
+        result = await db.execute(select(models.User).where(models.User.id == user_id))
+        db_user = result.scalars().first()
     return db_user
+
+async def delete_user(db: AsyncSession, user_id: int):
+    result = await db.execute(select(models.User).where(models.User.id == user_id))
+    db_user = result.scalars().first()
+    if db_user:
+        await db.delete(db_user)
+        await db.commit()
+        return True
+    return False
 
 # Branches
 async def get_branches(db: AsyncSession, skip: int = 0, limit: int = 100):
@@ -52,6 +65,25 @@ async def create_branch(db: AsyncSession, branch: schemas.BranchCreate):
     await db.refresh(db_branch)
     return db_branch
 
+async def update_branch(db: AsyncSession, branch_id: int, branch: schemas.BranchBase): # Assuming Base has updatable fields
+    result = await db.execute(select(models.Branch).where(models.Branch.id == branch_id))
+    db_branch = result.scalars().first()
+    if db_branch:
+        if branch.name: db_branch.name = branch.name
+        if branch.address: db_branch.address = branch.address
+        await db.commit()
+        await db.refresh(db_branch)
+    return db_branch
+
+async def delete_branch(db: AsyncSession, branch_id: int):
+    result = await db.execute(select(models.Branch).where(models.Branch.id == branch_id))
+    db_branch = result.scalars().first()
+    if db_branch:
+        await db.delete(db_branch)
+        await db.commit()
+        return True
+    return False
+
 # Categories
 async def get_categories(db: AsyncSession, skip: int = 0, limit: int = 100):
     result = await db.execute(select(models.Category).offset(skip).limit(limit))
@@ -63,6 +95,24 @@ async def create_category(db: AsyncSession, category: schemas.CategoryCreate):
     await db.commit()
     await db.refresh(db_category)
     return db_category
+
+async def update_category(db: AsyncSession, category_id: int, category: schemas.CategoryBase):
+    result = await db.execute(select(models.Category).where(models.Category.id == category_id))
+    db_category = result.scalars().first()
+    if db_category:
+        if category.name: db_category.name = category.name
+        await db.commit()
+        await db.refresh(db_category)
+    return db_category
+
+async def delete_category(db: AsyncSession, category_id: int):
+    result = await db.execute(select(models.Category).where(models.Category.id == category_id))
+    db_category = result.scalars().first()
+    if db_category:
+        await db.delete(db_category)
+        await db.commit()
+        return True
+    return False
 
 # Items
 async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: str = None, category: str = None, branch_id: int = None, search: str = None):
@@ -88,8 +138,6 @@ async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: s
 
     result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
-
-from sqlalchemy.orm import selectinload
 
 async def create_item(db: AsyncSession, item: schemas.ItemCreate):
     db_item = models.Item(**item.dict())
@@ -120,6 +168,14 @@ async def update_item_status(db: AsyncSession, item_id: int, status: models.Item
                 # Cancel Transfer
                 db_item.transfer_target_branch_id = None
                 db_item.status = models.ItemStatus.APPROVED # Revert to Approved state
+
+        # Write-off Logic
+        elif db_item.status == models.ItemStatus.WRITE_OFF_PENDING:
+            if status == models.ItemStatus.WRITTEN_OFF:
+                 db_item.status = models.ItemStatus.WRITTEN_OFF
+            elif status == models.ItemStatus.REJECTED:
+                 db_item.status = models.ItemStatus.APPROVED # Revert to Approved
+
         else:
             # Normal Approval
             db_item.status = status

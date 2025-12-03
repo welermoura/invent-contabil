@@ -15,6 +15,7 @@ class ItemStatus(str, enum.Enum):
     REJECTED = "REJECTED"
     TRANSFER_PENDING = "TRANSFER_PENDING"
     WRITE_OFF_PENDING = "WRITE_OFF_PENDING"
+    WRITTEN_OFF = "WRITTEN_OFF"
 
 class User(Base):
     __tablename__ = "users"
