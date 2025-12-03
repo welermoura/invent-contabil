@@ -64,14 +64,14 @@ class Item(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     description = Column(String, index=True)
-    category = Column(String, index=True) # Mantendo como string por enquanto para compatibilidade, mas idealmente FK
+    category = Column(String, index=True)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
     purchase_date = Column(DateTime)
     invoice_value = Column(Float)
     invoice_number = Column(String, index=True)
-    invoice_file = Column(String, nullable=True) # Path to the file
+    invoice_file = Column(String, nullable=True)
     serial_number = Column(String, index=True, nullable=True)
-    fixed_asset_number = Column(String, index=True, nullable=True) # Ativo Fixo
+    fixed_asset_number = Column(String, index=True, nullable=True)
     branch_id = Column(Integer, ForeignKey("branches.id"))
     transfer_target_branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True)
     responsible_id = Column(Integer, ForeignKey("users.id"), nullable=True)
