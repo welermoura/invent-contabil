@@ -24,16 +24,27 @@ async def read_items(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    # Enforce branch filtering for non-admins (Approvers can see all)
-    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
-        # If user has a branch assigned, restrict to it.
-        if current_user.branch_id:
-            # Overwrite the branch_id filter to strict user's branch
-            branch_id = current_user.branch_id
+    # Enforce branch filtering for non-admins (Approvers and Auditors can see all)
+    # Operadores agora podem ter acesso a multiplas filiais.
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER, models.UserRole.AUDITOR]:
+        # Se o usuário passou um branch_id, verifica se ele tem acesso.
+        # Se não passou, precisamos filtrar por todas as filiais que ele tem acesso.
 
-    # If the user IS Admin or Approver, and they passed a branch_id in the query params (e.g. from Dashboard or Filter),
-    # we honor that filter. If they didn't pass it (branch_id is None), we show ALL items (don't filter by branch).
+        allowed_branches = [b.id for b in current_user.branches]
+        # Adicionar branch_id legado se existir e não estiver na lista (segurança)
+        if current_user.branch_id and current_user.branch_id not in allowed_branches:
+            allowed_branches.append(current_user.branch_id)
 
+        if branch_id:
+            if branch_id not in allowed_branches:
+                 # Se tentar acessar filial que não tem permissão, retorna vazio ou erro?
+                 # Melhor retornar vazio para não vazar existência, ou tratar como filtro restritivo.
+                 # Vamos forçar um filtro impossível ou levantar erro.
+                 raise HTTPException(status_code=403, detail="Acesso negado a esta filial")
+        else:
+            return await crud.get_items(db, skip=skip, limit=limit, status=status, category=category, branch_id=None, search=search, allowed_branch_ids=allowed_branches)
+
+    # If the user IS Admin, Approver or Auditor, and they passed a branch_id, we use it.
     return await crud.get_items(db, skip=skip, limit=limit, status=status, category=category, branch_id=branch_id, search=search)
 
 @router.post("/", response_model=schemas.ItemResponse)
@@ -50,6 +61,9 @@ async def create_item(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    if current_user.role == models.UserRole.AUDITOR:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Auditores não podem criar itens")
+
     # Save file if uploaded
     file_path = None
     if file:
@@ -133,6 +147,9 @@ async def request_transfer(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    if current_user.role == models.UserRole.AUDITOR:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Auditores não podem solicitar transferências")
+
     # Only Allow Operators (of the item's branch?) or Admins to request transfer
     # First fetch item to check ownership
     item_check = await crud.get_items(db, skip=0, limit=1, search=None) # Helper? No, use direct query logic or existing get
@@ -155,6 +172,9 @@ async def request_write_off(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    if current_user.role == models.UserRole.AUDITOR:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Auditores não podem solicitar baixas")
+
     # Only Allow Operators (of the item's branch?) or Admins to request write-off
     item = await crud.request_write_off(db, item_id, justification, current_user.id)
     if not item:
