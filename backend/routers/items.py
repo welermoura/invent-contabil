@@ -56,6 +56,7 @@ async def create_item(
     invoice_number: str = Form(...),
     branch_id: int = Form(...),
     serial_number: Optional[str] = Form(None),
+    fixed_asset_number: Optional[str] = Form(None),
     observations: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     db: AsyncSession = Depends(get_db),

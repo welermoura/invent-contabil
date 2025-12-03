@@ -94,6 +94,7 @@ class ItemBase(BaseModel):
 
 class ItemCreate(ItemBase):
     category_id: Optional[int] = None
+    fixed_asset_number: Optional[str] = None
 
 class ItemUpdate(BaseModel):
     description: Optional[str] = None
