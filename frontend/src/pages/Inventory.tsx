@@ -366,13 +366,15 @@ const Inventory: React.FC = () => {
                                         item.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
                                         item.status === 'TRANSFER_PENDING' ? 'bg-orange-100 text-orange-800' :
                                         item.status === 'WRITE_OFF_PENDING' ? 'bg-red-200 text-red-900' :
+                                        item.status === 'WRITTEN_OFF' ? 'bg-gray-800 text-white' :
                                         'bg-red-100 text-red-800'
                                     }`}>
                                         {item.status === 'PENDING' ? 'Pendente' :
                                          item.status === 'APPROVED' ? 'Aprovado' :
                                          item.status === 'REJECTED' ? 'Rejeitado' :
                                          item.status === 'TRANSFER_PENDING' ? 'Transferência Pendente' :
-                                         item.status === 'WRITE_OFF_PENDING' ? 'Baixa Pendente' : item.status}
+                                         item.status === 'WRITE_OFF_PENDING' ? 'Baixa Pendente' :
+                                         item.status === 'WRITTEN_OFF' ? 'Baixado' : item.status}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">
@@ -406,6 +408,25 @@ const Inventory: React.FC = () => {
                                                 onClick={() => handleStatusChange(item.id, 'REJECTED')}
                                                 className="text-red-600 hover:text-red-800"
                                                 title="Rejeitar Transferência"
+                                            >
+                                                Rejeitar
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && item.status === 'WRITE_OFF_PENDING' && (
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleStatusChange(item.id, 'WRITTEN_OFF')}
+                                                className="text-gray-600 hover:text-gray-800"
+                                                title="Confirmar Baixa"
+                                            >
+                                                Aprovar Baixa
+                                            </button>
+                                            <button
+                                                onClick={() => handleStatusChange(item.id, 'REJECTED')}
+                                                className="text-red-600 hover:text-red-800"
+                                                title="Cancelar Baixa"
                                             >
                                                 Rejeitar
                                             </button>
