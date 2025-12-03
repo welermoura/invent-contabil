@@ -17,7 +17,7 @@ async def read_users(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    if current_user.role != models.UserRole.ADMIN:
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER, models.UserRole.AUDITOR]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não autorizado")
     return await crud.get_users(db, skip=skip, limit=limit)
 
@@ -29,6 +29,9 @@ async def create_user(
 ):
     if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem criar usuários")
+
+    if current_user.role == models.UserRole.APPROVER and user.role == models.UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Aprovadores não podem criar Administradores")
 
     db_user = await crud.get_user_by_email(db, email=user.email)
     if db_user:
@@ -45,7 +48,34 @@ async def update_user(
     if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem atualizar usuários")
 
-    updated_user = await crud.update_user(db, user_id, user)
-    if not updated_user:
+    target_user = await crud.get_user(db, user_id)
+    if not target_user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    if current_user.role == models.UserRole.APPROVER:
+        if target_user.role == models.UserRole.ADMIN:
+             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Aprovadores não podem editar Administradores")
+        if user.role == models.UserRole.ADMIN:
+             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Aprovadores não podem promover usuários a Administrador")
+
+    updated_user = await crud.update_user(db, user_id, user)
     return updated_user
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem remover usuários")
+
+    target_user = await crud.get_user(db, user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    if current_user.role == models.UserRole.APPROVER and target_user.role == models.UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Aprovadores não podem remover Administradores")
+
+    success = await crud.delete_user(db, user_id)
+    return
