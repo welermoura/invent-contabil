@@ -19,6 +19,11 @@ const Inventory: React.FC = () => {
     const [searchParams] = useSearchParams();
     const [invoiceValueDisplay, setInvoiceValueDisplay] = useState('');
 
+    // Filter States
+    const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || '');
+    const [filterCategory, setFilterCategory] = useState(searchParams.get('category') || '');
+    const [filterBranch, setFilterBranch] = useState(searchParams.get('branch_id') || '');
+
     // Approval Modal State
     const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -83,9 +88,12 @@ const Inventory: React.FC = () => {
 
     useEffect(() => {
         fetchItems(undefined, page);
+    }, [page, filterStatus, filterCategory, filterBranch]);
+
+    useEffect(() => {
         fetchBranches();
         fetchCategories();
-    }, [page, searchParams.toString()]);
+    }, []);
 
     const onSubmit = async (data: any) => {
         const formData = new FormData();
@@ -237,17 +245,27 @@ const Inventory: React.FC = () => {
                     />
                     <button
                         onClick={() => {
-                            // Enhanced CSV Export Logic with Details
-                            const csvHeader = "ID,Descrição,Categoria,Status,Valor,Filial,Responsável,Histórico de Ações\n";
+                            // Enhanced CSV Export Logic with Details and Filters
+                            const csvHeader = "ID,Descrição,Observações,Categoria,Status,Valor,Filial,Responsável,Última Ação Por,Histórico de Ações\n";
                             const csvBody = items.map(item => {
                                 const logsStr = item.logs && item.logs.length > 0
                                     ? item.logs.map((log: any) => `[${new Date(log.timestamp).toLocaleDateString()}] ${log.user?.name || 'Sistema'}: ${log.action}`).join('; ')
                                     : "Sem histórico";
 
-                                return `${item.id},"${item.description}","${item.category}",${item.status},${item.invoice_value},"${item.branch?.name || ''}","${item.responsible?.name || ''}","${logsStr}"`;
+                                // Get last action user (assuming logs are sorted by date desc or take last one)
+                                // If logs are not sorted, we might need to find max timestamp. Assuming order for now.
+                                const lastLog = item.logs && item.logs.length > 0 ? item.logs[item.logs.length - 1] : null;
+                                const lastActionUser = lastLog?.user?.name || '-';
+
+                                // Escape quotes in description and observations
+                                const safeDesc = (item.description || '').replace(/"/g, '""');
+                                const safeObs = (item.observations || '').replace(/"/g, '""');
+
+                                return `${item.id},"${safeDesc}","${safeObs}","${item.category}",${item.status},${item.invoice_value},"${item.branch?.name || ''}","${item.responsible?.name || ''}","${lastActionUser}","${logsStr}"`;
                             }).join("\n");
 
-                            const blob = new Blob([csvHeader + csvBody], { type: 'text/csv;charset=utf-8;' });
+                            // Add BOM for UTF-8 Excel compatibility
+                            const blob = new Blob(["\uFEFF" + csvHeader + csvBody], { type: 'text/csv;charset=utf-8;' });
                             const url = window.URL.createObjectURL(blob);
                             const a = document.createElement('a');
                             a.href = url;
@@ -390,10 +408,64 @@ const Inventory: React.FC = () => {
                     <thead>
                         <tr className="bg-gray-100">
                             <th className="px-6 py-3 text-left">Descrição</th>
-                            <th className="px-6 py-3 text-left">Categoria</th>
-                            <th className="px-6 py-3 text-left">Filial</th>
+                            <th className="px-6 py-3 text-left">
+                                <div className="flex flex-col">
+                                    <span>Categoria</span>
+                                    <select
+                                        className="mt-1 text-sm border rounded p-1 font-normal"
+                                        value={filterCategory}
+                                        onChange={(e) => {
+                                            setFilterCategory(e.target.value);
+                                            setPage(0);
+                                        }}
+                                    >
+                                        <option value="">Todas</option>
+                                        {categories.map(cat => (
+                                            <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </th>
+                            <th className="px-6 py-3 text-left">
+                                <div className="flex flex-col">
+                                    <span>Filial</span>
+                                    <select
+                                        className="mt-1 text-sm border rounded p-1 font-normal"
+                                        value={filterBranch}
+                                        onChange={(e) => {
+                                            setFilterBranch(e.target.value);
+                                            setPage(0);
+                                        }}
+                                    >
+                                        <option value="">Todas</option>
+                                        {branches.map(branch => (
+                                            <option key={branch.id} value={branch.id}>{branch.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </th>
                             <th className="px-6 py-3 text-left">Valor</th>
-                            <th className="px-6 py-3 text-left">Status</th>
+                            <th className="px-6 py-3 text-left">
+                                <div className="flex flex-col">
+                                    <span>Status</span>
+                                    <select
+                                        className="mt-1 text-sm border rounded p-1 font-normal"
+                                        value={filterStatus}
+                                        onChange={(e) => {
+                                            setFilterStatus(e.target.value);
+                                            setPage(0);
+                                        }}
+                                    >
+                                        <option value="">Todos</option>
+                                        <option value="PENDING">Pendente</option>
+                                        <option value="APPROVED">Aprovado</option>
+                                        <option value="REJECTED">Rejeitado</option>
+                                        <option value="TRANSFER_PENDING">Transferência Pendente</option>
+                                        <option value="WRITE_OFF_PENDING">Baixa Pendente</option>
+                                        <option value="WRITTEN_OFF">Baixado</option>
+                                    </select>
+                                </div>
+                            </th>
                             <th className="px-6 py-3 text-left">Ações</th>
                         </tr>
                     </thead>
