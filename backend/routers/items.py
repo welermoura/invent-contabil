@@ -25,26 +25,15 @@ async def read_items(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     # Enforce branch filtering for non-admins (Approvers and Auditors can see all)
-    # Operadores agora podem ter acesso a multiplas filiais.
     if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER, models.UserRole.AUDITOR]:
-        # Se o usuário passou um branch_id, verifica se ele tem acesso.
-        # Se não passou, precisamos filtrar por todas as filiais que ele tem acesso.
+        # If user has a branch assigned, restrict to it.
+        if current_user.branch_id:
+            # Overwrite the branch_id filter to strict user's branch
+            branch_id = current_user.branch_id
 
-        allowed_branches = [b.id for b in current_user.branches]
-        # Adicionar branch_id legado se existir e não estiver na lista (segurança)
-        if current_user.branch_id and current_user.branch_id not in allowed_branches:
-            allowed_branches.append(current_user.branch_id)
+    # If the user IS Admin, Approver or Auditor, and they passed a branch_id in the query params (e.g. from Dashboard or Filter),
+    # we honor that filter. If they didn't pass it (branch_id is None), we show ALL items (don't filter by branch).
 
-        if branch_id:
-            if branch_id not in allowed_branches:
-                 # Se tentar acessar filial que não tem permissão, retorna vazio ou erro?
-                 # Melhor retornar vazio para não vazar existência, ou tratar como filtro restritivo.
-                 # Vamos forçar um filtro impossível ou levantar erro.
-                 raise HTTPException(status_code=403, detail="Acesso negado a esta filial")
-        else:
-            return await crud.get_items(db, skip=skip, limit=limit, status=status, category=category, branch_id=None, search=search, allowed_branch_ids=allowed_branches)
-
-    # If the user IS Admin, Approver or Auditor, and they passed a branch_id, we use it.
     return await crud.get_items(db, skip=skip, limit=limit, status=status, category=category, branch_id=branch_id, search=search)
 
 @router.post("/", response_model=schemas.ItemResponse)
