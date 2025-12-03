@@ -52,10 +52,19 @@ class User(Base):
     # branch_id mantido para compatibilidade
     branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True)
 
-    branch = relationship("Branch", back_populates="users_legacy", lazy="selectin")
-    branches = relationship("Branch", secondary=user_branches, back_populates="users", lazy="selectin")
-    logs = relationship("Log", back_populates="user", lazy="selectin")
-    items_responsible = relationship("Item", back_populates="responsible", lazy="selectin")
+    branch = relationship("Branch", back_populates="users")
+    logs = relationship("Log", back_populates="user")
+    items_responsible = relationship("Item", back_populates="responsible")
+
+class Branch(Base):
+    __tablename__ = "branches"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    address = Column(String)
+
+    items = relationship("Item", foreign_keys="[Item.branch_id]", back_populates="branch")
+    users = relationship("User", back_populates="branch")
 
 class Category(Base):
     __tablename__ = "categories"
