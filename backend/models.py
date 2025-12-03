@@ -53,7 +53,11 @@ class User(Base):
     # branch_id mantido para compatibilidade
     branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True)
 
-    branch = relationship("Branch", back_populates="users")
+    # Relacionamento legado (Many-to-One)
+    branch = relationship("Branch", back_populates="users_legacy")
+    # Novo relacionamento (Many-to-Many)
+    branches = relationship("Branch", secondary=user_branches, back_populates="users", lazy="selectin")
+
     logs = relationship("Log", back_populates="user")
     items_responsible = relationship("Item", back_populates="responsible")
 
