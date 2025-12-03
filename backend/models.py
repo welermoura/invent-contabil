@@ -15,9 +15,22 @@ class ItemStatus(str, enum.Enum):
     REJECTED = "REJECTED"
     TRANSFER_PENDING = "TRANSFER_PENDING"
     WRITE_OFF_PENDING = "WRITE_OFF_PENDING"
+    WRITTEN_OFF = "WRITTEN_OFF"
+
+class Branch(Base):
+    __tablename__ = "branches"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    address = Column(String)
+
+    items = relationship("Item", foreign_keys="[Item.branch_id]", back_populates="branch")
+    users = relationship("User", back_populates="branch")
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
@@ -30,18 +43,9 @@ class User(Base):
     logs = relationship("Log", back_populates="user")
     items_responsible = relationship("Item", back_populates="responsible")
 
-class Branch(Base):
-    __tablename__ = "branches"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    address = Column(String)
-
-    items = relationship("Item", foreign_keys="[Item.branch_id]", back_populates="branch")
-    users = relationship("User", back_populates="branch")
-
 class Category(Base):
     __tablename__ = "categories"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, unique=True)
@@ -50,6 +54,7 @@ class Category(Base):
 
 class Item(Base):
     __tablename__ = "items"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     description = Column(String, index=True)
@@ -77,6 +82,7 @@ class Item(Base):
 
 class Log(Base):
     __tablename__ = "logs"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     item_id = Column(Integer, ForeignKey("items.id"))

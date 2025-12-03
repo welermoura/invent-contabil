@@ -25,3 +25,32 @@ async def create_branch(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem criar filiais")
 
     return await crud.create_branch(db, branch=branch)
+
+@router.put("/{branch_id}", response_model=schemas.BranchResponse)
+async def update_branch(
+    branch_id: int,
+    branch: schemas.BranchBase,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem editar filiais")
+
+    updated = await crud.update_branch(db, branch_id, branch)
+    if not updated:
+         raise HTTPException(status_code=404, detail="Filial não encontrada")
+    return updated
+
+@router.delete("/{branch_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_branch(
+    branch_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem excluir filiais")
+
+    success = await crud.delete_branch(db, branch_id)
+    if not success:
+         raise HTTPException(status_code=404, detail="Filial não encontrada")
+    return
