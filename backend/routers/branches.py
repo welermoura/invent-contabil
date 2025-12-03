@@ -13,7 +13,18 @@ async def read_branches(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    return await crud.get_branches(db, skip=skip, limit=limit)
+    branches = await crud.get_branches(db, skip=skip, limit=limit)
+
+    # Filter for Operators: only return assigned branches
+    if current_user.role == models.UserRole.OPERATOR:
+        allowed_branch_ids = {b.id for b in current_user.branches}
+        if current_user.branch_id:
+            allowed_branch_ids.add(current_user.branch_id)
+
+        # Filter the list
+        branches = [b for b in branches if b.id in allowed_branch_ids]
+
+    return branches
 
 @router.post("/", response_model=schemas.BranchResponse)
 async def create_branch(
