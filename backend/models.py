@@ -49,8 +49,7 @@ class Branch(Base):
     address = Column(String)
 
     items = relationship("Item", foreign_keys="[Item.branch_id]", back_populates="branch")
-    users_legacy = relationship("User", back_populates="branch")
-    users = relationship("User", secondary=user_branches, back_populates="branches")
+    users = relationship("User", back_populates="branch")
 
 class Category(Base):
     __tablename__ = "categories"
