@@ -8,10 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db
 from backend.models import User
 from sqlalchemy.future import select
+import os
 
 # Configurações de segurança
-import os
-SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey") # Usar variável de ambiente, fallback apenas para dev
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY env variable is not set. Cannot start safely.")
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
