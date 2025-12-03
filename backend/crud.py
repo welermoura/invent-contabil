@@ -56,7 +56,7 @@ async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
 
         await db.commit()
         # Reload user to ensure clean state and avoid async refresh issues
-        result = await db.execute(select(models.User).options(selectinload(models.User.branches)).where(models.User.id == user_id))
+        result = await db.execute(select(models.User).where(models.User.id == user_id))
         db_user = result.scalars().first()
     return db_user
 
@@ -99,8 +99,7 @@ async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: s
         selectinload(models.Item.branch),
         selectinload(models.Item.transfer_target_branch),
         selectinload(models.Item.category_rel),
-        selectinload(models.Item.responsible),
-        selectinload(models.Item.logs).selectinload(models.Log.user)
+        selectinload(models.Item.responsible)
     )
     if status:
         query = query.where(models.Item.status == status)
