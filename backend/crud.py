@@ -8,6 +8,10 @@ async def get_user_by_email(db: AsyncSession, email: str):
     result = await db.execute(select(models.User).where(models.User.email == email))
     return result.scalars().first()
 
+async def get_user(db: AsyncSession, user_id: int):
+    result = await db.execute(select(models.User).where(models.User.id == user_id))
+    return result.scalars().first()
+
 async def create_user(db: AsyncSession, user: schemas.UserCreate):
     hashed_password = get_password_hash(user.password)
     db_user = models.User(
@@ -17,28 +21,53 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
         role=user.role,
         branch_id=user.branch_id
     )
+
+    if user.branch_ids:
+        # Fetch branches to associate
+        result = await db.execute(select(models.Branch).where(models.Branch.id.in_(user.branch_ids)))
+        branches = result.scalars().all()
+        db_user.branches = branches
+
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
     return db_user
 
 async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.User).offset(skip).limit(limit))
+    # Eager load branches for UserResponse
+    result = await db.execute(select(models.User).options(selectinload(models.User.branches)).offset(skip).limit(limit))
     return result.scalars().all()
 
 async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
-    result = await db.execute(select(models.User).where(models.User.id == user_id))
+    result = await db.execute(select(models.User).options(selectinload(models.User.branches)).where(models.User.id == user_id))
     db_user = result.scalars().first()
     if db_user:
         if user.name: db_user.name = user.name
         if user.role: db_user.role = user.role
-        if user.branch_id: db_user.branch_id = user.branch_id
+        if user.branch_id is not None: db_user.branch_id = user.branch_id # Legacy update
         if user.password:
             db_user.hashed_password = get_password_hash(user.password)
 
+        if user.branch_ids is not None:
+            # Update branches association
+            result = await db.execute(select(models.Branch).where(models.Branch.id.in_(user.branch_ids)))
+            branches = result.scalars().all()
+            db_user.branches = branches
+
         await db.commit()
-        await db.refresh(db_user)
+        # Reload user to ensure clean state and avoid async refresh issues
+        result = await db.execute(select(models.User).options(selectinload(models.User.branches)).where(models.User.id == user_id))
+        db_user = result.scalars().first()
     return db_user
+
+async def delete_user(db: AsyncSession, user_id: int):
+    result = await db.execute(select(models.User).where(models.User.id == user_id))
+    db_user = result.scalars().first()
+    if db_user:
+        await db.delete(db_user)
+        await db.commit()
+        return True
+    return False
 
 # Branches
 async def get_branches(db: AsyncSession, skip: int = 0, limit: int = 100):
@@ -65,11 +94,13 @@ async def create_category(db: AsyncSession, category: schemas.CategoryCreate):
     return db_category
 
 # Items
-async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: str = None, category: str = None, branch_id: int = None, search: str = None):
+async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: str = None, category: str = None, branch_id: int = None, search: str = None, allowed_branch_ids: list[int] = None):
     query = select(models.Item).options(
         selectinload(models.Item.branch),
         selectinload(models.Item.transfer_target_branch),
-        selectinload(models.Item.category_rel)
+        selectinload(models.Item.category_rel),
+        selectinload(models.Item.responsible),
+        selectinload(models.Item.logs).selectinload(models.Log.user)
     )
     if status:
         query = query.where(models.Item.status == status)
@@ -77,6 +108,8 @@ async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: s
         query = query.where(models.Item.category == category)
     if branch_id:
         query = query.where(models.Item.branch_id == branch_id)
+    if allowed_branch_ids is not None:
+        query = query.where(models.Item.branch_id.in_(allowed_branch_ids))
     if search:
         search_filter = f"%{search}%"
         query = query.where(
@@ -97,7 +130,8 @@ async def create_item(db: AsyncSession, item: schemas.ItemCreate):
     # Eager load relationships for Pydantic serialization
     query = select(models.Item).where(models.Item.id == db_item.id).options(
         selectinload(models.Item.branch),
-        selectinload(models.Item.category_rel)
+        selectinload(models.Item.category_rel),
+        selectinload(models.Item.responsible)
     )
     result = await db.execute(query)
     return result.scalars().first()
@@ -129,7 +163,17 @@ async def update_item_status(db: AsyncSession, item_id: int, status: models.Item
         log = models.Log(item_id=item_id, user_id=user_id, action=f"Status changed to {status}")
         db.add(log)
         await db.commit()
-        await db.refresh(db_item)
+
+        # Reload item with relationships to prevent MissingGreenlet
+        query = select(models.Item).where(models.Item.id == item_id).options(
+            selectinload(models.Item.branch),
+            selectinload(models.Item.transfer_target_branch),
+            selectinload(models.Item.category_rel),
+            selectinload(models.Item.responsible)
+        )
+        result = await db.execute(query)
+        db_item = result.scalars().first()
+
     return db_item
 
 async def request_write_off(db: AsyncSession, item_id: int, justification: str, user_id: int):
