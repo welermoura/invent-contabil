@@ -33,7 +33,7 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     role = Column(Enum(UserRole), default=UserRole.OPERATOR)
-    # branch_id mantido para compatibilidade
+    # branch_id mantido para compatibilidade, mas a lógica principal deve usar branches (N:N)
     branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True)
 
     branch = relationship("Branch", back_populates="users_legacy")
@@ -48,10 +48,8 @@ class Branch(Base):
     name = Column(String, index=True)
     address = Column(String)
 
-    # Nota: foreign_keys como string lista para evitar erro de inicialização
-    items = relationship("Item", foreign_keys="[Item.branch_id]", back_populates="branch", lazy="selectin")
-    users_legacy = relationship("User", back_populates="branch")
-    users = relationship("User", secondary=user_branches, back_populates="branches")
+    items = relationship("Item", foreign_keys="[Item.branch_id]", back_populates="branch")
+    users = relationship("User", back_populates="branch")
 
 class Category(Base):
     __tablename__ = "categories"
