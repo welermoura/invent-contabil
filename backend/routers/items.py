@@ -42,9 +42,13 @@ async def read_items(
                  # Vamos forçar um filtro impossível ou levantar erro.
                  raise HTTPException(status_code=403, detail="Acesso negado a esta filial")
         else:
-            return await crud.get_items(db, skip=skip, limit=limit, status=status, category=category, branch_id=None, search=search, allowed_branch_ids=allowed_branches)
+            # Pass filters even for operators, but constrained by allowed_branch_ids
+            # If branch_id filter is passed by operator, it was already checked against allowed_branches above
+            # If not passed, we use allowed_branches list.
+            target_branch_id = branch_id if branch_id else None
+            return await crud.get_items(db, skip=skip, limit=limit, status=status, category=category, branch_id=target_branch_id, search=search, allowed_branch_ids=allowed_branches)
 
-    # If the user IS Admin, Approver or Auditor, and they passed a branch_id, we use it.
+    # If the user IS Admin, Approver or Auditor
     return await crud.get_items(db, skip=skip, limit=limit, status=status, category=category, branch_id=branch_id, search=search)
 
 @router.post("/", response_model=schemas.ItemResponse)
