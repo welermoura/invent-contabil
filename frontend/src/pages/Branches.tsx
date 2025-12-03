@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../AuthContext';
+import { Link } from 'react-router-dom';
 
 const Branches: React.FC = () => {
     const [branches, setBranches] = useState<any[]>([]);
@@ -84,12 +85,12 @@ const Branches: React.FC = () => {
                                 <td className="px-6 py-4">{branch.name}</td>
                                 <td className="px-6 py-4">{branch.address}</td>
                                 <td className="px-6 py-4">
-                                     <a
-                                        href={`/inventory?branch_id=${branch.id}`}
+                                     <Link
+                                        to={`/inventory?branch_id=${branch.id}`}
                                         className="text-blue-600 hover:text-blue-800"
                                     >
                                         Ver Itens
-                                    </a>
+                                    </Link>
                                 </td>
                             </tr>
                         ))}

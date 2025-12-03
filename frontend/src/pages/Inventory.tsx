@@ -31,6 +31,9 @@ const Inventory: React.FC = () => {
     const [isWriteOffModalOpen, setIsWriteOffModalOpen] = useState(false);
     const [writeOffJustification, setWriteOffJustification] = useState('');
 
+    // Details Modal State
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+
     const fetchItems = async (search?: string, pageNum: number = 0) => {
         try {
             const statusFilter = searchParams.get('status');
@@ -171,6 +174,11 @@ const Inventory: React.FC = () => {
         setIsWriteOffModalOpen(true);
     };
 
+    const openDetailsModal = (item: any) => {
+        setSelectedItem(item);
+        setIsDetailsModalOpen(true);
+    };
+
     const handleTransferRequest = async () => {
         if (!selectedItem || !transferTargetBranch) return;
         try {
@@ -226,28 +234,35 @@ const Inventory: React.FC = () => {
                     />
                     <button
                         onClick={() => {
-                            // Simple CSV Export Logic
-                            const csvHeader = "ID,Descrição,Categoria,Status,Valor,Filial\n";
-                            const csvBody = items.map(item =>
-                                `${item.id},"${item.description}","${item.category}",${item.status},${item.invoice_value},"${item.branch?.name || ''}"`
-                            ).join("\n");
-                            const blob = new Blob([csvHeader + csvBody], { type: 'text/csv' });
+                            // Enhanced CSV Export Logic with Details
+                            const csvHeader = "ID,Descrição,Categoria,Status,Valor,Filial,Responsável,Histórico de Ações\n";
+                            const csvBody = items.map(item => {
+                                const logsStr = item.logs && item.logs.length > 0
+                                    ? item.logs.map((log: any) => `[${new Date(log.timestamp).toLocaleDateString()}] ${log.user?.name || 'Sistema'}: ${log.action}`).join('; ')
+                                    : "Sem histórico";
+
+                                return `${item.id},"${item.description}","${item.category}",${item.status},${item.invoice_value},"${item.branch?.name || ''}","${item.responsible?.name || ''}","${logsStr}"`;
+                            }).join("\n");
+
+                            const blob = new Blob([csvHeader + csvBody], { type: 'text/csv;charset=utf-8;' });
                             const url = window.URL.createObjectURL(blob);
                             const a = document.createElement('a');
                             a.href = url;
-                            a.download = 'inventario.csv';
+                            a.download = 'inventario_detalhado.csv';
                             a.click();
                         }}
                         className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 whitespace-nowrap"
                     >
-                        Exportar CSV
+                        Exportar CSV Detalhado
                     </button>
-                    <button
-                        onClick={() => setShowForm(!showForm)}
-                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 whitespace-nowrap"
-                    >
-                        {showForm ? 'Cancelar' : 'Adicionar Item'}
-                    </button>
+                    {user?.role !== 'AUDITOR' && (
+                        <button
+                            onClick={() => setShowForm(!showForm)}
+                            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 whitespace-nowrap"
+                        >
+                            {showForm ? 'Cancelar' : 'Adicionar Item'}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -347,6 +362,7 @@ const Inventory: React.FC = () => {
                         <tr className="bg-gray-100">
                             <th className="px-6 py-3 text-left">Descrição</th>
                             <th className="px-6 py-3 text-left">Categoria</th>
+                            <th className="px-6 py-3 text-left">Filial</th>
                             <th className="px-6 py-3 text-left">Valor</th>
                             <th className="px-6 py-3 text-left">Status</th>
                             <th className="px-6 py-3 text-left">Ações</th>
@@ -357,6 +373,7 @@ const Inventory: React.FC = () => {
                             <tr key={item.id} className="border-t">
                                 <td className="px-6 py-4">{item.description}</td>
                                 <td className="px-6 py-4">{item.category}</td>
+                                <td className="px-6 py-4">{item.branch?.name || '-'}</td>
                                 <td className="px-6 py-4">
                                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.invoice_value)}
                                 </td>
@@ -414,26 +431,7 @@ const Inventory: React.FC = () => {
                                         </div>
                                     )}
 
-                                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && item.status === 'WRITE_OFF_PENDING' && (
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleStatusChange(item.id, 'WRITTEN_OFF')}
-                                                className="text-gray-600 hover:text-gray-800"
-                                                title="Confirmar Baixa"
-                                            >
-                                                Aprovar Baixa
-                                            </button>
-                                            <button
-                                                onClick={() => handleStatusChange(item.id, 'REJECTED')}
-                                                className="text-red-600 hover:text-red-800"
-                                                title="Cancelar Baixa"
-                                            >
-                                                Rejeitar
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {item.status === 'APPROVED' && (
+                                    {item.status === 'APPROVED' && user?.role !== 'AUDITOR' && (
                                         <>
                                             <button
                                                 onClick={() => openTransferModal(item)}
@@ -457,6 +455,13 @@ const Inventory: React.FC = () => {
                                             Ver NF
                                         </a>
                                     )}
+                                    <button
+                                        onClick={() => openDetailsModal(item)}
+                                        className="text-gray-600 hover:text-gray-800 ml-2"
+                                        title="Ver Detalhes e Histórico"
+                                    >
+                                        Detalhes
+                                    </button>
                                 </td>
                             </tr>
                         ))}
@@ -575,6 +580,74 @@ const Inventory: React.FC = () => {
                                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                             >
                                 Solicitar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Details Modal */}
+            {isDetailsModalOpen && selectedItem && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-start mb-4">
+                            <h3 className="text-2xl font-bold">Detalhes do Item</h3>
+                            <button
+                                onClick={() => setIsDetailsModalOpen(false)}
+                                className="text-gray-500 hover:text-gray-700 text-xl"
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div><strong>ID:</strong> {selectedItem.id}</div>
+                            <div><strong>Descrição:</strong> {selectedItem.description}</div>
+                            <div><strong>Categoria:</strong> {selectedItem.category}</div>
+                            <div><strong>Filial Atual:</strong> {selectedItem.branch?.name || '-'}</div>
+                            <div><strong>Valor da NF:</strong> {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedItem.invoice_value)}</div>
+                            <div><strong>Número da NF:</strong> {selectedItem.invoice_number}</div>
+                            <div><strong>Número de Série:</strong> {selectedItem.serial_number || '-'}</div>
+                            <div><strong>Ativo Fixo:</strong> {selectedItem.fixed_asset_number || 'Pendente'}</div>
+                            <div><strong>Data Compra:</strong> {new Date(selectedItem.purchase_date).toLocaleDateString()}</div>
+                            <div><strong>Responsável:</strong> {selectedItem.responsible?.name || '-'}</div>
+                            <div className="col-span-2"><strong>Observações:</strong> {selectedItem.observations || '-'}</div>
+                        </div>
+
+                        <h4 className="text-xl font-bold mb-2 border-t pt-4">Histórico de Ações</h4>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full text-sm">
+                                <thead>
+                                    <tr className="bg-gray-100">
+                                        <th className="px-4 py-2 text-left">Data/Hora</th>
+                                        <th className="px-4 py-2 text-left">Usuário</th>
+                                        <th className="px-4 py-2 text-left">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {selectedItem.logs && selectedItem.logs.length > 0 ? (
+                                        selectedItem.logs.map((log: any) => (
+                                            <tr key={log.id} className="border-t">
+                                                <td className="px-4 py-2">{new Date(log.timestamp).toLocaleString()}</td>
+                                                <td className="px-4 py-2">{log.user?.name || 'Sistema'} ({log.user?.email})</td>
+                                                <td className="px-4 py-2">{log.action}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={3} className="px-4 py-2 text-center text-gray-500">Nenhum registro encontrado.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="flex justify-end mt-6">
+                            <button
+                                onClick={() => setIsDetailsModalOpen(false)}
+                                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                            >
+                                Fechar
                             </button>
                         </div>
                     </div>
