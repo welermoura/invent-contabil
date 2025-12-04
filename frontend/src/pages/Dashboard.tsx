@@ -25,13 +25,21 @@ const Dashboard: React.FC = () => {
         <div className="p-6">
             <h1 className="text-3xl font-bold mb-6">Painel de Controle</h1>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div
                     className="bg-white p-6 rounded shadow cursor-pointer hover:bg-gray-50 transition"
                     onClick={() => navigate('/inventory?status=PENDING')}
                 >
                     <h3 className="text-xl font-semibold mb-2">Itens Pendentes</h3>
                     <p className="text-4xl text-yellow-500">{stats.pending_items_count}</p>
+                    <p className="text-sm text-gray-500 mt-2">Clique para ver detalhes</p>
+                </div>
+                <div
+                    className="bg-white p-6 rounded shadow cursor-pointer hover:bg-gray-50 transition"
+                    onClick={() => navigate('/inventory?status=WRITE_OFF_PENDING')}
+                >
+                    <h3 className="text-xl font-semibold mb-2">Baixas Pendentes</h3>
+                    <p className="text-4xl text-red-500">{stats.write_off_count}</p>
                     <p className="text-sm text-gray-500 mt-2">Clique para ver detalhes</p>
                 </div>
                 <div className="bg-white p-6 rounded shadow">
