@@ -94,28 +94,20 @@ const Branches: React.FC = () => {
         <div className="p-6">
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                 <h1 className="text-3xl font-bold">Filiais</h1>
-                <div className="flex gap-2 w-full md:w-auto">
-                    <input
-                        type="text"
-                        placeholder="Buscar por nome ou CNPJ..."
-                        className="border rounded px-3 py-2 flex-grow md:w-64"
-                        onChange={(e) => fetchBranches(e.target.value)}
-                    />
-                    {canEdit && (
-                        <button
-                            onClick={() => {
-                                if (showForm) {
-                                    handleCancel();
-                                } else {
-                                    setShowForm(true);
-                                }
-                            }}
-                            className={`${showForm ? 'bg-gray-500 hover:bg-gray-600' : 'bg-blue-500 hover:bg-blue-600'} text-white px-4 py-2 rounded whitespace-nowrap`}
-                        >
-                            {showForm ? 'Cancelar' : 'Nova Filial'}
-                        </button>
-                    )}
-                </div>
+                {canEdit && (
+                    <button
+                        onClick={() => {
+                            if (showForm) {
+                                handleCancel();
+                            } else {
+                                setShowForm(true);
+                            }
+                        }}
+                        className={`${showForm ? 'bg-gray-500 hover:bg-gray-600' : 'bg-blue-500 hover:bg-blue-600'} text-white px-4 py-2 rounded`}
+                    >
+                        {showForm ? 'Cancelar' : 'Nova Filial'}
+                    </button>
+                )}
             </div>
 
             {showForm && (
