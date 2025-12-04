@@ -10,10 +10,11 @@ router = APIRouter(prefix="/categories", tags=["categories"])
 async def read_categories(
     skip: int = 0,
     limit: int = 100,
+    search: str = None,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    return await crud.get_categories(db, skip=skip, limit=limit)
+    return await crud.get_categories(db, skip=skip, limit=limit, search=search)
 
 @router.post("/", response_model=schemas.CategoryResponse)
 async def create_category(
