@@ -10,10 +10,11 @@ router = APIRouter(prefix="/branches", tags=["branches"])
 async def read_branches(
     skip: int = 0,
     limit: int = 100,
+    search: str = None,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    branches = await crud.get_branches(db, skip=skip, limit=limit)
+    branches = await crud.get_branches(db, skip=skip, limit=limit, search=search)
 
     # Filter for Operators: only return assigned branches
     if current_user.role == models.UserRole.OPERATOR:

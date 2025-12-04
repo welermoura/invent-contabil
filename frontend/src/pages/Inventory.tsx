@@ -14,7 +14,6 @@ const Inventory: React.FC = () => {
 
     const { register, handleSubmit, reset, setValue } = useForm();
     const { user } = useAuth();
-    const [showForm, setShowForm] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [searchParams] = useSearchParams();
     const [invoiceValueDisplay, setInvoiceValueDisplay] = useState('');
@@ -115,32 +114,6 @@ const Inventory: React.FC = () => {
         }
     };
 
-    const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        let value = e.target.value.replace(/\D/g, '');
-        value = (Number(value) / 100).toFixed(2);
-        // Note: react-hook-form handles value binding, but for visual mask we might need manual control
-        // For simplicity with react-hook-form, we might let user type float or try to mask.
-        // Let's implement a simple controlled input workaround or just update the form value.
-        // Actually, better to just let user type and format on blur or use a controlled component.
-        // User requested: "quando eu digitar por exemplo 125 fica 1,25 se eu digitar 10000 fique 100,00"
-        // This implies real-time masking.
-    };
-
-    // Helper for currency input
-    const CurrencyInput = ({ registerName, required }: { registerName: string, required?: boolean }) => {
-        const [displayValue, setDisplayValue] = useState("0,00");
-
-        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-            let val = e.target.value.replace(/\D/g, '');
-            if (!val) val = "0";
-            const floatVal = parseFloat(val) / 100;
-            setDisplayValue(floatVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
-            // We need to set the value in react-hook-form.
-            // Since we are inside a custom component, we can't easily access setValue unless passed.
-            // Let's adopt a different approach: modify the main input directly.
-        };
-        return <input />; // Placeholder logic
-    };
 
     const handleStatusChange = async (itemId: number, newStatus: string, fixedAsset?: string) => {
         try {

@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { useForm } from 'react-hook-form';
-import { useAuth } from '../AuthContext';
+// import { useAuth } from '../AuthContext';
 
 const Users: React.FC = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
     const { register, handleSubmit, reset } = useForm();
-    const { user } = useAuth(); // Logged in user info
+    // const { user } = useAuth(); // Logged in user info
     const [showForm, setShowForm] = useState(false);
     const [editingUser, setEditingUser] = useState<any | null>(null);
 
