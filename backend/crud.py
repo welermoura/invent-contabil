@@ -35,9 +35,18 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
     await db.refresh(db_user)
     return db_user
 
-async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100):
+async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
     # Eager load branches for UserResponse
-    result = await db.execute(select(models.User).options(selectinload(models.User.branches)).offset(skip).limit(limit))
+    query = select(models.User).options(selectinload(models.User.branches))
+    if search:
+        search_filter = f"%{search}%"
+        query = query.where(
+            or_(
+                models.User.name.ilike(search_filter),
+                models.User.email.ilike(search_filter)
+            )
+        )
+    result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
 async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
@@ -113,8 +122,11 @@ async def delete_branch(db: AsyncSession, branch_id: int):
     return False
 
 # Categories
-async def get_categories(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.Category).offset(skip).limit(limit))
+async def get_categories(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
+    query = select(models.Category)
+    if search:
+        query = query.where(models.Category.name.ilike(f"%{search}%"))
+    result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
 async def create_category(db: AsyncSession, category: schemas.CategoryCreate):
