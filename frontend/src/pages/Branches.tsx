@@ -42,9 +42,11 @@ const Branches: React.FC = () => {
         }
     }, [cnpjValue, setValue]);
 
-    const fetchBranches = async () => {
+    const fetchBranches = async (search?: string) => {
         try {
-            const response = await api.get('/branches/');
+            const params: any = {};
+            if (search) params.search = search;
+            const response = await api.get('/branches/', { params });
             setBranches(response.data);
         } catch (error) {
             console.error("Erro ao carregar filiais", error);
@@ -90,7 +92,7 @@ const Branches: React.FC = () => {
 
     return (
         <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                 <h1 className="text-3xl font-bold">Filiais</h1>
                 {canEdit && (
                     <button

@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy import or_
 from backend import models, schemas
 from backend.auth import get_password_hash
 
@@ -71,8 +72,17 @@ async def delete_user(db: AsyncSession, user_id: int):
     return False
 
 # Branches
-async def get_branches(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.Branch).offset(skip).limit(limit))
+async def get_branches(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
+    query = select(models.Branch)
+    if search:
+        search_filter = f"%{search}%"
+        query = query.where(
+            or_(
+                models.Branch.name.ilike(search_filter),
+                models.Branch.cnpj.ilike(search_filter)
+            )
+        )
+    result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
 async def create_branch(db: AsyncSession, branch: schemas.BranchCreate):
@@ -88,6 +98,7 @@ async def update_branch(db: AsyncSession, branch_id: int, branch: schemas.Branch
     if db_branch:
         if branch.name: db_branch.name = branch.name
         if branch.address: db_branch.address = branch.address
+        if branch.cnpj: db_branch.cnpj = branch.cnpj
         await db.commit()
         await db.refresh(db_branch)
     return db_branch
