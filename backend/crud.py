@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy import or_
 from backend import models, schemas
 from backend.auth import get_password_hash
 
@@ -34,9 +35,18 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
     await db.refresh(db_user)
     return db_user
 
-async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100):
+async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
     # Eager load branches for UserResponse
-    result = await db.execute(select(models.User).options(selectinload(models.User.branches)).offset(skip).limit(limit))
+    query = select(models.User).options(selectinload(models.User.branches))
+    if search:
+        search_filter = f"%{search}%"
+        query = query.where(
+            or_(
+                models.User.name.ilike(search_filter),
+                models.User.email.ilike(search_filter)
+            )
+        )
+    result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
 async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
@@ -71,8 +81,17 @@ async def delete_user(db: AsyncSession, user_id: int):
     return False
 
 # Branches
-async def get_branches(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.Branch).offset(skip).limit(limit))
+async def get_branches(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
+    query = select(models.Branch)
+    if search:
+        search_filter = f"%{search}%"
+        query = query.where(
+            or_(
+                models.Branch.name.ilike(search_filter),
+                models.Branch.cnpj.ilike(search_filter)
+            )
+        )
+    result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
 async def create_branch(db: AsyncSession, branch: schemas.BranchCreate):
@@ -88,6 +107,7 @@ async def update_branch(db: AsyncSession, branch_id: int, branch: schemas.Branch
     if db_branch:
         if branch.name: db_branch.name = branch.name
         if branch.address: db_branch.address = branch.address
+        if branch.cnpj: db_branch.cnpj = branch.cnpj
         await db.commit()
         await db.refresh(db_branch)
     return db_branch
@@ -102,8 +122,11 @@ async def delete_branch(db: AsyncSession, branch_id: int):
     return False
 
 # Categories
-async def get_categories(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.Category).offset(skip).limit(limit))
+async def get_categories(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
+    query = select(models.Category)
+    if search:
+        query = query.where(models.Category.name.ilike(f"%{search}%"))
+    result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
 async def create_category(db: AsyncSession, category: schemas.CategoryCreate):
