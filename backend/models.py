@@ -34,6 +34,7 @@ class Branch(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     address = Column(String)
+    cnpj = Column(String, nullable=True)
 
     # Nota: foreign_keys como string lista para evitar erro de inicialização
     items = relationship("Item", foreign_keys="[Item.branch_id]", back_populates="branch", lazy="selectin")
