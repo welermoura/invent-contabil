@@ -15,8 +15,14 @@ const Inventory: React.FC = () => {
     const { register, handleSubmit, reset, setValue } = useForm();
     const { user } = useAuth();
     const [showForm, setShowForm] = useState(false);
-    const [searchParams] = useSearchParams();
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [searchParams, setSearchParams] = useSearchParams();
     const [invoiceValueDisplay, setInvoiceValueDisplay] = useState('');
+
+    // Filter States
+    const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || '');
+    const [filterCategory, setFilterCategory] = useState(searchParams.get('category') || '');
+    const [filterBranch, setFilterBranch] = useState(searchParams.get('branch_id') || '');
 
     // Approval Modal State
     const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
@@ -82,9 +88,12 @@ const Inventory: React.FC = () => {
 
     useEffect(() => {
         fetchItems(undefined, page);
+    }, [page, filterStatus, filterCategory, filterBranch]);
+
+    useEffect(() => {
         fetchBranches();
         fetchCategories();
-    }, [page, searchParams.toString()]);
+    }, []);
 
     const onSubmit = async (data: any) => {
         const formData = new FormData();
@@ -95,6 +104,7 @@ const Inventory: React.FC = () => {
         formData.append('invoice_number', data.invoice_number);
         formData.append('branch_id', data.branch_id);
         if (data.serial_number) formData.append('serial_number', data.serial_number);
+        if (data.fixed_asset_number) formData.append('fixed_asset_number', data.fixed_asset_number);
         if (data.observations) formData.append('observations', data.observations);
         if (data.file[0]) formData.append('file', data.file[0]);
 
@@ -105,7 +115,8 @@ const Inventory: React.FC = () => {
                 },
             });
             reset();
-            setShowForm(false);
+            setIsCreateModalOpen(false);
+            setInvoiceValueDisplay('');
             fetchItems();
         } catch (error) {
             console.error("Erro ao salvar item", error);
@@ -234,17 +245,27 @@ const Inventory: React.FC = () => {
                     />
                     <button
                         onClick={() => {
-                            // Enhanced CSV Export Logic with Details
-                            const csvHeader = "ID,Descrição,Categoria,Status,Valor,Filial,Responsável,Histórico de Ações\n";
+                            // Enhanced CSV Export Logic with Details and Filters
+                            const csvHeader = "ID,Descrição,Observações,Categoria,Status,Valor,Filial,Responsável,Última Ação Por,Histórico de Ações\n";
                             const csvBody = items.map(item => {
                                 const logsStr = item.logs && item.logs.length > 0
                                     ? item.logs.map((log: any) => `[${new Date(log.timestamp).toLocaleDateString()}] ${log.user?.name || 'Sistema'}: ${log.action}`).join('; ')
                                     : "Sem histórico";
 
-                                return `${item.id},"${item.description}","${item.category}",${item.status},${item.invoice_value},"${item.branch?.name || ''}","${item.responsible?.name || ''}","${logsStr}"`;
+                                // Get last action user (assuming logs are sorted by date desc or take last one)
+                                // If logs are not sorted, we might need to find max timestamp. Assuming order for now.
+                                const lastLog = item.logs && item.logs.length > 0 ? item.logs[item.logs.length - 1] : null;
+                                const lastActionUser = lastLog?.user?.name || '-';
+
+                                // Escape quotes in description and observations
+                                const safeDesc = (item.description || '').replace(/"/g, '""');
+                                const safeObs = (item.observations || '').replace(/"/g, '""');
+
+                                return `${item.id},"${safeDesc}","${safeObs}","${item.category}",${item.status},${item.invoice_value},"${item.branch?.name || ''}","${item.responsible?.name || ''}","${lastActionUser}","${logsStr}"`;
                             }).join("\n");
 
-                            const blob = new Blob([csvHeader + csvBody], { type: 'text/csv;charset=utf-8;' });
+                            // Add BOM for UTF-8 Excel compatibility
+                            const blob = new Blob(["\uFEFF" + csvHeader + csvBody], { type: 'text/csv;charset=utf-8;' });
                             const url = window.URL.createObjectURL(blob);
                             const a = document.createElement('a');
                             a.href = url;
@@ -257,10 +278,10 @@ const Inventory: React.FC = () => {
                     </button>
                     {user?.role !== 'AUDITOR' && (
                         <button
-                            onClick={() => setShowForm(!showForm)}
+                            onClick={() => setIsCreateModalOpen(true)}
                             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 whitespace-nowrap"
                         >
-                            {showForm ? 'Cancelar' : 'Adicionar Item'}
+                            Adicionar Item
                         </button>
                     )}
                 </div>
@@ -284,75 +305,101 @@ const Inventory: React.FC = () => {
                 </button>
             </div>
 
-            {showForm && (
-                <div className="bg-white p-6 rounded shadow mb-8">
-                    <h2 className="text-xl font-bold mb-4">Novo Item</h2>
-                    <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-gray-700">Descrição</label>
-                            <input {...register('description', { required: true })} className="w-full border rounded px-3 py-2" />
+            {/* Create Item Modal */}
+            {isCreateModalOpen && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-start mb-4">
+                            <h2 className="text-xl font-bold">Novo Item</h2>
+                            <button
+                                onClick={() => setIsCreateModalOpen(false)}
+                                className="text-gray-500 hover:text-gray-700 text-xl"
+                            >
+                                &times;
+                            </button>
                         </div>
-                        <div>
-                            <label className="block text-gray-700">Categoria</label>
-                            <select {...register('category', { required: true })} className="w-full border rounded px-3 py-2">
-                                {categories.map(cat => (
-                                    <option key={cat.id} value={cat.name}>{cat.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-gray-700">Data Compra</label>
-                            <input type="date" {...register('purchase_date', { required: true })} className="w-full border rounded px-3 py-2" />
-                        </div>
-                        <div>
-                            <label className="block text-gray-700">Valor do Item</label>
-                            <input
-                                type="text"
-                                value={invoiceValueDisplay}
-                                onChange={(e) => {
-                                    let val = e.target.value.replace(/\D/g, '');
-                                    if (!val) {
-                                        setInvoiceValueDisplay('');
-                                        setValue('invoice_value', '');
-                                        return;
-                                    }
-                                    const floatVal = parseFloat(val) / 100;
-                                    setInvoiceValueDisplay(floatVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
-                                    setValue('invoice_value', floatVal);
-                                }}
-                                placeholder="0,00"
-                                className="w-full border rounded px-3 py-2"
-                            />
-                            <input type="hidden" {...register('invoice_value', { required: true })} />
-                        </div>
-                        <div>
-                            <label className="block text-gray-700">Número Nota</label>
-                            <input {...register('invoice_number', { required: true })} className="w-full border rounded px-3 py-2" />
-                        </div>
-                        <div>
-                            <label className="block text-gray-700">Número Série</label>
-                            <input {...register('serial_number')} className="w-full border rounded px-3 py-2" />
-                        </div>
-                        <div>
-                            <label className="block text-gray-700">Filial</label>
-                            <select {...register('branch_id', { required: true })} className="w-full border rounded px-3 py-2">
-                                {branches.map(branch => (
-                                    <option key={branch.id} value={branch.id}>{branch.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                         <div>
-                            <label className="block text-gray-700">Nota Fiscal (Arquivo)</label>
-                            <input type="file" {...register('file')} className="w-full border rounded px-3 py-2" />
-                        </div>
-                         <div className="col-span-2">
-                            <label className="block text-gray-700">Observações</label>
-                            <textarea {...register('observations')} className="w-full border rounded px-3 py-2" />
-                        </div>
-                        <div className="col-span-2">
-                            <button type="submit" className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Salvar</button>
-                        </div>
-                    </form>
+                        <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-gray-700">Descrição</label>
+                                <input {...register('description', { required: true })} className="w-full border rounded px-3 py-2" />
+                            </div>
+                            <div>
+                                <label className="block text-gray-700">Categoria</label>
+                                <select {...register('category', { required: true })} className="w-full border rounded px-3 py-2">
+                                    <option value="">Selecione...</option>
+                                    {categories.map(cat => (
+                                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-gray-700">Data Compra</label>
+                                <input type="date" {...register('purchase_date', { required: true })} className="w-full border rounded px-3 py-2" />
+                            </div>
+                            <div>
+                                <label className="block text-gray-700">Valor do Item</label>
+                                <input
+                                    type="text"
+                                    value={invoiceValueDisplay}
+                                    onChange={(e) => {
+                                        let val = e.target.value.replace(/\D/g, '');
+                                        if (!val) {
+                                            setInvoiceValueDisplay('');
+                                            setValue('invoice_value', '');
+                                            return;
+                                        }
+                                        const floatVal = parseFloat(val) / 100;
+                                        setInvoiceValueDisplay(floatVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
+                                        setValue('invoice_value', floatVal);
+                                    }}
+                                    placeholder="0,00"
+                                    className="w-full border rounded px-3 py-2"
+                                />
+                                <input type="hidden" {...register('invoice_value', { required: true })} />
+                            </div>
+                            <div>
+                                <label className="block text-gray-700">Número Nota</label>
+                                <input {...register('invoice_number', { required: true })} className="w-full border rounded px-3 py-2" />
+                            </div>
+                            <div>
+                                <label className="block text-gray-700">Número Série</label>
+                                <input {...register('serial_number')} className="w-full border rounded px-3 py-2" />
+                            </div>
+                            <div>
+                                <label className="block text-gray-700">Número Ativo Fixo</label>
+                                <input {...register('fixed_asset_number')} className="w-full border rounded px-3 py-2" placeholder="Opcional no cadastro" />
+                            </div>
+                            <div>
+                                <label className="block text-gray-700">Filial</label>
+                                <select {...register('branch_id', { required: true })} className="w-full border rounded px-3 py-2">
+                                    <option value="">Selecione...</option>
+                                    {branches.map(branch => (
+                                        <option key={branch.id} value={branch.id}>{branch.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                             <div>
+                                <label className="block text-gray-700">Nota Fiscal (Arquivo)</label>
+                                <input type="file" {...register('file')} className="w-full border rounded px-3 py-2" />
+                            </div>
+                             <div className="col-span-2">
+                                <label className="block text-gray-700">Observações</label>
+                                <textarea {...register('observations')} className="w-full border rounded px-3 py-2" />
+                            </div>
+                            <div className="col-span-2 flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsCreateModalOpen(false)}
+                                    className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+                                >
+                                    Cancelar
+                                </button>
+                                <button type="submit" className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                                    Salvar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
 
@@ -361,10 +408,64 @@ const Inventory: React.FC = () => {
                     <thead>
                         <tr className="bg-gray-100">
                             <th className="px-6 py-3 text-left">Descrição</th>
-                            <th className="px-6 py-3 text-left">Categoria</th>
-                            <th className="px-6 py-3 text-left">Filial</th>
+                            <th className="px-6 py-3 text-left">
+                                <div className="flex flex-col">
+                                    <span>Categoria</span>
+                                    <select
+                                        className="mt-1 text-sm border rounded p-1 font-normal"
+                                        value={filterCategory}
+                                        onChange={(e) => {
+                                            setFilterCategory(e.target.value);
+                                            setPage(0);
+                                        }}
+                                    >
+                                        <option value="">Todas</option>
+                                        {categories.map(cat => (
+                                            <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </th>
+                            <th className="px-6 py-3 text-left">
+                                <div className="flex flex-col">
+                                    <span>Filial</span>
+                                    <select
+                                        className="mt-1 text-sm border rounded p-1 font-normal"
+                                        value={filterBranch}
+                                        onChange={(e) => {
+                                            setFilterBranch(e.target.value);
+                                            setPage(0);
+                                        }}
+                                    >
+                                        <option value="">Todas</option>
+                                        {branches.map(branch => (
+                                            <option key={branch.id} value={branch.id}>{branch.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </th>
                             <th className="px-6 py-3 text-left">Valor</th>
-                            <th className="px-6 py-3 text-left">Status</th>
+                            <th className="px-6 py-3 text-left">
+                                <div className="flex flex-col">
+                                    <span>Status</span>
+                                    <select
+                                        className="mt-1 text-sm border rounded p-1 font-normal"
+                                        value={filterStatus}
+                                        onChange={(e) => {
+                                            setFilterStatus(e.target.value);
+                                            setPage(0);
+                                        }}
+                                    >
+                                        <option value="">Todos</option>
+                                        <option value="PENDING">Pendente</option>
+                                        <option value="APPROVED">Aprovado</option>
+                                        <option value="REJECTED">Rejeitado</option>
+                                        <option value="TRANSFER_PENDING">Transferência Pendente</option>
+                                        <option value="WRITE_OFF_PENDING">Baixa Pendente</option>
+                                        <option value="WRITTEN_OFF">Baixado</option>
+                                    </select>
+                                </div>
+                            </th>
                             <th className="px-6 py-3 text-left">Ações</th>
                         </tr>
                     </thead>
@@ -408,6 +509,25 @@ const Inventory: React.FC = () => {
                                                 className="text-red-600 hover:text-red-800"
                                             >
                                                 Rejeitar
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && item.status === 'WRITE_OFF_PENDING' && (
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleStatusChange(item.id, 'WRITTEN_OFF')}
+                                                className="text-red-600 hover:text-red-800 font-bold"
+                                                title="Aprovar Baixa"
+                                            >
+                                                Aprovar Baixa
+                                            </button>
+                                            <button
+                                                onClick={() => handleStatusChange(item.id, 'REJECTED')}
+                                                className="text-blue-600 hover:text-blue-800"
+                                                title="Rejeitar Baixa (Voltar para Aprovado)"
+                                            >
+                                                Rejeitar Baixa
                                             </button>
                                         </div>
                                     )}
