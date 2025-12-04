@@ -14,12 +14,13 @@ async def read_users_me(current_user: models.User = Depends(auth.get_current_use
 async def read_users(
     skip: int = 0,
     limit: int = 100,
+    search: str = None,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER, models.UserRole.AUDITOR]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não autorizado")
-    return await crud.get_users(db, skip=skip, limit=limit)
+    return await crud.get_users(db, skip=skip, limit=limit, search=search)
 
 @router.post("/", response_model=schemas.UserResponse)
 async def create_user(

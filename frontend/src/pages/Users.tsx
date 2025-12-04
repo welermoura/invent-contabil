@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { useForm } from 'react-hook-form';
-import { useAuth } from '../AuthContext';
+// import { useAuth } from '../AuthContext';
 
 const Users: React.FC = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
     const { register, handleSubmit, reset } = useForm();
-    const { user } = useAuth(); // Logged in user info
+    // const { user } = useAuth(); // Logged in user info
     const [showForm, setShowForm] = useState(false);
     const [editingUser, setEditingUser] = useState<any | null>(null);
 
-    const fetchUsers = async () => {
+    const fetchUsers = async (search?: string) => {
         try {
-            const response = await api.get('/users/');
+            const params: any = {};
+            if (search) params.search = search;
+            const response = await api.get('/users/', { params });
             setUsers(response.data);
         } catch (error) {
             console.error("Erro ao carregar usuários", error);
@@ -72,14 +74,22 @@ const Users: React.FC = () => {
 
     return (
         <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                 <h1 className="text-3xl font-bold">Gestão de Usuários</h1>
-                <button
-                    onClick={() => { setShowForm(!showForm); setEditingUser(null); reset({}); }}
-                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                >
-                    {showForm ? 'Cancelar' : 'Novo Usuário'}
-                </button>
+                <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                    <input
+                        type="text"
+                        placeholder="Buscar Usuário (Nome/Email)..."
+                        className="border rounded px-3 py-2 flex-grow md:w-64 w-full"
+                        onChange={(e) => fetchUsers(e.target.value)}
+                    />
+                    <button
+                        onClick={() => { setShowForm(!showForm); setEditingUser(null); reset({}); }}
+                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 whitespace-nowrap"
+                    >
+                        {showForm ? 'Cancelar' : 'Novo Usuário'}
+                    </button>
+                </div>
             </div>
 
             {showForm && (
