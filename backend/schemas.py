@@ -45,6 +45,7 @@ class UserResponse(UserBase):
 class BranchBase(BaseModel):
     name: Optional[str] = None
     address: Optional[str] = None
+    cnpj: Optional[str] = None
 
 class BranchCreate(BranchBase):
     pass
