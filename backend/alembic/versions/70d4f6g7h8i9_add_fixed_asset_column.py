@@ -1,4 +1,4 @@
-"""Add fixed_asset_number column to items - REDUNDANT FIX
+"""Add fixed_asset_number column to items
 
 Revision ID: 70d4f6g7h8i9
 Revises: 60c3e5f6g7h8
@@ -17,11 +17,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # This migration was redundant and caused DuplicateColumnErrors.
-    # The column 'fixed_asset_number' is already handled by 'add_fixed_asset.py'.
-    # We pass here to allow the migration history to proceed without error.
-    pass
+    op.add_column('items', sa.Column('fixed_asset_number', sa.String(), nullable=True))
+    op.create_index(op.f('ix_items_fixed_asset_number'), 'items', ['fixed_asset_number'], unique=False)
 
 
 def downgrade() -> None:
-    pass
+    op.drop_index(op.f('ix_items_fixed_asset_number'), table_name='items')
+    op.drop_column('items', 'fixed_asset_number')
