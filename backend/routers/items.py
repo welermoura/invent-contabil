@@ -47,6 +47,23 @@ async def read_items(
     # If the user IS Admin, Approver or Auditor, and they passed a branch_id, we use it.
     return await crud.get_items(db, skip=skip, limit=limit, status=status, category=category, branch_id=branch_id, search=search)
 
+from pydantic import BaseModel
+
+class CheckAssetResponse(BaseModel):
+    exists: bool
+    item: Optional[schemas.ItemResponse] = None
+
+@router.get("/check-asset/{fixed_asset_number}", response_model=CheckAssetResponse)
+async def check_asset(
+    fixed_asset_number: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    item = await crud.get_item_by_fixed_asset(db, fixed_asset_number)
+    if item:
+        return CheckAssetResponse(exists=True, item=item)
+    return CheckAssetResponse(exists=False, item=None)
+
 @router.post("/", response_model=schemas.ItemResponse)
 async def create_item(
     description: str = Form(...),
@@ -161,11 +178,18 @@ async def request_transfer(
     if current_user.role == models.UserRole.AUDITOR:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Auditores não podem solicitar transferências")
 
-    # Only Allow Operators (of the item's branch?) or Admins to request transfer
-    # First fetch item to check ownership
-    item_check = await crud.get_items(db, skip=0, limit=1, search=None) # Helper? No, use direct query logic or existing get
-    # But crud.get_items is a list. Let's just assume simple check logic for now or add a get_item
-    # For now, let's proceed. Ideally we check if current_user.branch_id == item.branch_id
+    # Verify item ownership for Operators
+    item = await crud.get_item(db, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item não encontrado")
+
+    if current_user.role == models.UserRole.OPERATOR:
+        allowed_branches = [b.id for b in current_user.branches]
+        if current_user.branch_id and current_user.branch_id not in allowed_branches:
+            allowed_branches.append(current_user.branch_id)
+
+        if item.branch_id not in allowed_branches:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para transferir este item")
 
     item = await crud.request_transfer(db, item_id, target_branch_id, current_user.id)
     if not item:
@@ -186,7 +210,19 @@ async def request_write_off(
     if current_user.role == models.UserRole.AUDITOR:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Auditores não podem solicitar baixas")
 
-    # Only Allow Operators (of the item's branch?) or Admins to request write-off
+    # Verify item ownership for Operators
+    item = await crud.get_item(db, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item não encontrado")
+
+    if current_user.role == models.UserRole.OPERATOR:
+        allowed_branches = [b.id for b in current_user.branches]
+        if current_user.branch_id and current_user.branch_id not in allowed_branches:
+            allowed_branches.append(current_user.branch_id)
+
+        if item.branch_id not in allowed_branches:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para solicitar baixa deste item")
+
     item = await crud.request_write_off(db, item_id, justification, current_user.id)
     if not item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
@@ -195,3 +231,21 @@ async def request_write_off(
     await manager.broadcast(f"Solicitação de baixa para item {item.description}")
 
     return item
+
+@router.put("/{item_id}", response_model=schemas.ItemResponse)
+async def update_item(
+    item_id: int,
+    item_update: schemas.ItemUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem editar itens")
+
+    # Fetch existing item to check existence (and potentially branch permissions if we wanted to enforce that for Admins too, but request says Admin/Approver can edit)
+    existing_item = await crud.get_item(db, item_id)
+    if not existing_item:
+        raise HTTPException(status_code=404, detail="Item não encontrado")
+
+    updated_item = await crud.update_item(db, item_id, item_update)
+    return updated_item

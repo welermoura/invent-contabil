@@ -68,6 +68,7 @@ class Category(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, unique=True)
+    depreciation_months = Column(Integer, nullable=True)
 
     items = relationship("Item", back_populates="category_rel", lazy="selectin")
 
