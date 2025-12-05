@@ -194,6 +194,24 @@ async def create_item(db: AsyncSession, item: schemas.ItemCreate):
     result = await db.execute(query)
     return result.scalars().first()
 
+async def get_item(db: AsyncSession, item_id: int):
+    query = select(models.Item).where(models.Item.id == item_id).options(
+        selectinload(models.Item.branch),
+        selectinload(models.Item.category_rel),
+        selectinload(models.Item.responsible)
+    )
+    result = await db.execute(query)
+    return result.scalars().first()
+
+async def get_item_by_fixed_asset(db: AsyncSession, fixed_asset_number: str):
+    query = select(models.Item).where(models.Item.fixed_asset_number == fixed_asset_number).options(
+        selectinload(models.Item.branch),
+        selectinload(models.Item.category_rel),
+        selectinload(models.Item.responsible)
+    )
+    result = await db.execute(query)
+    return result.scalars().first()
+
 async def update_item_status(db: AsyncSession, item_id: int, status: models.ItemStatus, user_id: int, fixed_asset_number: str = None):
     result = await db.execute(select(models.Item).where(models.Item.id == item_id))
     db_item = result.scalars().first()
