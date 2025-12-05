@@ -254,6 +254,13 @@ async def request_write_off(db: AsyncSession, item_id: int, justification: str, 
         await db.refresh(db_item)
     return db_item
 
+async def get_item_by_fixed_asset(db: AsyncSession, fixed_asset_number: str):
+    query = select(models.Item).where(models.Item.fixed_asset_number == fixed_asset_number).options(
+        selectinload(models.Item.branch)
+    )
+    result = await db.execute(query)
+    return result.scalars().first()
+
 async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int, user_id: int):
     result = await db.execute(select(models.Item).where(models.Item.id == item_id))
     db_item = result.scalars().first()

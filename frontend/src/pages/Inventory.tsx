@@ -22,6 +22,7 @@ const Inventory: React.FC = () => {
     const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [fixedAssetNumber, setFixedAssetNumber] = useState('');
+    const [fixedAssetError, setFixedAssetError] = useState<string>('');
 
     // Transfer Modal State
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
@@ -33,6 +34,25 @@ const Inventory: React.FC = () => {
 
     // Details Modal State
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+
+    const checkFixedAsset = async (value: string) => {
+        if (!value) {
+            setFixedAssetError('');
+            return;
+        }
+        try {
+            const response = await api.get(`/items/check-asset/${value}`);
+            if (response.data.exists) {
+                const item = response.data.item;
+                const errorMsg = `Este ativo já está cadastro para o Item: ${item.description}, Ativo: ${item.fixed_asset_number}, Localidade: ${item.branch_name}, Data de compra: ${new Date(item.purchase_date).toLocaleDateString('pt-BR')}`;
+                setFixedAssetError(errorMsg);
+            } else {
+                setFixedAssetError('');
+            }
+        } catch (error) {
+            console.error("Erro ao verificar ativo fixo", error);
+        }
+    };
 
     const fetchItems = async (search?: string, pageNum: number = 0) => {
         try {
@@ -211,13 +231,15 @@ const Inventory: React.FC = () => {
                     <button
                         onClick={() => {
                             // Enhanced CSV Export Logic with Details
-                            const csvHeader = "ID,Descrição,Categoria,Status,Valor,Filial,Responsável,Histórico de Ações\n";
+                            const csvHeader = "ID,Descrição,Categoria,Status,Valor,Data de Compra,Número da Nota,Número de Série,Ativo Fixo,Filial,Responsável,Observações,Arquivo da Nota,Histórico de Ações\n";
                             const csvBody = items.map(item => {
                                 const logsStr = item.logs && item.logs.length > 0
                                     ? item.logs.map((log: any) => `[${new Date(log.timestamp).toLocaleDateString()}] ${log.user?.name || 'Sistema'}: ${log.action}`).join('; ')
                                     : "Sem histórico";
 
-                                return `${item.id},"${item.description}","${item.category}",${item.status},${item.invoice_value},"${item.branch?.name || ''}","${item.responsible?.name || ''}","${logsStr}"`;
+                                const purchaseDate = item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '';
+
+                                return `${item.id},"${item.description}","${item.category}",${item.status},${item.invoice_value},"${purchaseDate}","${item.invoice_number || ''}","${item.serial_number || ''}","${item.fixed_asset_number || ''}","${item.branch?.name || ''}","${item.responsible?.name || ''}","${item.observations || ''}","${item.invoice_file || ''}","${logsStr}"`;
                             }).join("\n");
 
                             // Fallback to ANSI (Latin-1) as UTF-8 BOM is failing for user
@@ -330,7 +352,13 @@ const Inventory: React.FC = () => {
                             </div>
                             <div>
                                 <label className="block text-gray-700">Número Ativo Fixo</label>
-                                <input {...register('fixed_asset_number')} className="w-full border rounded px-3 py-2" placeholder="Opcional no cadastro" />
+                                <input
+                                    {...register('fixed_asset_number')}
+                                    className={`w-full border rounded px-3 py-2 ${fixedAssetError ? 'border-red-500' : ''}`}
+                                    placeholder="Opcional no cadastro"
+                                    onBlur={(e) => checkFixedAsset(e.target.value)}
+                                />
+                                {fixedAssetError && <p className="text-red-500 text-sm mt-1">{fixedAssetError}</p>}
                             </div>
                             <div>
                                 <label className="block text-gray-700">Filial</label>
@@ -352,12 +380,19 @@ const Inventory: React.FC = () => {
                             <div className="col-span-2 flex justify-end gap-2">
                                 <button
                                     type="button"
-                                    onClick={() => setIsCreateModalOpen(false)}
+                                    onClick={() => {
+                                        setIsCreateModalOpen(false);
+                                        setFixedAssetError('');
+                                    }}
                                     className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
                                 >
                                     Cancelar
                                 </button>
-                                <button type="submit" className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                                <button
+                                    type="submit"
+                                    disabled={!!fixedAssetError}
+                                    className={`px-4 py-2 rounded text-white ${!!fixedAssetError ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'}`}
+                                >
                                     Salvar
                                 </button>
                             </div>
@@ -511,18 +546,25 @@ const Inventory: React.FC = () => {
                                     {selectedItem.fixed_asset_number}
                                 </div>
                             ) : (
-                                <input
-                                    type="text"
-                                    value={fixedAssetNumber}
-                                    onChange={(e) => setFixedAssetNumber(e.target.value)}
-                                    className="w-full border rounded px-3 py-2"
-                                    placeholder="Digite o número do ativo"
-                                />
+                                <div>
+                                    <input
+                                        type="text"
+                                        value={fixedAssetNumber}
+                                        onChange={(e) => setFixedAssetNumber(e.target.value)}
+                                        onBlur={(e) => checkFixedAsset(e.target.value)}
+                                        className={`w-full border rounded px-3 py-2 ${fixedAssetError ? 'border-red-500' : ''}`}
+                                        placeholder="Digite o número do ativo"
+                                    />
+                                    {fixedAssetError && <p className="text-red-500 text-sm mt-1">{fixedAssetError}</p>}
+                                </div>
                             )}
                         </div>
                         <div className="flex justify-end gap-2">
                             <button
-                                onClick={() => setIsApproveModalOpen(false)}
+                                onClick={() => {
+                                    setIsApproveModalOpen(false);
+                                    setFixedAssetError('');
+                                }}
                                 className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
                             >
                                 Cancelar
@@ -535,7 +577,8 @@ const Inventory: React.FC = () => {
                                     }
                                     handleStatusChange(selectedItem.id, 'APPROVED', fixedAssetNumber);
                                 }}
-                                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                                disabled={!!fixedAssetError}
+                                className={`px-4 py-2 rounded text-white ${!!fixedAssetError ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
                             >
                                 Confirmar Aprovação
                             </button>

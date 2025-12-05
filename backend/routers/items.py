@@ -195,3 +195,22 @@ async def request_write_off(
     await manager.broadcast(f"Solicitação de baixa para item {item.description}")
 
     return item
+
+@router.get("/check-asset/{fixed_asset_number}")
+async def check_fixed_asset(
+    fixed_asset_number: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    item = await crud.get_item_by_fixed_asset(db, fixed_asset_number)
+    if item:
+        return {
+            "exists": True,
+            "item": {
+                "description": item.description,
+                "fixed_asset_number": item.fixed_asset_number,
+                "branch_name": item.branch.name if item.branch else "N/A",
+                "purchase_date": item.purchase_date
+            }
+        }
+    return {"exists": False}
