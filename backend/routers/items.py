@@ -231,3 +231,21 @@ async def request_write_off(
     await manager.broadcast(f"Solicitação de baixa para item {item.description}")
 
     return item
+
+@router.put("/{item_id}", response_model=schemas.ItemResponse)
+async def update_item(
+    item_id: int,
+    item_update: schemas.ItemUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem editar itens")
+
+    # Fetch existing item to check existence (and potentially branch permissions if we wanted to enforce that for Admins too, but request says Admin/Approver can edit)
+    existing_item = await crud.get_item(db, item_id)
+    if not existing_item:
+        raise HTTPException(status_code=404, detail="Item não encontrado")
+
+    updated_item = await crud.update_item(db, item_id, item_update)
+    return updated_item

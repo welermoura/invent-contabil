@@ -266,6 +266,37 @@ async def request_write_off(db: AsyncSession, item_id: int, justification: str, 
         await db.refresh(db_item)
     return db_item
 
+async def update_item(db: AsyncSession, item_id: int, item: schemas.ItemUpdate):
+    result = await db.execute(select(models.Item).where(models.Item.id == item_id))
+    db_item = result.scalars().first()
+    if db_item:
+        if item.description is not None:
+            db_item.description = item.description
+        if item.category is not None:
+            db_item.category = item.category
+        if item.invoice_value is not None:
+            db_item.invoice_value = item.invoice_value
+        if item.status is not None:
+            db_item.status = item.status
+        if item.fixed_asset_number is not None:
+            db_item.fixed_asset_number = item.fixed_asset_number
+        if item.observations is not None:
+            db_item.observations = item.observations
+
+        await db.commit()
+
+        # Reload with relationships
+        query = select(models.Item).where(models.Item.id == item_id).options(
+            selectinload(models.Item.branch),
+            selectinload(models.Item.transfer_target_branch),
+            selectinload(models.Item.category_rel),
+            selectinload(models.Item.responsible)
+        )
+        result = await db.execute(query)
+        db_item = result.scalars().first()
+
+    return db_item
+
 async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int, user_id: int):
     result = await db.execute(select(models.Item).where(models.Item.id == item_id))
     db_item = result.scalars().first()

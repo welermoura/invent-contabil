@@ -5,9 +5,10 @@ import { useAuth } from '../AuthContext';
 
 const Categories: React.FC = () => {
     const [categories, setCategories] = useState<any[]>([]);
-    const { register, handleSubmit, reset } = useForm();
+    const { register, handleSubmit, reset, setValue } = useForm();
     const { user } = useAuth();
     const [showForm, setShowForm] = useState(false);
+    const [editingCategory, setEditingCategory] = useState<any>(null);
 
     const fetchCategories = async (search?: string) => {
         try {
@@ -26,15 +27,35 @@ const Categories: React.FC = () => {
 
     const onSubmit = async (data: any) => {
         try {
-            await api.post('/categories/', data);
+            if (editingCategory) {
+                await api.put(`/categories/${editingCategory.id}`, data);
+                alert("Categoria atualizada com sucesso!");
+            } else {
+                await api.post('/categories/', data);
+                alert("Categoria criada com sucesso!");
+            }
             reset();
             setShowForm(false);
+            setEditingCategory(null);
             fetchCategories();
         } catch (error) {
-            console.error("Erro ao criar categoria", error);
-            alert("Erro ao criar categoria. Verifique suas permissões.");
+            console.error("Erro ao salvar categoria", error);
+            alert("Erro ao salvar categoria. Verifique suas permissões.");
         }
     };
+
+    const handleEdit = (category: any) => {
+        setEditingCategory(category);
+        setValue('name', category.name);
+        setValue('depreciation_months', category.depreciation_months);
+        setShowForm(true);
+    };
+
+    const handleCancel = () => {
+        setShowForm(false);
+        setEditingCategory(null);
+        reset();
+    }
 
     return (
         <div className="p-6">
@@ -49,7 +70,10 @@ const Categories: React.FC = () => {
                     />
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
                         <button
-                            onClick={() => setShowForm(!showForm)}
+                            onClick={() => {
+                                if (showForm) handleCancel();
+                                else setShowForm(true);
+                            }}
                             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 whitespace-nowrap"
                         >
                             {showForm ? 'Cancelar' : 'Nova Categoria'}
@@ -60,7 +84,7 @@ const Categories: React.FC = () => {
 
             {showForm && (
                 <div className="bg-white p-6 rounded shadow mb-8">
-                    <h2 className="text-xl font-bold mb-4">Nova Categoria</h2>
+                    <h2 className="text-xl font-bold mb-4">{editingCategory ? 'Editar Categoria' : 'Nova Categoria'}</h2>
                     <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 max-w-md">
                         <div>
                             <label className="block text-gray-700">Nome da Categoria</label>
