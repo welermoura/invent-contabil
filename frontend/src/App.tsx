@@ -28,7 +28,9 @@ const Layout = () => {
                     <Link to="/" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Painel</Link>
                     <Link to="/inventory" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Inventário</Link>
                     <Link to="/branches" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Filiais</Link>
-                    <Link to="/categories" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Categorias</Link>
+                    {user?.role !== 'OPERATOR' && (
+                        <Link to="/categories" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Categorias</Link>
+                    )}
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
                         <Link to="/users" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Usuários</Link>
                     )}

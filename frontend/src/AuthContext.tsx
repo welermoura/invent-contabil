@@ -18,7 +18,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-    const [user, setUser] = useState<User | null>(null);
+
+    // Initialize user state synchronously to avoid flash of login page or PrivateRoute redirects
+    const [user, setUser] = useState<User | null>(() => {
+        const storedToken = localStorage.getItem('token');
+        if (storedToken) {
+            try {
+                const decoded: any = jwtDecode(storedToken);
+                return { email: decoded.sub, role: decoded.role };
+            } catch (error) {
+                return null;
+            }
+        }
+        return null;
+    });
 
     useEffect(() => {
         if (token) {
@@ -31,6 +44,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // Se o token for inválido (malformado), logout
                 logout();
             }
+        } else {
+            setUser(null);
         }
     }, [token]);
 

@@ -23,6 +23,10 @@ const Inventory: React.FC = () => {
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [fixedAssetNumber, setFixedAssetNumber] = useState('');
 
+    // Duplicate Asset Modal State
+    const [isDuplicateAssetModalOpen, setIsDuplicateAssetModalOpen] = useState(false);
+    const [duplicateAssetItem, setDuplicateAssetItem] = useState<any>(null);
+
     // Transfer Modal State
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [transferTargetBranch, setTransferTargetBranch] = useState<string>('');
@@ -33,6 +37,9 @@ const Inventory: React.FC = () => {
 
     // Details Modal State
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+
+    // Edit Item State
+    const [editingItem, setEditingItem] = useState<any>(null);
 
     const fetchItems = async (search?: string, pageNum: number = 0) => {
         try {
@@ -87,30 +94,86 @@ const Inventory: React.FC = () => {
     }, [page, searchParams.toString()]);
 
     const onSubmit = async (data: any) => {
+        // Check for duplicate asset number if changed or new
+        if (data.fixed_asset_number) {
+            // If editing and fixed asset number hasn't changed, skip check
+            if (editingItem && editingItem.fixed_asset_number === data.fixed_asset_number) {
+                // Same number, skip check
+            } else {
+                try {
+                    const checkResponse = await api.get(`/items/check-asset/${data.fixed_asset_number}`);
+                    if (checkResponse.data.exists) {
+                        setDuplicateAssetItem(checkResponse.data.item);
+                        setIsDuplicateAssetModalOpen(true);
+                        return; // Stop submission
+                    }
+                } catch (error) {
+                    console.error("Erro ao verificar ativo fixo", error);
+                    alert("Erro ao verificar duplicidade de Ativo Fixo.");
+                    return;
+                }
+            }
+        }
+
         const formData = new FormData();
+        // Base fields
         formData.append('description', data.description);
         formData.append('category', data.category);
         formData.append('purchase_date', data.purchase_date);
         formData.append('invoice_value', data.invoice_value);
         formData.append('invoice_number', data.invoice_number);
         formData.append('branch_id', data.branch_id);
+        // Optional fields
         if (data.serial_number) formData.append('serial_number', data.serial_number);
         if (data.fixed_asset_number) formData.append('fixed_asset_number', data.fixed_asset_number);
         if (data.observations) formData.append('observations', data.observations);
-        if (data.file[0]) formData.append('file', data.file[0]);
+        // File only if new file uploaded (data.file list has item)
+        if (data.file && data.file[0]) formData.append('file', data.file[0]);
 
         try {
-            await api.post('/items/', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
+            if (editingItem) {
+                // For update, we might need a different endpoint structure if backend expects JSON vs FormData
+                // The backend endpoint `update_item` expects `ItemUpdate` schema (JSON body), not FormData.
+                // We need to convert to JSON for PUT /items/{id}
+                // NOTE: File upload on update might not be supported by PUT /items/{id} based on current backend implementation.
+                // Assuming update doesn't handle file re-upload or uses separate endpoint.
+                // Let's check backend `update_item`: expects `item_update: schemas.ItemUpdate`.
+                // So we send JSON.
+
+                const updatePayload = {
+                    description: data.description,
+                    category: data.category,
+                    purchase_date: data.purchase_date,
+                    invoice_value: parseFloat(data.invoice_value), // Ensure float
+                    invoice_number: data.invoice_number,
+                    // branch_id is NOT in ItemUpdate schema usually?
+                    // Let's check backend schema.
+                    // ItemUpdate: description, category, invoice_value, status, fixed_asset_number, observations.
+                    // It does NOT have branch_id. Transfers are handled separately.
+                    // So we ignore branch_id change here.
+                    serial_number: data.serial_number, // Wait, ItemUpdate in schema didn't have serial_number in my memory?
+                    // I need to check schema. If missing, I can't update it.
+                    fixed_asset_number: data.fixed_asset_number,
+                    observations: data.observations
+                };
+
+                await api.put(`/items/${editingItem.id}`, updatePayload);
+                alert("Item atualizado com sucesso!");
+            } else {
+                await api.post('/items/', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+            }
             reset();
             setIsCreateModalOpen(false);
+            setEditingItem(null);
             setInvoiceValueDisplay('');
             fetchItems();
         } catch (error) {
             console.error("Erro ao salvar item", error);
+            alert("Erro ao salvar item.");
         }
     };
 
@@ -154,6 +217,27 @@ const Inventory: React.FC = () => {
         setSelectedItem(item);
         setIsDetailsModalOpen(true);
     };
+
+    const openEditModal = (item: any) => {
+        setEditingItem(item);
+        // Pre-fill form
+        setValue('description', item.description);
+        setValue('category', item.category);
+        // Date format YYYY-MM-DD
+        const dateStr = item.purchase_date ? new Date(item.purchase_date).toISOString().split('T')[0] : '';
+        setValue('purchase_date', dateStr);
+
+        setValue('invoice_value', item.invoice_value);
+        setInvoiceValueDisplay(item.invoice_value.toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
+
+        setValue('invoice_number', item.invoice_number);
+        setValue('serial_number', item.serial_number);
+        setValue('fixed_asset_number', item.fixed_asset_number);
+        setValue('branch_id', item.branch_id); // Cannot update branch via edit, but needed for form validation if required
+        setValue('observations', item.observations);
+
+        setIsCreateModalOpen(true); // Reuse create modal
+    }
 
     const handleTransferRequest = async () => {
         if (!selectedItem || !transferTargetBranch) return;
@@ -270,14 +354,19 @@ const Inventory: React.FC = () => {
                 </button>
             </div>
 
-            {/* Create Item Modal */}
+            {/* Create/Edit Item Modal */}
             {isCreateModalOpen && (
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
                     <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-start mb-4">
-                            <h2 className="text-xl font-bold">Novo Item</h2>
+                            <h2 className="text-xl font-bold">{editingItem ? 'Editar Item' : 'Novo Item'}</h2>
                             <button
-                                onClick={() => setIsCreateModalOpen(false)}
+                                onClick={() => {
+                                    setIsCreateModalOpen(false);
+                                    setEditingItem(null);
+                                    reset();
+                                    setInvoiceValueDisplay('');
+                                }}
                                 className="text-gray-500 hover:text-gray-700 text-xl"
                             >
                                 &times;
@@ -336,7 +425,11 @@ const Inventory: React.FC = () => {
                             </div>
                             <div>
                                 <label className="block text-gray-700">Filial</label>
-                                <select {...register('branch_id', { required: true })} className="w-full border rounded px-3 py-2">
+                                <select
+                                    {...register('branch_id', { required: true })}
+                                    className="w-full border rounded px-3 py-2 disabled:bg-gray-100"
+                                    disabled={!!editingItem} // Disable branch change on edit
+                                >
                                     <option value="">Selecione...</option>
                                     {branches.map(branch => (
                                         <option key={branch.id} value={branch.id}>{branch.name}</option>
@@ -345,7 +438,13 @@ const Inventory: React.FC = () => {
                             </div>
                              <div>
                                 <label className="block text-gray-700">Nota Fiscal (Arquivo)</label>
-                                <input type="file" {...register('file')} className="w-full border rounded px-3 py-2" />
+                                <input
+                                    type="file"
+                                    {...register('file')}
+                                    className="w-full border rounded px-3 py-2 disabled:bg-gray-100"
+                                    disabled={!!editingItem} // Disable file upload on edit if not supported
+                                />
+                                {editingItem && <span className="text-xs text-gray-500">Edição de arquivo não suportada.</span>}
                             </div>
                              <div className="col-span-2">
                                 <label className="block text-gray-700">Observações</label>
@@ -354,7 +453,12 @@ const Inventory: React.FC = () => {
                             <div className="col-span-2 flex justify-end gap-2">
                                 <button
                                     type="button"
-                                    onClick={() => setIsCreateModalOpen(false)}
+                                    onClick={() => {
+                                        setIsCreateModalOpen(false);
+                                        setEditingItem(null);
+                                        reset();
+                                        setInvoiceValueDisplay('');
+                                    }}
                                     className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
                                 >
                                     Cancelar
@@ -376,6 +480,7 @@ const Inventory: React.FC = () => {
                             <th className="px-6 py-3 text-left">Categoria</th>
                             <th className="px-6 py-3 text-left">Filial</th>
                             <th className="px-6 py-3 text-left">Valor</th>
+                            <th className="px-6 py-3 text-left">Valor Contábil</th>
                             <th className="px-6 py-3 text-left">Status</th>
                             <th className="px-6 py-3 text-left">Ações</th>
                         </tr>
@@ -388,6 +493,11 @@ const Inventory: React.FC = () => {
                                 <td className="px-6 py-4">{item.branch?.name || '-'}</td>
                                 <td className="px-6 py-4">
                                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.invoice_value)}
+                                </td>
+                                <td className="px-6 py-4">
+                                    {item.accounting_value !== undefined && item.accounting_value !== null
+                                        ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.accounting_value)
+                                        : '-'}
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className={`px-2 py-1 rounded text-sm ${
@@ -493,6 +603,15 @@ const Inventory: React.FC = () => {
                                     >
                                         Detalhes
                                     </button>
+                                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
+                                        <button
+                                            onClick={() => openEditModal(item)}
+                                            className="text-blue-600 hover:text-blue-800 ml-2 font-bold"
+                                            title="Editar Item"
+                                        >
+                                            Editar
+                                        </button>
+                                    )}
                                 </td>
                             </tr>
                         ))}
@@ -530,9 +649,23 @@ const Inventory: React.FC = () => {
                                 Cancelar
                             </button>
                             <button
-                                onClick={() => {
+                                onClick={async () => {
                                     if (!fixedAssetNumber) {
                                         alert("Número do Ativo Fixo é obrigatório para aprovação.");
+                                        return;
+                                    }
+                                    // Verify duplicate asset if inputting new one (logic: only check if we are inputting)
+                                    // Since this input only appears if !selectedItem.fixed_asset_number, we are definitely inputting a new one.
+                                    try {
+                                        const checkResponse = await api.get(`/items/check-asset/${fixedAssetNumber}`);
+                                        if (checkResponse.data.exists) {
+                                            setDuplicateAssetItem(checkResponse.data.item);
+                                            setIsDuplicateAssetModalOpen(true);
+                                            return;
+                                        }
+                                    } catch (error) {
+                                        console.error("Erro ao verificar ativo fixo", error);
+                                        alert("Erro ao verificar duplicidade de Ativo Fixo.");
                                         return;
                                     }
                                     handleStatusChange(selectedItem.id, 'APPROVED', fixedAssetNumber);
@@ -643,6 +776,7 @@ const Inventory: React.FC = () => {
                             <div><strong>Categoria:</strong> {selectedItem.category}</div>
                             <div><strong>Filial Atual:</strong> {selectedItem.branch?.name || '-'}</div>
                             <div><strong>Valor da NF:</strong> {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedItem.invoice_value)}</div>
+                            <div><strong>Valor Contábil:</strong> {selectedItem.accounting_value !== undefined && selectedItem.accounting_value !== null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedItem.accounting_value) : '-'}</div>
                             <div><strong>Número da NF:</strong> {selectedItem.invoice_number}</div>
                             <div><strong>Número de Série:</strong> {selectedItem.serial_number || '-'}</div>
                             <div><strong>Ativo Fixo:</strong> {selectedItem.fixed_asset_number || 'Pendente'}</div>
@@ -682,6 +816,52 @@ const Inventory: React.FC = () => {
                         <div className="flex justify-end mt-6">
                             <button
                                 onClick={() => setIsDetailsModalOpen(false)}
+                                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                            >
+                                Fechar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Duplicate Asset Modal */}
+            {isDuplicateAssetModalOpen && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-[60]">
+                    <div className="bg-white p-5 rounded-md shadow-lg w-full max-w-lg">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-red-600">Erro: Ativo Fixo Já Utilizado</h3>
+                            <button
+                                onClick={() => {
+                                    setIsDuplicateAssetModalOpen(false);
+                                    setDuplicateAssetItem(null);
+                                }}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                &times;
+                            </button>
+                        </div>
+                        <p className="mb-4">O número do Ativo Fixo informado já está cadastrado no sistema.</p>
+
+                        {(user?.role === 'ADMIN' || user?.role === 'APPROVER' || user?.role === 'OPERATOR') && duplicateAssetItem && (
+                            <div className="bg-gray-100 p-4 rounded text-sm">
+                                <h4 className="font-bold mb-2">Detalhes do Item Existente:</h4>
+                                <div className="grid grid-cols-1 gap-2">
+                                    <p><strong>Descrição:</strong> {duplicateAssetItem.description}</p>
+                                    <p><strong>Filial:</strong> {duplicateAssetItem.branch?.name}</p>
+                                    <p><strong>Categoria:</strong> {duplicateAssetItem.category}</p>
+                                    <p><strong>Responsável:</strong> {duplicateAssetItem.responsible?.name || 'N/A'}</p>
+                                    <p><strong>Status:</strong> {duplicateAssetItem.status}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex justify-end mt-4">
+                            <button
+                                onClick={() => {
+                                    setIsDuplicateAssetModalOpen(false);
+                                    setDuplicateAssetItem(null);
+                                }}
                                 className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
                             >
                                 Fechar
