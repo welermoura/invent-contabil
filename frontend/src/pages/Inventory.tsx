@@ -23,6 +23,10 @@ const Inventory: React.FC = () => {
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [fixedAssetNumber, setFixedAssetNumber] = useState('');
 
+    // Duplicate Asset Modal State
+    const [isDuplicateAssetModalOpen, setIsDuplicateAssetModalOpen] = useState(false);
+    const [duplicateAssetItem, setDuplicateAssetItem] = useState<any>(null);
+
     // Transfer Modal State
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [transferTargetBranch, setTransferTargetBranch] = useState<string>('');
@@ -87,6 +91,23 @@ const Inventory: React.FC = () => {
     }, [page, searchParams.toString()]);
 
     const onSubmit = async (data: any) => {
+        // Check for duplicate fixed asset number first
+        if (data.fixed_asset_number) {
+            try {
+                const checkResponse = await api.get(`/items/check-asset/${data.fixed_asset_number}`);
+                if (checkResponse.data.exists) {
+                    setDuplicateAssetItem(checkResponse.data.item);
+                    setIsDuplicateAssetModalOpen(true);
+                    return; // Stop submission
+                }
+            } catch (error) {
+                console.error("Erro ao verificar ativo fixo", error);
+                // Proceed or block? Let's block to be safe or alert
+                alert("Erro ao verificar duplicidade de Ativo Fixo.");
+                return;
+            }
+        }
+
         const formData = new FormData();
         formData.append('description', data.description);
         formData.append('category', data.category);
@@ -682,6 +703,52 @@ const Inventory: React.FC = () => {
                         <div className="flex justify-end mt-6">
                             <button
                                 onClick={() => setIsDetailsModalOpen(false)}
+                                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                            >
+                                Fechar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Duplicate Asset Modal */}
+            {isDuplicateAssetModalOpen && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-[60]">
+                    <div className="bg-white p-5 rounded-md shadow-lg w-full max-w-lg">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-red-600">Erro: Ativo Fixo Já Utilizado</h3>
+                            <button
+                                onClick={() => {
+                                    setIsDuplicateAssetModalOpen(false);
+                                    setDuplicateAssetItem(null);
+                                }}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                &times;
+                            </button>
+                        </div>
+                        <p className="mb-4">O número do Ativo Fixo informado já está cadastrado no sistema.</p>
+
+                        {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && duplicateAssetItem && (
+                            <div className="bg-gray-100 p-4 rounded text-sm">
+                                <h4 className="font-bold mb-2">Detalhes do Item Existente:</h4>
+                                <div className="grid grid-cols-1 gap-2">
+                                    <p><strong>Descrição:</strong> {duplicateAssetItem.description}</p>
+                                    <p><strong>Filial:</strong> {duplicateAssetItem.branch?.name}</p>
+                                    <p><strong>Categoria:</strong> {duplicateAssetItem.category}</p>
+                                    <p><strong>Responsável:</strong> {duplicateAssetItem.responsible?.name || 'N/A'}</p>
+                                    <p><strong>Status:</strong> {duplicateAssetItem.status}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex justify-end mt-4">
+                            <button
+                                onClick={() => {
+                                    setIsDuplicateAssetModalOpen(false);
+                                    setDuplicateAssetItem(null);
+                                }}
                                 className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
                             >
                                 Fechar
