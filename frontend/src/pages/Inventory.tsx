@@ -211,13 +211,15 @@ const Inventory: React.FC = () => {
                     <button
                         onClick={() => {
                             // Enhanced CSV Export Logic with Details
-                            const csvHeader = "ID,Descrição,Categoria,Status,Valor,Filial,Responsável,Histórico de Ações\n";
+                            const csvHeader = "ID,Descrição,Categoria,Status,Valor,Data de Compra,Número da Nota,Número de Série,Ativo Fixo,Filial,Responsável,Observações,Arquivo da Nota,Histórico de Ações\n";
                             const csvBody = items.map(item => {
                                 const logsStr = item.logs && item.logs.length > 0
                                     ? item.logs.map((log: any) => `[${new Date(log.timestamp).toLocaleDateString()}] ${log.user?.name || 'Sistema'}: ${log.action}`).join('; ')
                                     : "Sem histórico";
 
-                                return `${item.id},"${item.description}","${item.category}",${item.status},${item.invoice_value},"${item.branch?.name || ''}","${item.responsible?.name || ''}","${logsStr}"`;
+                                const purchaseDate = item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '';
+
+                                return `${item.id},"${item.description}","${item.category}",${item.status},${item.invoice_value},"${purchaseDate}","${item.invoice_number || ''}","${item.serial_number || ''}","${item.fixed_asset_number || ''}","${item.branch?.name || ''}","${item.responsible?.name || ''}","${item.observations || ''}","${item.invoice_file || ''}","${logsStr}"`;
                             }).join("\n");
 
                             // Fallback to ANSI (Latin-1) as UTF-8 BOM is failing for user
