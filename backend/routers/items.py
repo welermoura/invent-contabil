@@ -98,6 +98,7 @@ async def create_item(
         invoice_number=invoice_number,
         branch_id=branch_id,
         serial_number=serial_number,
+        fixed_asset_number=fixed_asset_number,
         observations=observations,
         responsible_id=current_user.id
     )
