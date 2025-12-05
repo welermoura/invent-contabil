@@ -47,6 +47,23 @@ async def read_items(
     # If the user IS Admin, Approver or Auditor, and they passed a branch_id, we use it.
     return await crud.get_items(db, skip=skip, limit=limit, status=status, category=category, branch_id=branch_id, search=search)
 
+from pydantic import BaseModel
+
+class CheckAssetResponse(BaseModel):
+    exists: bool
+    item: Optional[schemas.ItemResponse] = None
+
+@router.get("/check-asset/{fixed_asset_number}", response_model=CheckAssetResponse)
+async def check_asset(
+    fixed_asset_number: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    item = await crud.get_item_by_fixed_asset(db, fixed_asset_number)
+    if item:
+        return CheckAssetResponse(exists=True, item=item)
+    return CheckAssetResponse(exists=False, item=None)
+
 @router.post("/", response_model=schemas.ItemResponse)
 async def create_item(
     description: str = Form(...),
