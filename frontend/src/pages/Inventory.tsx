@@ -220,7 +220,15 @@ const Inventory: React.FC = () => {
                                 return `${item.id},"${item.description}","${item.category}",${item.status},${item.invoice_value},"${item.branch?.name || ''}","${item.responsible?.name || ''}","${logsStr}"`;
                             }).join("\n");
 
-                            const blob = new Blob(['\uFEFF' + csvHeader + csvBody], { type: 'text/csv;charset=utf-8;' });
+                            // Fallback to ANSI (Latin-1) as UTF-8 BOM is failing for user
+                            const csvContent = csvHeader + csvBody;
+                            const latin1Bytes = new Uint8Array(csvContent.length);
+                            for (let i = 0; i < csvContent.length; i++) {
+                                const charCode = csvContent.charCodeAt(i);
+                                // Map common characters or just allow truncation to 8-bit (Latin-1)
+                                latin1Bytes[i] = charCode & 0xFF;
+                            }
+                            const blob = new Blob([latin1Bytes], { type: 'text/csv;charset=windows-1252' });
                             const url = window.URL.createObjectURL(blob);
                             const a = document.createElement('a');
                             a.href = url;
