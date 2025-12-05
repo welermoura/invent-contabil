@@ -744,7 +744,7 @@ const Inventory: React.FC = () => {
                         </div>
                         <p className="mb-4">O número do Ativo Fixo informado já está cadastrado no sistema.</p>
 
-                        {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && duplicateAssetItem && (
+                        {(user?.role === 'ADMIN' || user?.role === 'APPROVER' || user?.role === 'OPERATOR') && duplicateAssetItem && (
                             <div className="bg-gray-100 p-4 rounded text-sm">
                                 <h4 className="font-bold mb-2">Detalhes do Item Existente:</h4>
                                 <div className="grid grid-cols-1 gap-2">
