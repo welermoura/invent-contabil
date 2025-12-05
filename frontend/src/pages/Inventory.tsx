@@ -551,9 +551,23 @@ const Inventory: React.FC = () => {
                                 Cancelar
                             </button>
                             <button
-                                onClick={() => {
+                                onClick={async () => {
                                     if (!fixedAssetNumber) {
                                         alert("Número do Ativo Fixo é obrigatório para aprovação.");
+                                        return;
+                                    }
+                                    // Verify duplicate asset if inputting new one (logic: only check if we are inputting)
+                                    // Since this input only appears if !selectedItem.fixed_asset_number, we are definitely inputting a new one.
+                                    try {
+                                        const checkResponse = await api.get(`/items/check-asset/${fixedAssetNumber}`);
+                                        if (checkResponse.data.exists) {
+                                            setDuplicateAssetItem(checkResponse.data.item);
+                                            setIsDuplicateAssetModalOpen(true);
+                                            return;
+                                        }
+                                    } catch (error) {
+                                        console.error("Erro ao verificar ativo fixo", error);
+                                        alert("Erro ao verificar duplicidade de Ativo Fixo.");
                                         return;
                                     }
                                     handleStatusChange(selectedItem.id, 'APPROVED', fixedAssetNumber);
