@@ -220,7 +220,7 @@ const Inventory: React.FC = () => {
                                 return `${item.id},"${item.description}","${item.category}",${item.status},${item.invoice_value},"${item.branch?.name || ''}","${item.responsible?.name || ''}","${logsStr}"`;
                             }).join("\n");
 
-                            const blob = new Blob([csvHeader + csvBody], { type: 'text/csv;charset=utf-8;' });
+                            const blob = new Blob(['\uFEFF' + csvHeader + csvBody], { type: 'text/csv;charset=utf-8;' });
                             const url = window.URL.createObjectURL(blob);
                             const a = document.createElement('a');
                             a.href = url;
