@@ -59,6 +59,7 @@ class BranchResponse(BranchBase):
 # Category
 class CategoryBase(BaseModel):
     name: str
+    depreciation_months: Optional[int] = None
 
 class CategoryCreate(CategoryBase):
     pass

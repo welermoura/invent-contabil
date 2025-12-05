@@ -141,6 +141,9 @@ async def update_category(db: AsyncSession, category_id: int, category: schemas.
     db_category = result.scalars().first()
     if db_category:
         if category.name: db_category.name = category.name
+        # Update depreciation_months explicitly if present (even if 0, but check for None if field is optional)
+        if category.depreciation_months is not None:
+            db_category.depreciation_months = category.depreciation_months
         await db.commit()
         await db.refresh(db_category)
     return db_category
