@@ -397,6 +397,7 @@ const Inventory: React.FC = () => {
                             <th className="px-6 py-3 text-left">Categoria</th>
                             <th className="px-6 py-3 text-left">Filial</th>
                             <th className="px-6 py-3 text-left">Valor</th>
+                            <th className="px-6 py-3 text-left">Valor Contábil</th>
                             <th className="px-6 py-3 text-left">Status</th>
                             <th className="px-6 py-3 text-left">Ações</th>
                         </tr>
@@ -409,6 +410,11 @@ const Inventory: React.FC = () => {
                                 <td className="px-6 py-4">{item.branch?.name || '-'}</td>
                                 <td className="px-6 py-4">
                                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.invoice_value)}
+                                </td>
+                                <td className="px-6 py-4">
+                                    {item.accounting_value !== undefined && item.accounting_value !== null
+                                        ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.accounting_value)
+                                        : '-'}
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className={`px-2 py-1 rounded text-sm ${
@@ -678,6 +684,7 @@ const Inventory: React.FC = () => {
                             <div><strong>Categoria:</strong> {selectedItem.category}</div>
                             <div><strong>Filial Atual:</strong> {selectedItem.branch?.name || '-'}</div>
                             <div><strong>Valor da NF:</strong> {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedItem.invoice_value)}</div>
+                            <div><strong>Valor Contábil:</strong> {selectedItem.accounting_value !== undefined && selectedItem.accounting_value !== null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedItem.accounting_value) : '-'}</div>
                             <div><strong>Número da NF:</strong> {selectedItem.invoice_number}</div>
                             <div><strong>Número de Série:</strong> {selectedItem.serial_number || '-'}</div>
                             <div><strong>Ativo Fixo:</strong> {selectedItem.fixed_asset_number || 'Pendente'}</div>

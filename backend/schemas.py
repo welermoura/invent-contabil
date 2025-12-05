@@ -126,5 +126,48 @@ class ItemResponse(ItemBase):
     responsible: Optional[UserResponse] = None
     logs: List[LogResponse] = []
 
+    accounting_value: Optional[float] = None
+
     class Config:
         from_attributes = True
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.accounting_value = self.calculate_accounting_value()
+
+    def calculate_accounting_value(self) -> float:
+        if self.invoice_value is None or self.purchase_date is None:
+            return 0.0
+
+        depreciation_months = None
+        if self.category_rel:
+            depreciation_months = self.category_rel.depreciation_months
+
+        if not depreciation_months:
+            return self.invoice_value
+
+        from dateutil.relativedelta import relativedelta
+
+        start_date = self.purchase_date
+        # If start_date has tzinfo, use now with tzinfo
+        if isinstance(start_date, datetime) and start_date.tzinfo:
+            now = datetime.now(start_date.tzinfo)
+        else:
+            now = datetime.now()
+
+        end_date = start_date + relativedelta(months=depreciation_months)
+
+        total_lifespan = (end_date - start_date).total_seconds()
+        elapsed = (now - start_date).total_seconds()
+
+        if total_lifespan <= 0:
+            return 0.0
+
+        if elapsed >= total_lifespan:
+            return 0.0
+
+        if elapsed < 0:
+            return self.invoice_value
+
+        remaining_ratio = 1 - (elapsed / total_lifespan)
+        return round(self.invoice_value * remaining_ratio, 2)
