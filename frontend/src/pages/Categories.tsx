@@ -47,7 +47,7 @@ const Categories: React.FC = () => {
                         className="border rounded px-3 py-2 flex-grow md:w-64 w-full"
                         onChange={(e) => fetchCategories(e.target.value)}
                     />
-                    {user?.role === 'ADMIN' && (
+                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
                         <button
                             onClick={() => setShowForm(!showForm)}
                             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 whitespace-nowrap"
@@ -67,6 +67,10 @@ const Categories: React.FC = () => {
                             <input {...register('name', { required: true })} className="w-full border rounded px-3 py-2" />
                         </div>
                         <div>
+                            <label className="block text-gray-700">Tempo de Depreciação (meses)</label>
+                            <input type="number" {...register('depreciation_months')} className="w-full border rounded px-3 py-2" placeholder="0" />
+                        </div>
+                        <div>
                             <button type="submit" className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Salvar</button>
                         </div>
                     </form>
@@ -79,6 +83,7 @@ const Categories: React.FC = () => {
                         <tr className="bg-gray-100">
                             <th className="px-6 py-3 text-left">ID</th>
                             <th className="px-6 py-3 text-left">Nome</th>
+                            <th className="px-6 py-3 text-left">Depreciação (meses)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -86,6 +91,7 @@ const Categories: React.FC = () => {
                             <tr key={category.id} className="border-t">
                                 <td className="px-6 py-4">{category.id}</td>
                                 <td className="px-6 py-4">{category.name}</td>
+                                <td className="px-6 py-4">{category.depreciation_months || '-'}</td>
                             </tr>
                         ))}
                     </tbody>
