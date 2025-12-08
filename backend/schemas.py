@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, computed_field
 from typing import Optional, List
 from datetime import datetime
 from backend.models import UserRole, ItemStatus
@@ -126,14 +126,15 @@ class ItemResponse(ItemBase):
     responsible: Optional[UserResponse] = None
     logs: List[LogResponse] = []
 
-    accounting_value: Optional[float] = None
+    # accounting_value: Optional[float] = None  <-- Removed field definition
 
     class Config:
         from_attributes = True
 
-    def __init__(self, **data):
-        super().__init__(**data)
-        self.accounting_value = self.calculate_accounting_value()
+    @computed_field
+    @property
+    def accounting_value(self) -> float:
+        return self.calculate_accounting_value()
 
     def calculate_accounting_value(self) -> float:
         if self.invoice_value is None or self.purchase_date is None:
