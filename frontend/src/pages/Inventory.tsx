@@ -94,24 +94,20 @@ const Inventory: React.FC = () => {
     }, [page, searchParams.toString()]);
 
     const onSubmit = async (data: any) => {
-        // Check for duplicate asset number if changed or new
+        // Check for duplicate fixed asset number first
         if (data.fixed_asset_number) {
-            // If editing and fixed asset number hasn't changed, skip check
-            if (editingItem && editingItem.fixed_asset_number === data.fixed_asset_number) {
-                // Same number, skip check
-            } else {
-                try {
-                    const checkResponse = await api.get(`/items/check-asset/${data.fixed_asset_number}`);
-                    if (checkResponse.data.exists) {
-                        setDuplicateAssetItem(checkResponse.data.item);
-                        setIsDuplicateAssetModalOpen(true);
-                        return; // Stop submission
-                    }
-                } catch (error) {
-                    console.error("Erro ao verificar ativo fixo", error);
-                    alert("Erro ao verificar duplicidade de Ativo Fixo.");
-                    return;
+            try {
+                const checkResponse = await api.get(`/items/check-asset/${data.fixed_asset_number}`);
+                if (checkResponse.data.exists) {
+                    setDuplicateAssetItem(checkResponse.data.item);
+                    setIsDuplicateAssetModalOpen(true);
+                    return; // Stop submission
                 }
+            } catch (error) {
+                console.error("Erro ao verificar ativo fixo", error);
+                // Proceed or block? Let's block to be safe or alert
+                alert("Erro ao verificar duplicidade de Ativo Fixo.");
+                return;
             }
         }
 

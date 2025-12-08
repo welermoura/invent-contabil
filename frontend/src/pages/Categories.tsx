@@ -108,7 +108,6 @@ const Categories: React.FC = () => {
                             <th className="px-6 py-3 text-left">ID</th>
                             <th className="px-6 py-3 text-left">Nome</th>
                             <th className="px-6 py-3 text-left">Depreciação (meses)</th>
-                            <th className="px-6 py-3 text-left">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -117,16 +116,6 @@ const Categories: React.FC = () => {
                                 <td className="px-6 py-4">{category.id}</td>
                                 <td className="px-6 py-4">{category.name}</td>
                                 <td className="px-6 py-4">{category.depreciation_months || '-'}</td>
-                                <td className="px-6 py-4">
-                                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
-                                        <button
-                                            onClick={() => handleEdit(category)}
-                                            className="text-blue-600 hover:text-blue-800 font-bold"
-                                        >
-                                            Editar
-                                        </button>
-                                    )}
-                                </td>
                             </tr>
                         ))}
                     </tbody>
