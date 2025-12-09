@@ -71,6 +71,14 @@ class CategoryResponse(CategoryBase):
         from_attributes = True
 
 # Log Forward Declaration
+class ItemSummary(BaseModel):
+    id: int
+    description: str
+    fixed_asset_number: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 class LogResponse(BaseModel):
     id: int
     item_id: int
@@ -78,6 +86,7 @@ class LogResponse(BaseModel):
     action: str
     timestamp: datetime
     user: Optional[UserResponse] = None
+    item: Optional[ItemSummary] = None
 
     class Config:
         from_attributes = True
