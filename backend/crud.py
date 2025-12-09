@@ -328,7 +328,18 @@ async def request_write_off(db: AsyncSession, item_id: int, justification: str, 
         log = models.Log(item_id=item_id, user_id=user_id, action=f"Write-off requested. Reason: {justification}")
         db.add(log)
         await db.commit()
-        await db.refresh(db_item)
+
+        # Reload with relationships
+        query = select(models.Item).where(models.Item.id == item_id).options(
+            selectinload(models.Item.branch),
+            selectinload(models.Item.transfer_target_branch),
+            selectinload(models.Item.category_rel),
+            selectinload(models.Item.supplier),
+            selectinload(models.Item.responsible)
+        )
+        result = await db.execute(query)
+        db_item = result.scalars().first()
+
     return db_item
 
 async def update_item(db: AsyncSession, item_id: int, item: schemas.ItemUpdate):
@@ -384,5 +395,16 @@ async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int
         log = models.Log(item_id=item_id, user_id=user_id, action=f"Transfer requested to branch {target_branch_id}")
         db.add(log)
         await db.commit()
-        await db.refresh(db_item)
+
+        # Reload with relationships
+        query = select(models.Item).where(models.Item.id == item_id).options(
+            selectinload(models.Item.branch),
+            selectinload(models.Item.transfer_target_branch),
+            selectinload(models.Item.category_rel),
+            selectinload(models.Item.supplier),
+            selectinload(models.Item.responsible)
+        )
+        result = await db.execute(query)
+        db_item = result.scalars().first()
+
     return db_item
