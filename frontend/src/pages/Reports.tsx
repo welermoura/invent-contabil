@@ -412,21 +412,21 @@ const Reports: React.FC = () => {
                     }));
                 } else if (reportId === 'A.2') {
                     data = items.sort((a: any, b: any) => (a.branch?.name || '').localeCompare(b.branch?.name || '')).map((i: any) => ({
-                        Filial: i.branch?.name, ID: i.id, Descrição: i.description, Categoria: i.category, "Valor": formatCurrency(i.invoice_value)
+                        Filial: i.branch?.name, ID: i.id, Descrição: i.description, Categoria: i.category, "Valor Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value)
                     }));
                 } else if (reportId === 'A.3') {
                      data = items.sort((a: any, b: any) => (a.category || '').localeCompare(b.category || '')).map((i: any) => ({
-                        Categoria: i.category, ID: i.id, Descrição: i.description, Filial: i.branch?.name, "Valor": formatCurrency(i.invoice_value)
+                        Categoria: i.category, ID: i.id, Descrição: i.description, Filial: i.branch?.name, "Valor Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value)
                     }));
                 } else if (reportId === 'A.4') {
                      data = items.filter((i: any) => i.responsible).map((i: any) => ({
-                        Responsável: i.responsible?.name, ID: i.id, Descrição: i.description, Filial: i.branch?.name
+                        Responsável: i.responsible?.name, ID: i.id, Descrição: i.description, Filial: i.branch?.name, "Valor Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value)
                     }));
                 } else if (reportId === 'A.5') {
                     const cutoff = new Date();
                     cutoff.setDate(cutoff.getDate() - 30);
                     data = items.filter((i: any) => new Date(i.purchase_date) >= cutoff).map((i: any) => ({
-                        "Data Compra": formatDate(i.purchase_date), ID: i.id, Descrição: i.description, Fornecedor: i.supplier?.name, "Valor": formatCurrency(i.invoice_value)
+                        "Data Compra": formatDate(i.purchase_date), ID: i.id, Descrição: i.description, Fornecedor: i.supplier?.name, "Valor Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value)
                     }));
                 } else if (reportId === 'A.7') {
                     data = items.filter((i: any) => i.status === 'TRANSFER_PENDING').map((i: any) => ({
