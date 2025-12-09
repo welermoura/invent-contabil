@@ -233,6 +233,17 @@ async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: s
     result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
+async def get_item(db: AsyncSession, item_id: int):
+    query = select(models.Item).where(models.Item.id == item_id).options(
+        selectinload(models.Item.branch),
+        selectinload(models.Item.transfer_target_branch),
+        selectinload(models.Item.category_rel),
+        selectinload(models.Item.supplier),
+        selectinload(models.Item.responsible)
+    )
+    result = await db.execute(query)
+    return result.scalars().first()
+
 async def create_item(db: AsyncSession, item: schemas.ItemCreate):
     db_item = models.Item(**item.dict())
     db.add(db_item)
