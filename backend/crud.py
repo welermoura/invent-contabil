@@ -403,7 +403,12 @@ async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int
         db_item.status = models.ItemStatus.TRANSFER_PENDING
         db_item.transfer_target_branch_id = target_branch_id
 
-        log = models.Log(item_id=item_id, user_id=user_id, action=f"Transfer requested to branch {target_branch_id}")
+        # Fetch branch name for logging
+        branch_result = await db.execute(select(models.Branch).where(models.Branch.id == target_branch_id))
+        target_branch = branch_result.scalars().first()
+        branch_name = target_branch.name if target_branch else str(target_branch_id)
+
+        log = models.Log(item_id=item_id, user_id=user_id, action=f"Transfer requested to branch {branch_name}")
         db.add(log)
         await db.commit()
 
