@@ -421,7 +421,7 @@ const Inventory: React.FC = () => {
                                         )}
 
                                         {item.invoice_file && (
-                                            <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/${item.invoice_file}`} target="_blank" className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Ver NF">
+                                            <a href={`${api.defaults.baseURL}/${item.invoice_file}`} target="_blank" className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Ver NF">
                                                 <FileText size={18} />
                                             </a>
                                         )}
@@ -579,6 +579,22 @@ const Inventory: React.FC = () => {
                             <button onClick={() => setIsApproveModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancelar</button>
                             <button onClick={async () => {
                                 if (!fixedAssetNumber && !selectedItem.fixed_asset_number) { alert("Ativo Fixo obrigatório"); return; }
+
+                                // Verify uniqueness
+                                try {
+                                    const assetToCheck = fixedAssetNumber || selectedItem.fixed_asset_number;
+                                    const checkResponse = await api.get(`/items/check-asset/${assetToCheck}?exclude_item_id=${selectedItem.id}`);
+                                    if (checkResponse.data.exists) {
+                                        setDuplicateAssetItem(checkResponse.data.item);
+                                        setIsDuplicateAssetModalOpen(true);
+                                        return;
+                                    }
+                                } catch (error) {
+                                    console.error("Erro ao verificar ativo", error);
+                                    alert("Erro ao validar Ativo Fixo.");
+                                    return;
+                                }
+
                                 handleStatusChange(selectedItem.id, 'APPROVED', fixedAssetNumber);
                             }} className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-lg shadow-green-500/20 transition-all">Aprovar</button>
                         </div>
