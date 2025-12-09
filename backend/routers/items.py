@@ -107,9 +107,17 @@ async def create_item(
         # Store relative path for serving
         file_path = f"uploads/{safe_filename}"
 
+    # Resolve category_id from name if provided
+    category_id = None
+    if category:
+        cat_obj = await crud.get_category_by_name(db, category)
+        if cat_obj:
+            category_id = cat_obj.id
+
     item_data = schemas.ItemCreate(
         description=description,
         category=category,
+        category_id=category_id,
         purchase_date=purchase_date,
         invoice_value=invoice_value,
         invoice_number=invoice_number,
@@ -122,9 +130,6 @@ async def create_item(
 
     # Create item
     try:
-        # Pydantic schema expects category_id, frontend might send category name
-        # If necessary, we could resolve here, but let's assume valid ID or optional
-        # For now, pass dict as is
         db_item = await crud.create_item(db, item_data)
         # Note: file path setting is missing in crud.create_item, need to handle it or update crud
         # Better: Update item with file path after creation or pass to crud

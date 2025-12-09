@@ -129,6 +129,10 @@ async def get_categories(db: AsyncSession, skip: int = 0, limit: int = 100, sear
     result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
+async def get_category_by_name(db: AsyncSession, name: str):
+    result = await db.execute(select(models.Category).where(models.Category.name == name))
+    return result.scalars().first()
+
 async def create_category(db: AsyncSession, category: schemas.CategoryCreate):
     db_category = models.Category(**category.dict())
     db.add(db_category)
@@ -274,6 +278,15 @@ async def update_item(db: AsyncSession, item_id: int, item: schemas.ItemUpdate):
             db_item.description = item.description
         if item.category is not None:
             db_item.category = item.category
+            # Update category_id
+            cat_obj = await get_category_by_name(db, item.category)
+            if cat_obj:
+                db_item.category_id = cat_obj.id
+            else:
+                 # Should we unset it if not found? Probably safe to keep existing or unset.
+                 # If category string is set but ID not found, maybe invalid category?
+                 db_item.category_id = None
+
         if item.invoice_value is not None:
             db_item.invoice_value = item.invoice_value
         if item.status is not None:
