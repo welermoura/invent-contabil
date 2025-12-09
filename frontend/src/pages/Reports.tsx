@@ -1,6 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import api from '../api';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // --- DATA TABLE COMPONENT ---
 const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = ({ data, title, onBack }) => {
@@ -90,6 +93,35 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
         document.body.removeChild(link);
     };
 
+    const downloadExcel = () => {
+        const ws = XLSX.utils.json_to_sheet(sortedData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Relatório");
+        const fileName = `${title.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+    };
+
+    const downloadPDF = () => {
+        const doc = new jsPDF();
+        doc.text(title, 14, 15);
+
+        const tableColumn = headers;
+        const tableRows = sortedData.map(row => headers.map(col => String(row[col] || '')));
+
+        autoTable(doc, {
+            head: [tableColumn],
+            body: tableRows,
+            startY: 20,
+            theme: 'grid',
+            styles: { fontSize: 7, cellPadding: 1 },
+            headStyles: { fillColor: [41, 128, 185] }
+        });
+
+        doc.save(`${title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+    };
+
+    const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+
     return (
         <div className="p-6 bg-white rounded shadow min-h-screen">
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
@@ -99,7 +131,7 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
                     </button>
                     <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
                 </div>
-                <div className="flex gap-2 w-full md:w-auto">
+                <div className="flex gap-2 w-full md:w-auto items-center">
                     <input
                         type="text"
                         placeholder="Filtrar dados..."
@@ -107,9 +139,28 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
                         value={filter}
                         onChange={e => setFilter(e.target.value)}
                     />
-                    <button onClick={downloadCSV} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 whitespace-nowrap">
-                        Exportar CSV
-                    </button>
+
+                    <div className="relative">
+                        <button
+                            onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 whitespace-nowrap flex items-center gap-2"
+                        >
+                            Exportar <span>▼</span>
+                        </button>
+                        {isExportMenuOpen && (
+                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 border">
+                                <button onClick={() => { downloadExcel(); setIsExportMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    Excel (.xlsx)
+                                </button>
+                                <button onClick={() => { downloadCSV(); setIsExportMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    CSV (.csv)
+                                </button>
+                                <button onClick={() => { downloadPDF(); setIsExportMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    PDF (.pdf)
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
