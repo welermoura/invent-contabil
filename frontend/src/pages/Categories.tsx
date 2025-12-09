@@ -88,7 +88,14 @@ const Categories: React.FC = () => {
                     <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 max-w-md">
                         <div>
                             <label className="block text-gray-700">Nome da Categoria</label>
-                            <input {...register('name', { required: true })} className="w-full border rounded px-3 py-2" />
+                            <input
+                                {...register('name', { required: true })}
+                                onChange={(e) => {
+                                    e.target.value = e.target.value.toUpperCase();
+                                    register('name').onChange(e);
+                                }}
+                                className="w-full border rounded px-3 py-2"
+                            />
                         </div>
                         <div>
                             <label className="block text-gray-700">Tempo de Depreciação (meses)</label>
