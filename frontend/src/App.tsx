@@ -6,6 +6,7 @@ import Branches from './pages/Branches';
 import Categories from './pages/Categories';
 import Users from './pages/Users';
 import Setup from './pages/Setup';
+import Reports from './pages/Reports';
 import { AuthProvider, useAuth } from './AuthContext';
 import Notifications from './components/Notifications';
 
@@ -28,6 +29,7 @@ const Layout = () => {
                     <Link to="/" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Painel</Link>
                     <Link to="/inventory" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Inventário</Link>
                     <Link to="/branches" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Filiais</Link>
+                    <Link to="/reports" className="block px-6 py-3 text-gray-700 hover:bg-gray-100 font-medium text-blue-900 bg-blue-50">Relatórios</Link>
                     {user?.role !== 'OPERATOR' && (
                         <Link to="/categories" className="block px-6 py-3 text-gray-700 hover:bg-gray-100">Categorias</Link>
                     )}
@@ -55,6 +57,7 @@ const AppRoutes = () => {
                     <Route path="/inventory" element={<Inventory />} />
                     <Route path="/branches" element={<Branches />} />
                     <Route path="/categories" element={<Categories />} />
+                    <Route path="/reports" element={<Reports />} />
                     <Route path="/users" element={<Users />} />
                 </Route>
             </Route>
