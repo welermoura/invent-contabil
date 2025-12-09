@@ -3,6 +3,7 @@ import api from '../api';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../AuthContext';
 import { useSearchParams } from 'react-router-dom';
+import { translateStatus, translateLogAction } from '../utils/translations';
 
 const Inventory: React.FC = () => {
     const [items, setItems] = useState<any[]>([]);
@@ -324,12 +325,12 @@ const Inventory: React.FC = () => {
                             const csvHeader = "ID,Descrição,Categoria,Status,Valor,Data de Compra,Número da Nota,Número de Série,Ativo Fixo,Filial,Responsável,Observações,Arquivo da Nota,Histórico de Ações\n";
                             const csvBody = items.map(item => {
                                 const logsStr = item.logs && item.logs.length > 0
-                                    ? item.logs.map((log: any) => `[${new Date(log.timestamp).toLocaleDateString()}] ${log.user?.name || 'Sistema'}: ${log.action}`).join('; ')
+                                    ? item.logs.map((log: any) => `[${new Date(log.timestamp).toLocaleDateString()}] ${log.user?.name || 'Sistema'}: ${translateLogAction(log.action)}`).join('; ')
                                     : "Sem histórico";
 
                                 const purchaseDate = item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '';
 
-                                return `${item.id},"${item.description}","${item.category}",${item.status},${item.invoice_value},"${purchaseDate}","${item.invoice_number || ''}","${item.serial_number || ''}","${item.fixed_asset_number || ''}","${item.branch?.name || ''}","${item.responsible?.name || ''}","${item.observations || ''}","${item.invoice_file || ''}","${logsStr}"`;
+                                return `${item.id},"${item.description}","${item.category}",${translateStatus(item.status)},${item.invoice_value},"${purchaseDate}","${item.invoice_number || ''}","${item.serial_number || ''}","${item.fixed_asset_number || ''}","${item.branch?.name || ''}","${item.responsible?.name || ''}","${item.observations || ''}","${item.invoice_file || ''}","${logsStr}"`;
                             }).join("\n");
 
                             // Fallback to ANSI (Latin-1) as UTF-8 BOM is failing for user
@@ -590,12 +591,7 @@ const Inventory: React.FC = () => {
                                         item.status === 'WRITTEN_OFF' ? 'bg-gray-800 text-white' :
                                         'bg-red-100 text-red-800'
                                     }`}>
-                                        {item.status === 'PENDING' ? 'Pendente' :
-                                         item.status === 'APPROVED' ? 'Aprovado' :
-                                         item.status === 'REJECTED' ? 'Rejeitado' :
-                                         item.status === 'TRANSFER_PENDING' ? 'Transferência Pendente' :
-                                         item.status === 'WRITE_OFF_PENDING' ? 'Baixa Pendente' :
-                                         item.status === 'WRITTEN_OFF' ? 'Baixado' : item.status}
+                                        {translateStatus(item.status)}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">
@@ -884,7 +880,7 @@ const Inventory: React.FC = () => {
                                             <tr key={log.id} className="border-t">
                                                 <td className="px-4 py-2">{new Date(log.timestamp).toLocaleString('pt-BR')}</td>
                                                 <td className="px-4 py-2">{log.user?.name || 'Sistema'} ({log.user?.email})</td>
-                                                <td className="px-4 py-2">{log.action}</td>
+                                                <td className="px-4 py-2">{translateLogAction(log.action)}</td>
                                             </tr>
                                         ))
                                     ) : (
