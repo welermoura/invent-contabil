@@ -245,13 +245,27 @@ async def update_item(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem editar itens")
-
-    # Fetch existing item to check existence (and potentially branch permissions if we wanted to enforce that for Admins too, but request says Admin/Approver can edit)
+    # Fetch existing item to check existence
     existing_item = await crud.get_item(db, item_id)
     if not existing_item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
+
+    # Permission logic
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
+        # Check if Operator and item is REJECTED
+        if current_user.role == models.UserRole.OPERATOR and existing_item.status == models.ItemStatus.REJECTED:
+             # Check branch permission
+            allowed_branches = [b.id for b in current_user.branches]
+            if current_user.branch_id and current_user.branch_id not in allowed_branches:
+                allowed_branches.append(current_user.branch_id)
+
+            if existing_item.branch_id not in allowed_branches:
+                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para editar este item")
+
+            # If authorized, FORCE status to PENDING upon edit (resubmit)
+            item_update.status = models.ItemStatus.PENDING
+        else:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem editar itens (ou operadores corrigindo rejeições)")
 
     updated_item = await crud.update_item(db, item_id, item_update)
     return updated_item
