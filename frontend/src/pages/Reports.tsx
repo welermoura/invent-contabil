@@ -316,6 +316,20 @@ const Reports: React.FC = () => {
         setExpandedCategory(expandedCategory === category ? null : category);
     };
 
+    const formatDate = (val: any) => {
+        if (!val) return '';
+        if (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}$/)) {
+             const [y, m, d] = val.split('-');
+             return `${d}/${m}/${y}`;
+        }
+        const date = new Date(val);
+        if (isNaN(date.getTime())) return val;
+        // Use UTC methods if it looks like a date-only string to avoid timezone issues,
+        // but for safety with ISO strings that might have time, toLocaleDateString is safer if timezone matches.
+        // Given existing inconsistency, let's stick to pt-BR locale.
+        return date.toLocaleDateString('pt-BR');
+    }
+
     const handleGenerateReport = async (reportId: string, title: string) => {
         setLoading(true);
         setReportTitle(title);
@@ -335,7 +349,7 @@ const Reports: React.FC = () => {
                     data = items.map((i: any) => ({
                         ID: i.id, Descricao: i.description, Categoria: i.category, Filial: i.branch?.name,
                         Status: i.status, Valor: i.invoice_value, ValorContabil: i.accounting_value,
-                        DataCompra: i.purchase_date, NF: i.invoice_number, AtivoFixo: i.fixed_asset_number
+                        DataCompra: formatDate(i.purchase_date), NF: i.invoice_number, AtivoFixo: i.fixed_asset_number
                     }));
                 } else if (reportId === 'A.2') { // Por Filial
                     data = items.sort((a: any, b: any) => (a.branch?.name || '').localeCompare(b.branch?.name || '')).map((i: any) => ({
@@ -353,7 +367,7 @@ const Reports: React.FC = () => {
                     const cutoff = new Date();
                     cutoff.setDate(cutoff.getDate() - 30);
                     data = items.filter((i: any) => new Date(i.purchase_date) >= cutoff).map((i: any) => ({
-                        DataCompra: i.purchase_date, ID: i.id, Descricao: i.description, Valor: i.invoice_value
+                        DataCompra: formatDate(i.purchase_date), ID: i.id, Descricao: i.description, Valor: i.invoice_value
                     }));
                 } else if (reportId === 'A.7') { // Em Trânsito
                     data = items.filter((i: any) => i.status === 'TRANSFER_PENDING').map((i: any) => ({
@@ -370,12 +384,12 @@ const Reports: React.FC = () => {
                     }));
                 } else if (reportId === 'B.2') { // Depreciação Acumulada
                     data = items.map((i: any) => ({
-                        ID: i.id, Descricao: i.description, DataCompra: i.purchase_date, MesesUso: "Calc",
+                        ID: i.id, Descricao: i.description, DataCompra: formatDate(i.purchase_date), MesesUso: "Calc",
                         DepreciacaoTotal: (i.invoice_value - (i.accounting_value || 0))
                     }));
                 } else if (reportId === 'B.5') { // Totalmente Depreciados
                     data = items.filter((i: any) => i.accounting_value === 0).map((i: any) => ({
-                        ID: i.id, Descricao: i.description, DataCompra: i.purchase_date, ValorOriginal: i.invoice_value
+                        ID: i.id, Descricao: i.description, DataCompra: formatDate(i.purchase_date), ValorOriginal: i.invoice_value
                     }));
                 } else if (reportId === 'B.7') { // Baixas
                     data = items.filter((i: any) => i.status === 'WRITTEN_OFF').map((i: any) => ({
@@ -383,7 +397,7 @@ const Reports: React.FC = () => {
                     }));
                 } else if (reportId === 'B.9') { // CAPEX
                     data = items.map((i: any) => ({
-                        DataCompra: i.purchase_date, Valor: i.invoice_value, Descricao: i.description, Categoria: i.category
+                        DataCompra: formatDate(i.purchase_date), Valor: i.invoice_value, Descricao: i.description, Categoria: i.category
                     }));
                 } else if (reportId === 'B.10') { // Resumo Valores
                     // Aggregate
@@ -409,7 +423,7 @@ const Reports: React.FC = () => {
                      });
                 } else if (reportId === 'F.4') { // Notas Fiscais
                     data = items.map((i: any) => ({
-                        NF: i.invoice_number, Data: i.purchase_date, Valor: i.invoice_value, Fornecedor: "N/A", Item: i.description
+                        NF: i.invoice_number, Data: formatDate(i.purchase_date), Valor: i.invoice_value, Fornecedor: "N/A", Item: i.description
                     }));
                 }
             }
@@ -421,15 +435,15 @@ const Reports: React.FC = () => {
 
                  if (reportId === 'A.6' || reportId === 'C.1') { // Kardex / Trilha
                      data = logs.map((l: any) => ({
-                         Data: new Date(l.timestamp).toLocaleString(), Usuario: l.user?.email, Acao: l.action, ItemID: l.item_id, Item: l.item?.description
+                         Data: new Date(l.timestamp).toLocaleString('pt-BR'), Usuario: l.user?.email, Acao: l.action, ItemID: l.item_id, Item: l.item?.description
                      }));
                  } else if (reportId === 'C.2') { // Status changes
                      data = logs.filter((l: any) => l.action.includes('Status changed')).map((l: any) => ({
-                         Data: new Date(l.timestamp).toLocaleString(), Usuario: l.user?.email, Acao: l.action, Item: l.item?.description
+                         Data: new Date(l.timestamp).toLocaleString('pt-BR'), Usuario: l.user?.email, Acao: l.action, Item: l.item?.description
                      }));
                  } else if (reportId === 'C.10') { // Responsibles (Generic approximation)
                      data = logs.filter((l: any) => l.action.toLowerCase().includes('respons')).map((l: any) => ({
-                         Data: new Date(l.timestamp).toLocaleString(), Usuario: l.user?.email, Acao: l.action, Item: l.item?.description
+                         Data: new Date(l.timestamp).toLocaleString('pt-BR'), Usuario: l.user?.email, Acao: l.action, Item: l.item?.description
                      }));
                  }
             }

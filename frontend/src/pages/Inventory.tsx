@@ -816,7 +816,7 @@ const Inventory: React.FC = () => {
                             <div><strong>Número da NF:</strong> {selectedItem.invoice_number}</div>
                             <div><strong>Número de Série:</strong> {selectedItem.serial_number || '-'}</div>
                             <div><strong>Ativo Fixo:</strong> {selectedItem.fixed_asset_number || 'Pendente'}</div>
-                            <div><strong>Data Compra:</strong> {new Date(selectedItem.purchase_date).toLocaleDateString()}</div>
+                            <div><strong>Data Compra:</strong> {new Date(selectedItem.purchase_date).toLocaleDateString('pt-BR')}</div>
                             <div><strong>Responsável:</strong> {selectedItem.responsible?.name || '-'}</div>
                             <div className="col-span-2"><strong>Observações:</strong> {selectedItem.observations || '-'}</div>
                         </div>
@@ -835,7 +835,7 @@ const Inventory: React.FC = () => {
                                     {selectedItem.logs && selectedItem.logs.length > 0 ? (
                                         selectedItem.logs.map((log: any) => (
                                             <tr key={log.id} className="border-t">
-                                                <td className="px-4 py-2">{new Date(log.timestamp).toLocaleString()}</td>
+                                                <td className="px-4 py-2">{new Date(log.timestamp).toLocaleString('pt-BR')}</td>
                                                 <td className="px-4 py-2">{log.user?.name || 'Sistema'} ({log.user?.email})</td>
                                                 <td className="px-4 py-2">{log.action}</td>
                                             </tr>
