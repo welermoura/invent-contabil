@@ -56,10 +56,11 @@ class CheckAssetResponse(BaseModel):
 @router.get("/check-asset/{fixed_asset_number}", response_model=CheckAssetResponse)
 async def check_asset(
     fixed_asset_number: str,
+    exclude_item_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    item = await crud.get_item_by_fixed_asset(db, fixed_asset_number)
+    item = await crud.get_item_by_fixed_asset(db, fixed_asset_number, exclude_item_id)
     if item:
         return CheckAssetResponse(exists=True, item=item)
     return CheckAssetResponse(exists=False, item=None)

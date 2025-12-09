@@ -97,7 +97,11 @@ const Inventory: React.FC = () => {
         // Check for duplicate fixed asset number first
         if (data.fixed_asset_number) {
             try {
-                const checkResponse = await api.get(`/items/check-asset/${data.fixed_asset_number}`);
+                let url = `/items/check-asset/${data.fixed_asset_number}`;
+                if (editingItem) {
+                    url += `?exclude_item_id=${editingItem.id}`;
+                }
+                const checkResponse = await api.get(url);
                 if (checkResponse.data.exists) {
                     setDuplicateAssetItem(checkResponse.data.item);
                     setIsDuplicateAssetModalOpen(true);
@@ -653,7 +657,7 @@ const Inventory: React.FC = () => {
                                     // Verify duplicate asset if inputting new one (logic: only check if we are inputting)
                                     // Since this input only appears if !selectedItem.fixed_asset_number, we are definitely inputting a new one.
                                     try {
-                                        const checkResponse = await api.get(`/items/check-asset/${fixedAssetNumber}`);
+                                        const checkResponse = await api.get(`/items/check-asset/${fixedAssetNumber}?exclude_item_id=${selectedItem.id}`);
                                         if (checkResponse.data.exists) {
                                             setDuplicateAssetItem(checkResponse.data.item);
                                             setIsDuplicateAssetModalOpen(true);
