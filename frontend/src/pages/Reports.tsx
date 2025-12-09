@@ -330,6 +330,11 @@ const Reports: React.FC = () => {
         return date.toLocaleDateString('pt-BR');
     }
 
+    const formatCurrency = (val: number | null | undefined) => {
+        if (val === null || val === undefined) return '';
+        return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
     const handleGenerateReport = async (reportId: string, title: string) => {
         setLoading(true);
         setReportTitle(title);
@@ -347,57 +352,57 @@ const Reports: React.FC = () => {
 
                 if (reportId === 'A.1') { // Geral Detalhado
                     data = items.map((i: any) => ({
-                        ID: i.id, Descricao: i.description, Categoria: i.category, Filial: i.branch?.name,
-                        Status: i.status, Valor: i.invoice_value, ValorContabil: i.accounting_value,
-                        DataCompra: formatDate(i.purchase_date), NF: i.invoice_number, AtivoFixo: i.fixed_asset_number
+                        ID: i.id, Descrição: i.description, Categoria: i.category, Filial: i.branch?.name,
+                        Status: i.status, "Valor de Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value),
+                        "Data de Compra": formatDate(i.purchase_date), NF: i.invoice_number, "Ativo Fixo": i.fixed_asset_number
                     }));
                 } else if (reportId === 'A.2') { // Por Filial
                     data = items.sort((a: any, b: any) => (a.branch?.name || '').localeCompare(b.branch?.name || '')).map((i: any) => ({
-                        Filial: i.branch?.name, ID: i.id, Descricao: i.description, Categoria: i.category, Valor: i.invoice_value
+                        Filial: i.branch?.name, ID: i.id, Descrição: i.description, Categoria: i.category, "Valor de Compra": formatCurrency(i.invoice_value)
                     }));
                 } else if (reportId === 'A.3') { // Por Categoria
                      data = items.sort((a: any, b: any) => (a.category || '').localeCompare(b.category || '')).map((i: any) => ({
-                        Categoria: i.category, ID: i.id, Descricao: i.description, Filial: i.branch?.name, Valor: i.invoice_value
+                        Categoria: i.category, ID: i.id, Descrição: i.description, Filial: i.branch?.name, "Valor de Compra": formatCurrency(i.invoice_value)
                     }));
                 } else if (reportId === 'A.4') { // Por Responsável
                      data = items.filter((i: any) => i.responsible).map((i: any) => ({
-                        Responsavel: i.responsible?.name, ID: i.id, Descricao: i.description, Filial: i.branch?.name
+                        Responsável: i.responsible?.name, ID: i.id, Descrição: i.description, Filial: i.branch?.name
                     }));
                 } else if (reportId === 'A.5') { // Novos (30 dias)
                     const cutoff = new Date();
                     cutoff.setDate(cutoff.getDate() - 30);
                     data = items.filter((i: any) => new Date(i.purchase_date) >= cutoff).map((i: any) => ({
-                        DataCompra: formatDate(i.purchase_date), ID: i.id, Descricao: i.description, Valor: i.invoice_value
+                        "Data de Compra": formatDate(i.purchase_date), ID: i.id, Descrição: i.description, "Valor de Compra": formatCurrency(i.invoice_value)
                     }));
                 } else if (reportId === 'A.7') { // Em Trânsito
                     data = items.filter((i: any) => i.status === 'TRANSFER_PENDING').map((i: any) => ({
-                        ID: i.id, Descricao: i.description, Origem: i.branch?.name, DestinoID: i.transfer_target_branch_id
+                        ID: i.id, Descrição: i.description, Origem: i.branch?.name, "Destino (ID)": i.transfer_target_branch_id
                     }));
                 } else if (reportId === 'A.9') { // Etiquetas
                     data = items.filter((i: any) => i.fixed_asset_number).map((i: any) => ({
-                        AtivoFixo: i.fixed_asset_number, ID: i.id, Descricao: i.description, Filial: i.branch?.name
+                        "Ativo Fixo": i.fixed_asset_number, ID: i.id, Descrição: i.description, Filial: i.branch?.name
                     }));
                 } else if (reportId === 'B.1') { // Razão Auxiliar
                     data = items.map((i: any) => ({
-                        ID: i.id, AtivoFixo: i.fixed_asset_number, Descricao: i.description,
-                        ValorAquisicao: i.invoice_value, ValorContabil: i.accounting_value, DepreciacaoAcumulada: (i.invoice_value - (i.accounting_value || 0))
+                        ID: i.id, "Ativo Fixo": i.fixed_asset_number, Descrição: i.description,
+                        "Valor de Aquisição": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value), "Depreciação Acumulada": formatCurrency(i.invoice_value - (i.accounting_value || 0))
                     }));
                 } else if (reportId === 'B.2') { // Depreciação Acumulada
                     data = items.map((i: any) => ({
-                        ID: i.id, Descricao: i.description, DataCompra: formatDate(i.purchase_date), MesesUso: "Calc",
-                        DepreciacaoTotal: (i.invoice_value - (i.accounting_value || 0))
+                        ID: i.id, Descrição: i.description, "Data de Compra": formatDate(i.purchase_date), "Meses de Uso": "Calc",
+                        "Depreciação Total": formatCurrency(i.invoice_value - (i.accounting_value || 0))
                     }));
                 } else if (reportId === 'B.5') { // Totalmente Depreciados
                     data = items.filter((i: any) => i.accounting_value === 0).map((i: any) => ({
-                        ID: i.id, Descricao: i.description, DataCompra: formatDate(i.purchase_date), ValorOriginal: i.invoice_value
+                        ID: i.id, Descrição: i.description, "Data de Compra": formatDate(i.purchase_date), "Valor Original": formatCurrency(i.invoice_value)
                     }));
                 } else if (reportId === 'B.7') { // Baixas
                     data = items.filter((i: any) => i.status === 'WRITTEN_OFF').map((i: any) => ({
-                        ID: i.id, Descricao: i.description, DataBaixa: "Ver Logs", ValorPerdido: i.accounting_value
+                        ID: i.id, Descrição: i.description, "Data da Baixa": "Ver Logs", "Valor Baixado": formatCurrency(i.accounting_value)
                     }));
                 } else if (reportId === 'B.9') { // CAPEX
                     data = items.map((i: any) => ({
-                        DataCompra: formatDate(i.purchase_date), Valor: i.invoice_value, Descricao: i.description, Categoria: i.category
+                        "Data de Compra": formatDate(i.purchase_date), "Valor de Compra": formatCurrency(i.invoice_value), Descrição: i.description, Categoria: i.category
                     }));
                 } else if (reportId === 'B.10') { // Resumo Valores
                     // Aggregate
@@ -406,24 +411,24 @@ const Reports: React.FC = () => {
                         if (!agg[i.category]) agg[i.category] = 0;
                         agg[i.category] += i.invoice_value;
                     });
-                    data = Object.keys(agg).map(k => ({ Categoria: k, ValorTotal: agg[k] }));
+                    data = Object.keys(agg).map(k => ({ Categoria: k, "Valor Total": formatCurrency(agg[k]) }));
                 } else if (reportId === 'C.5') { // Sem Ativo Fixo
                     data = items.filter((i: any) => !i.fixed_asset_number).map((i: any) => ({
-                        ID: i.id, Descricao: i.description, Status: i.status
+                        ID: i.id, Descrição: i.description, Status: i.status
                     }));
                 } else if (reportId === 'C.6') { // Dados Incompletos
                     data = items.filter((i: any) => !i.serial_number || !i.invoice_number).map((i: any) => ({
-                        ID: i.id, Descricao: i.description, FaltaSerial: !i.serial_number, FaltaNota: !i.invoice_number
+                        ID: i.id, Descrição: i.description, "Falta Serial": !i.serial_number, "Falta Nota": !i.invoice_number
                     }));
                 } else if (reportId === 'D.1') { // Aging
                      const now = new Date();
                      data = items.map((i: any) => {
                          const days = Math.floor((now.getTime() - new Date(i.purchase_date).getTime()) / (1000 * 3600 * 24));
-                         return { ID: i.id, Descricao: i.description, DiasDesdeCompra: days, Anos: (days/365).toFixed(1) };
+                         return { ID: i.id, Descrição: i.description, "Dias desde Compra": days, Anos: (days/365).toFixed(1) };
                      });
                 } else if (reportId === 'F.4') { // Notas Fiscais
                     data = items.map((i: any) => ({
-                        NF: i.invoice_number, Data: formatDate(i.purchase_date), Valor: i.invoice_value, Fornecedor: "N/A", Item: i.description
+                        NF: i.invoice_number, Data: formatDate(i.purchase_date), "Valor de Compra": formatCurrency(i.invoice_value), Fornecedor: "N/A", Item: i.description
                     }));
                 }
             }
