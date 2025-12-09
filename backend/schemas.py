@@ -70,6 +70,20 @@ class CategoryResponse(CategoryBase):
     class Config:
         from_attributes = True
 
+# Supplier
+class SupplierBase(BaseModel):
+    name: str
+    cnpj: str
+
+class SupplierCreate(SupplierBase):
+    pass
+
+class SupplierResponse(SupplierBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
 # Log Forward Declaration
 class ItemSummary(BaseModel):
     id: int
@@ -102,6 +116,7 @@ class ItemBase(BaseModel):
     branch_id: int
     responsible_id: Optional[int] = None
     observations: Optional[str] = None
+    supplier_id: Optional[int] = None
 
 class ItemCreate(ItemBase):
     category_id: Optional[int] = None
@@ -114,6 +129,7 @@ class ItemUpdate(BaseModel):
     status: Optional[ItemStatus] = None
     fixed_asset_number: Optional[str] = None
     observations: Optional[str] = None
+    supplier_id: Optional[int] = None
 
 class ItemResponse(ItemBase):
     id: int
@@ -126,12 +142,14 @@ class ItemResponse(ItemBase):
     branch_id: Optional[int] = None
     fixed_asset_number: Optional[str] = None
     invoice_file: Optional[str] = None
+    supplier_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     branch: Optional[BranchResponse] = None
     transfer_target_branch_id: Optional[int] = None
     transfer_target_branch: Optional[BranchResponse] = None
     category_rel: Optional[CategoryResponse] = None
+    supplier: Optional[SupplierResponse] = None
     responsible: Optional[UserResponse] = None
     logs: List[LogResponse] = []
 
