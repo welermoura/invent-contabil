@@ -201,8 +201,13 @@ async def create_item(db: AsyncSession, item: schemas.ItemCreate):
     result = await db.execute(query)
     return result.scalars().first()
 
-async def get_item_by_fixed_asset(db: AsyncSession, fixed_asset_number: str):
-    query = select(models.Item).where(models.Item.fixed_asset_number == fixed_asset_number).options(
+async def get_item_by_fixed_asset(db: AsyncSession, fixed_asset_number: str, exclude_item_id: int = None):
+    query = select(models.Item).where(models.Item.fixed_asset_number == fixed_asset_number)
+
+    if exclude_item_id:
+        query = query.where(models.Item.id != exclude_item_id)
+
+    query = query.options(
         selectinload(models.Item.branch),
         selectinload(models.Item.category_rel),
         selectinload(models.Item.responsible)
