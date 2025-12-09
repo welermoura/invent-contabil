@@ -47,6 +47,7 @@ const Inventory: React.FC = () => {
 
     // Edit Item State
     const [editingItem, setEditingItem] = useState<any>(null);
+    const [approvalCategory, setApprovalCategory] = useState('');
 
     const fetchItems = async (search?: string, pageNum: number = 0) => {
         try {
@@ -199,6 +200,11 @@ const Inventory: React.FC = () => {
 
     const handleStatusChange = async (itemId: number, newStatus: string, fixedAsset?: string) => {
         try {
+            // Update category if changed during approval
+            if (newStatus === 'APPROVED' && approvalCategory && selectedItem && approvalCategory !== selectedItem.category) {
+                 await api.put(`/items/${itemId}`, { category: approvalCategory });
+            }
+
             let url = `/items/${itemId}/status?status_update=${newStatus}`;
             if (fixedAsset) {
                 url += `&fixed_asset_number=${fixedAsset}`;
@@ -217,6 +223,7 @@ const Inventory: React.FC = () => {
     const openApproveModal = (item: any) => {
         setSelectedItem(item);
         setFixedAssetNumber(item.fixed_asset_number || '');
+        setApprovalCategory(item.category);
         setIsApproveModalOpen(true);
     };
 
@@ -681,13 +688,13 @@ const Inventory: React.FC = () => {
                                     >
                                         Detalhes
                                     </button>
-                                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
+                                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER' || (user?.role === 'OPERATOR' && item.status === 'REJECTED')) && (
                                         <button
                                             onClick={() => openEditModal(item)}
                                             className="text-blue-600 hover:text-blue-800 ml-2 font-bold"
-                                            title="Editar Item"
+                                            title={item.status === 'REJECTED' ? "Corrigir Item" : "Editar Item"}
                                         >
-                                            Editar
+                                            {item.status === 'REJECTED' ? "Corrigir" : "Editar"}
                                         </button>
                                     )}
                                 </td>
@@ -699,10 +706,32 @@ const Inventory: React.FC = () => {
 
             {/* Approval Modal */}
             {isApproveModalOpen && selectedItem && (
-                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-                    <div className="bg-white p-5 rounded-md shadow-lg w-96">
-                        <h3 className="text-lg font-bold mb-4">Aprovar Item</h3>
-                        <p className="mb-4">Item: {selectedItem.description}</p>
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <h3 className="text-xl font-bold mb-4">Aprovar Item</h3>
+
+                        <div className="bg-gray-50 p-4 rounded mb-4 text-sm grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div><strong>Descrição:</strong> {selectedItem.description}</div>
+                            <div><strong>Filial:</strong> {selectedItem.branch?.name}</div>
+                            <div><strong>Valor:</strong> {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedItem.invoice_value)}</div>
+                            <div><strong>NF:</strong> {selectedItem.invoice_number}</div>
+                            <div><strong>Fornecedor:</strong> {selectedItem.supplier?.name || '-'}</div>
+                            <div><strong>Data:</strong> {new Date(selectedItem.purchase_date).toLocaleDateString('pt-BR')}</div>
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-gray-700 mb-2">Categoria</label>
+                            <select
+                                value={approvalCategory}
+                                onChange={(e) => setApprovalCategory(e.target.value)}
+                                className="w-full border rounded px-3 py-2"
+                            >
+                                {categories.map(cat => (
+                                    <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
                         <div className="mb-4">
                             <label className="block text-gray-700 mb-2">Ativo Fixo {selectedItem.fixed_asset_number ? '' : '(Obrigatório)'}</label>
                             {selectedItem.fixed_asset_number ? (
@@ -720,6 +749,12 @@ const Inventory: React.FC = () => {
                             )}
                         </div>
                         <div className="flex justify-end gap-2">
+                            <button
+                                onClick={() => handleStatusChange(selectedItem.id, 'REJECTED')}
+                                className="px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                            >
+                                Rejeitar
+                            </button>
                             <button
                                 onClick={() => setIsApproveModalOpen(false)}
                                 className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
@@ -759,10 +794,17 @@ const Inventory: React.FC = () => {
 
             {/* Write-off Modal */}
             {isWriteOffModalOpen && selectedItem && (
-                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-                    <div className="bg-white p-5 rounded-md shadow-lg w-96">
-                        <h3 className="text-lg font-bold mb-4">Solicitar Baixa</h3>
-                        <p className="mb-4">Item: {selectedItem.description}</p>
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-2xl">
+                        <h3 className="text-xl font-bold mb-4">Solicitar Baixa</h3>
+
+                        <div className="bg-gray-50 p-4 rounded mb-4 text-sm grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div><strong>Descrição:</strong> {selectedItem.description}</div>
+                            <div><strong>Ativo Fixo:</strong> {selectedItem.fixed_asset_number}</div>
+                            <div><strong>Filial:</strong> {selectedItem.branch?.name}</div>
+                            <div><strong>Valor Contábil:</strong> {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedItem.accounting_value || 0)}</div>
+                        </div>
+
                         <div className="mb-4">
                             <label className="block text-gray-700 mb-2">Justificativa (Obrigatório)</label>
                             <textarea
@@ -799,10 +841,17 @@ const Inventory: React.FC = () => {
 
             {/* Transfer Modal */}
             {isTransferModalOpen && selectedItem && (
-                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-                    <div className="bg-white p-5 rounded-md shadow-lg w-96">
-                        <h3 className="text-lg font-bold mb-4">Solicitar Transferência</h3>
-                        <p className="mb-4">Item: {selectedItem.description}</p>
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-2xl">
+                        <h3 className="text-xl font-bold mb-4">Solicitar Transferência</h3>
+
+                        <div className="bg-gray-50 p-4 rounded mb-4 text-sm grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div><strong>Descrição:</strong> {selectedItem.description}</div>
+                            <div><strong>Ativo Fixo:</strong> {selectedItem.fixed_asset_number}</div>
+                            <div><strong>Filial Atual:</strong> {selectedItem.branch?.name}</div>
+                            <div><strong>Responsável:</strong> {selectedItem.responsible?.name}</div>
+                        </div>
+
                         <div className="mb-4">
                             <label className="block text-gray-700 mb-2">Filial de Destino</label>
                             <select
