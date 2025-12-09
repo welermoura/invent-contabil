@@ -263,6 +263,14 @@ async def update_item_status(db: AsyncSession, item_id: int, status: models.Item
 
     return db_item
 
+async def get_all_logs(db: AsyncSession, limit: int = 1000):
+    query = select(models.Log).options(
+        selectinload(models.Log.user),
+        selectinload(models.Log.item)
+    ).order_by(models.Log.timestamp.desc()).limit(limit)
+    result = await db.execute(query)
+    return result.scalars().all()
+
 async def request_write_off(db: AsyncSession, item_id: int, justification: str, user_id: int):
     result = await db.execute(select(models.Item).where(models.Item.id == item_id))
     db_item = result.scalars().first()
