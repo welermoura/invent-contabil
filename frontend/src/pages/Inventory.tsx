@@ -375,7 +375,14 @@ const Inventory: React.FC = () => {
                         <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-gray-700">Descrição</label>
-                                <input {...register('description', { required: true })} className="w-full border rounded px-3 py-2" />
+                                <input
+                                    {...register('description', { required: true })}
+                                    onChange={(e) => {
+                                        e.target.value = e.target.value.toUpperCase();
+                                        register('description').onChange(e);
+                                    }}
+                                    className="w-full border rounded px-3 py-2"
+                                />
                             </div>
                             <div>
                                 <label className="block text-gray-700">Categoria</label>
@@ -413,15 +420,37 @@ const Inventory: React.FC = () => {
                             </div>
                             <div>
                                 <label className="block text-gray-700">Número Nota</label>
-                                <input {...register('invoice_number', { required: true })} className="w-full border rounded px-3 py-2" />
+                                <input
+                                    {...register('invoice_number', { required: true })}
+                                    onChange={(e) => {
+                                        e.target.value = e.target.value.replace(/\D/g, '');
+                                        register('invoice_number').onChange(e);
+                                    }}
+                                    className="w-full border rounded px-3 py-2"
+                                />
                             </div>
                             <div>
                                 <label className="block text-gray-700">Número Série</label>
-                                <input {...register('serial_number')} className="w-full border rounded px-3 py-2" />
+                                <input
+                                    {...register('serial_number')}
+                                    onChange={(e) => {
+                                        e.target.value = e.target.value.toUpperCase();
+                                        register('serial_number').onChange(e);
+                                    }}
+                                    className="w-full border rounded px-3 py-2"
+                                />
                             </div>
                             <div>
                                 <label className="block text-gray-700">Número Ativo Fixo</label>
-                                <input {...register('fixed_asset_number')} className="w-full border rounded px-3 py-2" placeholder="Opcional no cadastro" />
+                                <input
+                                    {...register('fixed_asset_number')}
+                                    onChange={(e) => {
+                                        e.target.value = e.target.value.replace(/\D/g, '');
+                                        register('fixed_asset_number').onChange(e);
+                                    }}
+                                    className="w-full border rounded px-3 py-2"
+                                    placeholder="Opcional no cadastro"
+                                />
                             </div>
                             <div>
                                 <label className="block text-gray-700">Filial</label>
@@ -448,7 +477,14 @@ const Inventory: React.FC = () => {
                             </div>
                              <div className="col-span-2">
                                 <label className="block text-gray-700">Observações</label>
-                                <textarea {...register('observations')} className="w-full border rounded px-3 py-2" />
+                                <textarea
+                                    {...register('observations')}
+                                    onChange={(e) => {
+                                        e.target.value = e.target.value.toUpperCase();
+                                        register('observations').onChange(e);
+                                    }}
+                                    className="w-full border rounded px-3 py-2"
+                                />
                             </div>
                             <div className="col-span-2 flex justify-end gap-2">
                                 <button
@@ -635,9 +671,9 @@ const Inventory: React.FC = () => {
                                 <input
                                     type="text"
                                     value={fixedAssetNumber}
-                                    onChange={(e) => setFixedAssetNumber(e.target.value)}
+                                    onChange={(e) => setFixedAssetNumber(e.target.value.replace(/\D/g, ''))}
                                     className="w-full border rounded px-3 py-2"
-                                    placeholder="Digite o número do ativo"
+                                    placeholder="Digite o número do ativo (Apenas números)"
                                 />
                             )}
                         </div>
