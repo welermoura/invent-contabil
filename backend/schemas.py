@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, computed_field
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, date
 from backend.models import UserRole, ItemStatus
 
 # Token
@@ -126,8 +126,6 @@ class ItemResponse(ItemBase):
     responsible: Optional[UserResponse] = None
     logs: List[LogResponse] = []
 
-    # accounting_value: Optional[float] = None  <-- Removed field definition
-
     class Config:
         from_attributes = True
 
@@ -144,31 +142,36 @@ class ItemResponse(ItemBase):
         if self.category_rel:
             depreciation_months = self.category_rel.depreciation_months
 
-        if not depreciation_months:
+        # Se não houver depreciação configurada ou for 0, mantém o valor original
+        if not depreciation_months or depreciation_months <= 0:
             return self.invoice_value
 
         from dateutil.relativedelta import relativedelta
 
-        start_date = self.purchase_date
-        # If start_date has tzinfo, use now with tzinfo
-        if isinstance(start_date, datetime) and start_date.tzinfo:
-            now = datetime.now(start_date.tzinfo)
-        else:
-            now = datetime.now()
+        # Normaliza datas para evitar problemas com timezones e frações de dia (usa apenas a data)
+        start_date = self.purchase_date.date() if isinstance(self.purchase_date, datetime) else self.purchase_date
+        today = date.today()
 
+        # Calcula data final baseado nos meses
         end_date = start_date + relativedelta(months=depreciation_months)
 
-        total_lifespan = (end_date - start_date).total_seconds()
-        elapsed = (now - start_date).total_seconds()
+        # Calcula dias totais de vida útil e dias passados
+        total_days = (end_date - start_date).days
+        elapsed_days = (today - start_date).days
 
-        if total_lifespan <= 0:
+        if total_days <= 0:
             return 0.0
 
-        if elapsed >= total_lifespan:
+        if elapsed_days >= total_days:
             return 0.0
 
-        if elapsed < 0:
+        if elapsed_days < 0:
             return self.invoice_value
 
-        remaining_ratio = 1 - (elapsed / total_lifespan)
-        return round(self.invoice_value * remaining_ratio, 2)
+        # Cálculo linear por dia
+        remaining_ratio = 1 - (elapsed_days / total_days)
+
+        # Garante que não retorne negativo (embora a checagem acima já deva prevenir)
+        final_value = max(0.0, self.invoice_value * remaining_ratio)
+
+        return round(final_value, 2)
