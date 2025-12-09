@@ -72,6 +72,16 @@ class Category(Base):
 
     items = relationship("Item", back_populates="category_rel", lazy="selectin")
 
+class Supplier(Base):
+    __tablename__ = "suppliers"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    cnpj = Column(String, unique=True, index=True)
+
+    items = relationship("Item", back_populates="supplier", lazy="selectin")
+
 class Item(Base):
     __tablename__ = "items"
     __table_args__ = {'extend_existing': True}
@@ -86,6 +96,7 @@ class Item(Base):
     invoice_file = Column(String, nullable=True)
     serial_number = Column(String, index=True, nullable=True)
     fixed_asset_number = Column(String, index=True, nullable=True)
+    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
     branch_id = Column(Integer, ForeignKey("branches.id"))
     transfer_target_branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True)
     responsible_id = Column(Integer, ForeignKey("users.id"), nullable=True)
@@ -97,6 +108,7 @@ class Item(Base):
     branch = relationship("Branch", foreign_keys=[branch_id], back_populates="items", lazy="selectin")
     transfer_target_branch = relationship("Branch", foreign_keys=[transfer_target_branch_id], lazy="selectin")
     category_rel = relationship("Category", back_populates="items", lazy="selectin")
+    supplier = relationship("Supplier", back_populates="items", lazy="selectin")
     responsible = relationship("User", back_populates="items_responsible", lazy="selectin")
     logs = relationship("Log", back_populates="item", lazy="selectin")
 

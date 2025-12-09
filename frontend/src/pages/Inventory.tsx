@@ -18,6 +18,12 @@ const Inventory: React.FC = () => {
     const [searchParams] = useSearchParams();
     const [invoiceValueDisplay, setInvoiceValueDisplay] = useState('');
 
+    // Supplier Selection State
+    const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+    const [suppliers, setSuppliers] = useState<any[]>([]);
+    const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
+    const [supplierSearch, setSupplierSearch] = useState('');
+
     // Approval Modal State
     const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -87,6 +93,15 @@ const Inventory: React.FC = () => {
         }
     }
 
+    const fetchSuppliers = async (search: string = '') => {
+        try {
+            const response = await api.get('/suppliers/', { params: { search } });
+            setSuppliers(response.data);
+        } catch (error) {
+            console.error("Erro ao carregar fornecedores", error);
+        }
+    }
+
     useEffect(() => {
         fetchItems(undefined, page);
         fetchBranches();
@@ -123,6 +138,7 @@ const Inventory: React.FC = () => {
         formData.append('invoice_value', data.invoice_value);
         formData.append('invoice_number', data.invoice_number);
         formData.append('branch_id', data.branch_id);
+        formData.append('supplier_id', data.supplier_id);
         // Optional fields
         if (data.serial_number) formData.append('serial_number', data.serial_number);
         if (data.fixed_asset_number) formData.append('fixed_asset_number', data.fixed_asset_number);
@@ -146,6 +162,7 @@ const Inventory: React.FC = () => {
                     purchase_date: data.purchase_date,
                     invoice_value: parseFloat(data.invoice_value), // Ensure float
                     invoice_number: data.invoice_number,
+                    supplier_id: data.supplier_id,
                     // branch_id is NOT in ItemUpdate schema usually?
                     // Let's check backend schema.
                     // ItemUpdate: description, category, invoice_value, status, fixed_asset_number, observations.
@@ -169,6 +186,7 @@ const Inventory: React.FC = () => {
             reset();
             setIsCreateModalOpen(false);
             setEditingItem(null);
+            setSelectedSupplier(null);
             setInvoiceValueDisplay('');
             fetchItems();
         } catch (error) {
@@ -235,6 +253,14 @@ const Inventory: React.FC = () => {
         setValue('fixed_asset_number', item.fixed_asset_number);
         setValue('branch_id', item.branch_id); // Cannot update branch via edit, but needed for form validation if required
         setValue('observations', item.observations);
+
+        if (item.supplier) {
+            setSelectedSupplier(item.supplier);
+            setValue('supplier_id', item.supplier.id);
+        } else {
+            setSelectedSupplier(null);
+            setValue('supplier_id', '');
+        }
 
         setIsCreateModalOpen(true); // Reuse create modal
     }
@@ -394,6 +420,25 @@ const Inventory: React.FC = () => {
                                 </select>
                             </div>
                             <div>
+                                <label className="block text-gray-700">Fornecedor</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        readOnly
+                                        value={selectedSupplier ? `${selectedSupplier.name} (${selectedSupplier.cnpj})` : ''}
+                                        placeholder="Selecione um fornecedor"
+                                        className="w-full border rounded px-3 py-2 bg-gray-100 cursor-not-allowed"
+                                    />
+                                    <input type="hidden" {...register('supplier_id', { required: true })} />
+                                    <button
+                                        type="button"
+                                        onClick={() => { setIsSupplierModalOpen(true); fetchSuppliers(); }}
+                                        className="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 whitespace-nowrap"
+                                    >
+                                        Buscar
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
                                 <label className="block text-gray-700">Data Compra</label>
                                 <input type="date" {...register('purchase_date', { required: true })} className="w-full border rounded px-3 py-2" />
                             </div>
@@ -494,6 +539,7 @@ const Inventory: React.FC = () => {
                                         setEditingItem(null);
                                         reset();
                                         setInvoiceValueDisplay('');
+                                        setSelectedSupplier(null);
                                     }}
                                     className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
                                 >
@@ -810,6 +856,7 @@ const Inventory: React.FC = () => {
                             <div><strong>ID:</strong> {selectedItem.id}</div>
                             <div><strong>Descrição:</strong> {selectedItem.description}</div>
                             <div><strong>Categoria:</strong> {selectedItem.category}</div>
+                            <div><strong>Fornecedor:</strong> {selectedItem.supplier ? `${selectedItem.supplier.name} (${selectedItem.supplier.cnpj})` : '-'}</div>
                             <div><strong>Filial Atual:</strong> {selectedItem.branch?.name || '-'}</div>
                             <div><strong>Valor da NF:</strong> {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedItem.invoice_value)}</div>
                             <div><strong>Valor Contábil:</strong> {selectedItem.accounting_value !== undefined && selectedItem.accounting_value !== null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedItem.accounting_value) : '-'}</div>
@@ -856,6 +903,65 @@ const Inventory: React.FC = () => {
                             >
                                 Fechar
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Supplier Search Modal */}
+            {isSupplierModalOpen && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-[60]">
+                    <div className="bg-white p-6 rounded-md shadow-lg w-full max-w-2xl">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-bold">Selecionar Fornecedor</h3>
+                            <button onClick={() => setIsSupplierModalOpen(false)} className="text-gray-500 text-xl">&times;</button>
+                        </div>
+                        <div className="mb-4 flex gap-2">
+                            <input
+                                type="text"
+                                placeholder="Buscar por Nome ou CNPJ..."
+                                className="w-full border rounded px-3 py-2"
+                                value={supplierSearch}
+                                onChange={(e) => {
+                                    setSupplierSearch(e.target.value);
+                                    fetchSuppliers(e.target.value);
+                                }}
+                            />
+                        </div>
+                        <div className="overflow-y-auto max-h-64 border rounded">
+                            <table className="min-w-full text-sm">
+                                <thead className="bg-gray-100">
+                                    <tr>
+                                        <th className="px-4 py-2 text-left">Nome</th>
+                                        <th className="px-4 py-2 text-left">CNPJ</th>
+                                        <th className="px-4 py-2 text-left">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {suppliers.map(s => (
+                                        <tr key={s.id} className="border-t hover:bg-gray-50">
+                                            <td className="px-4 py-2">{s.name}</td>
+                                            <td className="px-4 py-2">{s.cnpj}</td>
+                                            <td className="px-4 py-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedSupplier(s);
+                                                        setValue('supplier_id', s.id);
+                                                        setIsSupplierModalOpen(false);
+                                                    }}
+                                                    className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
+                                                >
+                                                    Selecionar
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {suppliers.length === 0 && (
+                                        <tr><td colSpan={3} className="px-4 py-2 text-center text-gray-500">Nenhum fornecedor encontrado.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

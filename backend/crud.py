@@ -161,12 +161,57 @@ async def delete_category(db: AsyncSession, category_id: int):
         return True
     return False
 
+# Suppliers
+async def get_suppliers(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
+    query = select(models.Supplier)
+    if search:
+        search_filter = f"%{search}%"
+        query = query.where(
+            or_(
+                models.Supplier.name.ilike(search_filter),
+                models.Supplier.cnpj.ilike(search_filter)
+            )
+        )
+    result = await db.execute(query.offset(skip).limit(limit))
+    return result.scalars().all()
+
+async def get_supplier_by_cnpj(db: AsyncSession, cnpj: str):
+    result = await db.execute(select(models.Supplier).where(models.Supplier.cnpj == cnpj))
+    return result.scalars().first()
+
+async def create_supplier(db: AsyncSession, supplier: schemas.SupplierCreate):
+    db_supplier = models.Supplier(**supplier.dict())
+    db.add(db_supplier)
+    await db.commit()
+    await db.refresh(db_supplier)
+    return db_supplier
+
+async def update_supplier(db: AsyncSession, supplier_id: int, supplier_update: schemas.SupplierBase):
+    result = await db.execute(select(models.Supplier).where(models.Supplier.id == supplier_id))
+    db_supplier = result.scalars().first()
+    if db_supplier:
+        if supplier_update.name: db_supplier.name = supplier_update.name
+        if supplier_update.cnpj: db_supplier.cnpj = supplier_update.cnpj
+        await db.commit()
+        await db.refresh(db_supplier)
+    return db_supplier
+
+async def delete_supplier(db: AsyncSession, supplier_id: int):
+    result = await db.execute(select(models.Supplier).where(models.Supplier.id == supplier_id))
+    db_supplier = result.scalars().first()
+    if db_supplier:
+        await db.delete(db_supplier)
+        await db.commit()
+        return True
+    return False
+
 # Items
 async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: str = None, category: str = None, branch_id: int = None, search: str = None, allowed_branch_ids: list[int] = None):
     query = select(models.Item).options(
         selectinload(models.Item.branch),
         selectinload(models.Item.transfer_target_branch),
         selectinload(models.Item.category_rel),
+        selectinload(models.Item.supplier),
         selectinload(models.Item.responsible)
     )
     if status:
@@ -196,6 +241,7 @@ async def create_item(db: AsyncSession, item: schemas.ItemCreate):
     query = select(models.Item).where(models.Item.id == db_item.id).options(
         selectinload(models.Item.branch),
         selectinload(models.Item.category_rel),
+        selectinload(models.Item.supplier),
         selectinload(models.Item.responsible)
     )
     result = await db.execute(query)
@@ -210,6 +256,7 @@ async def get_item_by_fixed_asset(db: AsyncSession, fixed_asset_number: str, exc
     query = query.options(
         selectinload(models.Item.branch),
         selectinload(models.Item.category_rel),
+        selectinload(models.Item.supplier),
         selectinload(models.Item.responsible)
     )
     result = await db.execute(query)
@@ -256,6 +303,7 @@ async def update_item_status(db: AsyncSession, item_id: int, status: models.Item
             selectinload(models.Item.branch),
             selectinload(models.Item.transfer_target_branch),
             selectinload(models.Item.category_rel),
+            selectinload(models.Item.supplier),
             selectinload(models.Item.responsible)
         )
         result = await db.execute(query)
@@ -308,6 +356,8 @@ async def update_item(db: AsyncSession, item_id: int, item: schemas.ItemUpdate):
             db_item.fixed_asset_number = item.fixed_asset_number
         if item.observations is not None:
             db_item.observations = item.observations
+        if item.supplier_id is not None:
+            db_item.supplier_id = item.supplier_id
 
         await db.commit()
 
@@ -316,6 +366,7 @@ async def update_item(db: AsyncSession, item_id: int, item: schemas.ItemUpdate):
             selectinload(models.Item.branch),
             selectinload(models.Item.transfer_target_branch),
             selectinload(models.Item.category_rel),
+            selectinload(models.Item.supplier),
             selectinload(models.Item.responsible)
         )
         result = await db.execute(query)

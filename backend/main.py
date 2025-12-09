@@ -16,7 +16,7 @@ if not hasattr(bcrypt, '__about__'):
     except Exception:
         pass
 
-from backend.routers import auth, users, items, dashboard, reports, branches, categories, logs
+from backend.routers import auth, users, items, dashboard, reports, branches, categories, logs, suppliers
 from backend.initial_data import init_db
 from backend.websocket_manager import manager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -84,6 +84,7 @@ app.include_router(reports.router)
 app.include_router(branches.router)
 app.include_router(categories.router)
 app.include_router(logs.router)
+app.include_router(suppliers.router)
 
 @app.get("/")
 async def read_root():
