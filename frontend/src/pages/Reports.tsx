@@ -5,6 +5,7 @@ import api from '../api';
 // --- DATA TABLE COMPONENT ---
 const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = ({ data, title, onBack }) => {
     const [filter, setFilter] = useState('');
+    const [columnFilters, setColumnFilters] = useState<{ [key: string]: string }>({});
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
     const [page, setPage] = useState(0);
     const LIMIT = 50;
@@ -23,10 +24,22 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
 
     const headers = Object.keys(data[0]);
 
-    // Filter
-    const filteredData = data.filter(row =>
-        headers.some(key => String(row[key]).toLowerCase().includes(filter.toLowerCase()))
-    );
+    // Filter Logic
+    const filteredData = data.filter(row => {
+        // Global Filter
+        const matchesGlobal = filter === '' || headers.some(key =>
+            String(row[key] || '').toLowerCase().includes(filter.toLowerCase())
+        );
+
+        // Column Filters
+        const matchesColumns = headers.every(key => {
+            const colFilter = columnFilters[key];
+            if (!colFilter) return true;
+            return String(row[key] || '').toLowerCase().includes(colFilter.toLowerCase());
+        });
+
+        return matchesGlobal && matchesColumns;
+    });
 
     // Sort
     const sortedData = [...filteredData];
@@ -48,6 +61,11 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
             direction = 'desc';
         }
         setSortConfig({ key, direction });
+    };
+
+    const handleColumnFilterChange = (key: string, value: string) => {
+        setColumnFilters(prev => ({ ...prev, [key]: value }));
+        setPage(0); // Reset page on filter change
     };
 
     const downloadCSV = () => {
@@ -95,36 +113,51 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
                 </div>
             </div>
 
-            <div className="overflow-x-auto border rounded">
-                <table className="min-w-full text-sm text-left text-gray-500">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+            <div className="overflow-x-auto border rounded max-h-[70vh]">
+                <table className="min-w-full text-sm text-left text-gray-500 relative">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10 shadow-sm">
                         <tr>
                             {headers.map(header => (
-                                <th
-                                    key={header}
-                                    className="px-6 py-3 cursor-pointer hover:bg-gray-100 whitespace-nowrap"
-                                    onClick={() => requestSort(header)}
-                                >
-                                    <div className="flex items-center gap-1">
+                                <th key={header} className="px-6 py-3 bg-gray-100">
+                                    <div
+                                        className="flex items-center gap-1 cursor-pointer hover:text-blue-600 mb-2"
+                                        onClick={() => requestSort(header)}
+                                    >
                                         {header}
-                                        {sortConfig?.key === header && (
+                                        {sortConfig?.key === header ? (
                                             <span>{sortConfig.direction === 'asc' ? '▲' : '▼'}</span>
-                                        )}
+                                        ) : <span className="text-gray-300">↕</span>}
                                     </div>
+                                    <input
+                                        type="text"
+                                        placeholder={`Filtrar ${header}`}
+                                        className="w-full px-2 py-1 text-xs border rounded font-normal normal-case focus:outline-none focus:border-blue-500"
+                                        value={columnFilters[header] || ''}
+                                        onChange={(e) => handleColumnFilterChange(header, e.target.value)}
+                                        onClick={(e) => e.stopPropagation()} // Prevent sort trigger
+                                    />
                                 </th>
                             ))}
                         </tr>
                     </thead>
                     <tbody>
-                        {paginatedData.map((row, idx) => (
-                            <tr key={idx} className="bg-white border-b hover:bg-gray-50">
-                                {headers.map(header => (
-                                    <td key={header} className="px-6 py-4 truncate max-w-xs" title={String(row[header])}>
-                                        {String(row[header])}
-                                    </td>
-                                ))}
+                        {paginatedData.length > 0 ? (
+                            paginatedData.map((row, idx) => (
+                                <tr key={idx} className="bg-white border-b hover:bg-gray-50">
+                                    {headers.map(header => (
+                                        <td key={header} className="px-6 py-4 truncate max-w-xs" title={String(row[header])}>
+                                            {String(row[header])}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan={headers.length} className="px-6 py-8 text-center text-gray-500">
+                                    Nenhum registro encontrado com os filtros atuais.
+                                </td>
                             </tr>
-                        ))}
+                        )}
                     </tbody>
                 </table>
             </div>
