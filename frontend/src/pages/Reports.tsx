@@ -1,8 +1,160 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api';
 
-// Estrutura do Menu
+// --- DATA TABLE COMPONENT ---
+const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = ({ data, title, onBack }) => {
+    const [filter, setFilter] = useState('');
+    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+    const [page, setPage] = useState(0);
+    const LIMIT = 50;
+
+    if (!data || data.length === 0) {
+        return (
+            <div className="p-6 bg-white rounded shadow">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
+                    <button onClick={onBack} className="bg-gray-500 text-white px-4 py-2 rounded">Voltar</button>
+                </div>
+                <p className="text-gray-500">Nenhum dado encontrado para este relatório.</p>
+            </div>
+        );
+    }
+
+    const headers = Object.keys(data[0]);
+
+    // Filter
+    const filteredData = data.filter(row =>
+        headers.some(key => String(row[key]).toLowerCase().includes(filter.toLowerCase()))
+    );
+
+    // Sort
+    const sortedData = [...filteredData];
+    if (sortConfig) {
+        sortedData.sort((a, b) => {
+            if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+
+    // Pagination
+    const totalPages = Math.ceil(sortedData.length / LIMIT);
+    const paginatedData = sortedData.slice(page * LIMIT, (page + 1) * LIMIT);
+
+    const requestSort = (key: string) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const downloadCSV = () => {
+        const csvContent = [
+            headers.join(';'),
+            ...sortedData.map(row => headers.map(fieldName => {
+                let val = row[fieldName];
+                if (val === null || val === undefined) return '';
+                val = String(val).replace(/"/g, '""');
+                if (val.search(/("|,|\n|;)/g) >= 0) val = `"${val}"`;
+                return val;
+            }).join(';'))
+        ].join('\r\n');
+
+        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `${title.replace(/[^a-zA-Z0-9]/g, '_')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    return (
+        <div className="p-6 bg-white rounded shadow min-h-screen">
+            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                <div className="flex items-center gap-4">
+                    <button onClick={onBack} className="bg-gray-200 text-gray-700 px-3 py-2 rounded hover:bg-gray-300">
+                        &larr; Voltar
+                    </button>
+                    <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
+                </div>
+                <div className="flex gap-2 w-full md:w-auto">
+                    <input
+                        type="text"
+                        placeholder="Filtrar dados..."
+                        className="border px-3 py-2 rounded flex-grow"
+                        value={filter}
+                        onChange={e => setFilter(e.target.value)}
+                    />
+                    <button onClick={downloadCSV} className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 whitespace-nowrap">
+                        Exportar CSV
+                    </button>
+                </div>
+            </div>
+
+            <div className="overflow-x-auto border rounded">
+                <table className="min-w-full text-sm text-left text-gray-500">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                            {headers.map(header => (
+                                <th
+                                    key={header}
+                                    className="px-6 py-3 cursor-pointer hover:bg-gray-100 whitespace-nowrap"
+                                    onClick={() => requestSort(header)}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        {header}
+                                        {sortConfig?.key === header && (
+                                            <span>{sortConfig.direction === 'asc' ? '▲' : '▼'}</span>
+                                        )}
+                                    </div>
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {paginatedData.map((row, idx) => (
+                            <tr key={idx} className="bg-white border-b hover:bg-gray-50">
+                                {headers.map(header => (
+                                    <td key={header} className="px-6 py-4 truncate max-w-xs" title={String(row[header])}>
+                                        {String(row[header])}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <div className="flex justify-between items-center mt-4">
+                <span className="text-gray-600">
+                    Mostrando {page * LIMIT + 1} a {Math.min((page + 1) * LIMIT, sortedData.length)} de {sortedData.length} registros
+                </span>
+                <div className="flex gap-2">
+                    <button
+                        disabled={page === 0}
+                        onClick={() => setPage(p => p - 1)}
+                        className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+                    >
+                        Anterior
+                    </button>
+                    <button
+                        disabled={page >= totalPages - 1}
+                        onClick={() => setPage(p => p + 1)}
+                        className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+                    >
+                        Próxima
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Estrutura do Menu (Mantida, com ajustes)
 const reportsMenu = [
     {
         category: "A. Relatórios Operacionais e de Estoque",
@@ -73,42 +225,16 @@ const Reports: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+    const [reportData, setReportData] = useState<any[] | null>(null);
+    const [reportTitle, setReportTitle] = useState("");
 
     const toggleCategory = (category: string) => {
         setExpandedCategory(expandedCategory === category ? null : category);
     };
 
-    const downloadCSV = (data: any[], filename: string) => {
-        if (!data || data.length === 0) {
-            alert("Nenhum dado encontrado para gerar o relatório.");
-            return;
-        }
-
-        const headers = Object.keys(data[0]);
-        const csvContent = [
-            headers.join(';'),
-            ...data.map(row => headers.map(fieldName => {
-                let val = row[fieldName];
-                if (val === null || val === undefined) return '';
-                val = String(val).replace(/"/g, '""'); // Escape quotes
-                if (val.search(/("|,|\n|;)/g) >= 0) val = `"${val}"`;
-                return val;
-            }).join(';'))
-        ].join('\r\n');
-
-        // Latin1/ANSI encoding trick for Excel compatibility in Brazil
-        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `${filename}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
     const handleGenerateReport = async (reportId: string, title: string) => {
         setLoading(true);
+        setReportTitle(title);
         try {
             let data: any[] = [];
 
@@ -248,7 +374,7 @@ const Reports: React.FC = () => {
                 }));
             }
 
-            downloadCSV(data, title.replace(/[^a-zA-Z0-9]/g, '_'));
+            setReportData(data);
         } catch (error) {
             console.error(error);
             alert("Erro ao gerar relatório. Verifique permissões ou conexão.");
@@ -268,6 +394,10 @@ const Reports: React.FC = () => {
             hasMatch: filteredItems.length > 0 || section.category.toLowerCase().includes(searchTerm.toLowerCase())
         };
     }).filter(section => section.hasMatch);
+
+    if (reportData) {
+        return <DataTable data={reportData} title={reportTitle} onBack={() => setReportData(null)} />;
+    }
 
     return (
         <div className="p-6 bg-gray-50 min-h-full">
