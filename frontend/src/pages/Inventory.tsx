@@ -326,13 +326,13 @@ const Inventory: React.FC = () => {
                     <button
                         onClick={() => {
                             // CSV Export Logic (Simplificado para manter funcionalidade)
-                            const csvHeader = "ID,Descrição,Categoria,Status,Valor,Data de Compra,Número da Nota,Número de Série,Ativo Fixo,Filial,Responsável,Observações,Arquivo da Nota,Histórico de Ações\n";
+                            const csvHeader = "ID,Descrição,Categoria,Status,Valor Compra,Valor Contábil,Data de Compra,Número da Nota,Número de Série,Ativo Fixo,Filial,Responsável,Observações,Arquivo da Nota,Histórico de Ações\n";
                             const csvBody = items.map(item => {
                                 const logsStr = item.logs && item.logs.length > 0
                                     ? item.logs.map((log: any) => `[${new Date(log.timestamp).toLocaleDateString()}] ${log.user?.name || 'Sistema'}: ${translateLogAction(log.action)}`).join('; ')
                                     : "Sem histórico";
                                 const purchaseDate = item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '';
-                                return `${item.id},"${item.description}","${item.category}",${translateStatus(item.status)},${item.invoice_value},"${purchaseDate}","${item.invoice_number || ''}","${item.serial_number || ''}","${item.fixed_asset_number || ''}","${item.branch?.name || ''}","${item.responsible?.name || ''}","${item.observations || ''}","${item.invoice_file || ''}","${logsStr}"`;
+                                return `${item.id},"${item.description}","${item.category}",${translateStatus(item.status)},${item.invoice_value},${item.accounting_value || 0},"${purchaseDate}","${item.invoice_number || ''}","${item.serial_number || ''}","${item.fixed_asset_number || ''}","${item.branch?.name || ''}","${item.responsible?.name || ''}","${item.observations || ''}","${item.invoice_file || ''}","${logsStr}"`;
                             }).join("\n");
                             const csvContent = csvHeader + csvBody;
                             const latin1Bytes = new Uint8Array(csvContent.length);
@@ -370,7 +370,8 @@ const Inventory: React.FC = () => {
                                 <th className="px-6 py-4">Descrição</th>
                                 <th className="px-6 py-4">Categoria</th>
                                 <th className="px-6 py-4">Filial</th>
-                                <th className="px-6 py-4">Valor</th>
+                                <th className="px-6 py-4">Valor Compra</th>
+                                <th className="px-6 py-4">Valor Contábil</th>
                                 <th className="px-6 py-4">Status</th>
                                 <th className="px-6 py-4 text-right">Ações</th>
                             </tr>
@@ -383,6 +384,11 @@ const Inventory: React.FC = () => {
                                     <td className="px-6 py-4 text-slate-500">{item.branch?.name || '-'}</td>
                                     <td className="px-6 py-4 font-medium text-slate-700">
                                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.invoice_value)}
+                                    </td>
+                                    <td className="px-6 py-4 font-medium text-slate-600">
+                                        {item.accounting_value !== undefined
+                                            ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.accounting_value)
+                                            : '-'}
                                     </td>
                                     <td className="px-6 py-4">
                                         <StatusBadge status={item.status} />
