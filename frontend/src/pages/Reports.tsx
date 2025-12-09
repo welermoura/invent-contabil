@@ -1,10 +1,22 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import api from '../api';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { translateStatus, translateLogAction } from '../utils/translations';
+import {
+    FileText,
+    Search,
+    ChevronDown,
+    ChevronUp,
+    ArrowLeft,
+    Download,
+    Filter,
+    BarChart3,
+    Table as TableIcon,
+    FileSpreadsheet
+} from 'lucide-react';
 
 // --- DATA TABLE COMPONENT ---
 const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = ({ data, title, onBack }) => {
@@ -13,15 +25,23 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
     const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
     const [page, setPage] = useState(0);
     const LIMIT = 50;
+    const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
     if (!data || data.length === 0) {
         return (
-            <div className="p-6 bg-white rounded shadow">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
-                    <button onClick={onBack} className="bg-gray-500 text-white px-4 py-2 rounded">Voltar</button>
+            <div className="p-8 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+                <div className="bg-gray-50 p-4 rounded-full mb-4">
+                    <FileText className="w-8 h-8 text-gray-400" />
                 </div>
-                <p className="text-gray-500">Nenhum dado encontrado para este relatório.</p>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">{title}</h2>
+                <p className="text-gray-500 mb-6">Nenhum dado encontrado para este relatório com os filtros atuais.</p>
+                <button
+                    onClick={onBack}
+                    className="flex items-center gap-2 text-indigo-600 hover:text-indigo-800 font-medium px-4 py-2 hover:bg-indigo-50 rounded-lg transition-colors"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    Voltar ao Menu
+                </button>
             </div>
         );
     }
@@ -69,7 +89,7 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
 
     const handleColumnFilterChange = (key: string, value: string) => {
         setColumnFilters(prev => ({ ...prev, [key]: value }));
-        setPage(0); // Reset page on filter change
+        setPage(0);
     };
 
     const downloadCSV = () => {
@@ -115,89 +135,119 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
             startY: 20,
             theme: 'grid',
             styles: { fontSize: 7, cellPadding: 1 },
-            headStyles: { fillColor: [41, 128, 185] }
+            headStyles: { fillColor: [79, 70, 229] } // Indigo-600
         });
 
         doc.save(`${title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
     };
 
-    const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
-
     return (
-        <div className="p-6 bg-white rounded shadow min-h-screen">
-            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                <div className="flex items-center gap-4">
-                    <button onClick={onBack} className="bg-gray-200 text-gray-700 px-3 py-2 rounded hover:bg-gray-300">
-                        &larr; Voltar
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col h-[calc(100vh-6rem)]">
+            {/* Header */}
+            <div className="p-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-50/50 rounded-t-xl">
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                    <button
+                        onClick={onBack}
+                        className="p-2 hover:bg-white hover:shadow-sm rounded-lg text-gray-600 transition-all border border-transparent hover:border-gray-200"
+                        title="Voltar"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-indigo-600" />
+                            {title}
+                        </h2>
+                        <span className="text-xs text-gray-500 font-medium bg-gray-100 px-2 py-0.5 rounded-full mt-1 inline-block">
+                            {sortedData.length} registros encontrados
+                        </span>
+                    </div>
                 </div>
+
                 <div className="flex gap-2 w-full md:w-auto items-center">
-                    <input
-                        type="text"
-                        placeholder="Filtrar dados..."
-                        className="border px-3 py-2 rounded flex-grow"
-                        value={filter}
-                        onChange={e => setFilter(e.target.value)}
-                    />
+                    <div className="relative flex-grow md:flex-grow-0">
+                        <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                            type="text"
+                            placeholder="Busca global..."
+                            className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-full"
+                            value={filter}
+                            onChange={e => setFilter(e.target.value)}
+                        />
+                    </div>
 
                     <div className="relative">
                         <button
                             onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-                            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 whitespace-nowrap flex items-center gap-2"
+                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm flex items-center gap-2 text-sm font-medium"
                         >
-                            Exportar <span>▼</span>
+                            <Download className="w-4 h-4" />
+                            <span className="hidden sm:inline">Exportar</span>
+                            <ChevronDown className="w-3 h-3" />
                         </button>
                         {isExportMenuOpen && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 border">
-                                <button onClick={() => { downloadExcel(); setIsExportMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    Excel (.xlsx)
-                                </button>
-                                <button onClick={() => { downloadCSV(); setIsExportMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    CSV (.csv)
-                                </button>
-                                <button onClick={() => { downloadPDF(); setIsExportMenuOpen(false); }} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    PDF (.pdf)
-                                </button>
-                            </div>
+                            <>
+                                <div
+                                    className="fixed inset-0 z-10"
+                                    onClick={() => setIsExportMenuOpen(false)}
+                                ></div>
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-1 z-20 border border-gray-100 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <button onClick={() => { downloadExcel(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2">
+                                        <FileSpreadsheet className="w-4 h-4 text-green-600" /> Excel (.xlsx)
+                                    </button>
+                                    <button onClick={() => { downloadCSV(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2">
+                                        <TableIcon className="w-4 h-4 text-blue-600" /> CSV (.csv)
+                                    </button>
+                                    <button onClick={() => { downloadPDF(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2">
+                                        <FileText className="w-4 h-4 text-red-600" /> PDF (.pdf)
+                                    </button>
+                                </div>
+                            </>
                         )}
                     </div>
                 </div>
             </div>
 
-            <div className="overflow-x-auto border rounded max-h-[70vh]">
-                <table className="min-w-full text-sm text-left text-gray-500 relative">
+            {/* Table Area */}
+            <div className="flex-grow overflow-auto">
+                <table className="min-w-full text-sm text-left text-gray-600 relative border-collapse">
                     <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10 shadow-sm">
                         <tr>
                             {headers.map(header => (
-                                <th key={header} className="px-6 py-3 bg-gray-100">
-                                    <div
-                                        className="flex items-center gap-1 cursor-pointer hover:text-blue-600 mb-2"
-                                        onClick={() => requestSort(header)}
-                                    >
-                                        {header}
-                                        {sortConfig?.key === header ? (
-                                            <span>{sortConfig.direction === 'asc' ? '▲' : '▼'}</span>
-                                        ) : <span className="text-gray-300">↕</span>}
+                                <th key={header} className="px-6 py-3 bg-gray-50 border-b border-gray-200 min-w-[150px]">
+                                    <div className="flex flex-col gap-2">
+                                        <div
+                                            className="flex items-center justify-between cursor-pointer hover:text-indigo-600 select-none group"
+                                            onClick={() => requestSort(header)}
+                                        >
+                                            <span className="font-semibold tracking-wide">{header}</span>
+                                            <span className="text-gray-400 group-hover:text-indigo-500">
+                                                {sortConfig?.key === header ? (
+                                                    sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                                                ) : <Filter className="w-3 h-3 opacity-0 group-hover:opacity-50" />}
+                                            </span>
+                                        </div>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                placeholder="Filtrar..."
+                                                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-normal normal-case bg-white"
+                                                value={columnFilters[header] || ''}
+                                                onChange={(e) => handleColumnFilterChange(header, e.target.value)}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </div>
                                     </div>
-                                    <input
-                                        type="text"
-                                        placeholder={`Filtrar ${header}`}
-                                        className="w-full px-2 py-1 text-xs border rounded font-normal normal-case focus:outline-none focus:border-blue-500"
-                                        value={columnFilters[header] || ''}
-                                        onChange={(e) => handleColumnFilterChange(header, e.target.value)}
-                                        onClick={(e) => e.stopPropagation()} // Prevent sort trigger
-                                    />
                                 </th>
                             ))}
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-gray-100">
                         {paginatedData.length > 0 ? (
                             paginatedData.map((row, idx) => (
-                                <tr key={idx} className="bg-white border-b hover:bg-gray-50">
+                                <tr key={idx} className="bg-white hover:bg-gray-50 transition-colors">
                                     {headers.map(header => (
-                                        <td key={header} className="px-6 py-4 truncate max-w-xs" title={String(row[header])}>
+                                        <td key={header} className="px-6 py-3 whitespace-nowrap text-gray-700" title={String(row[header])}>
                                             {String(row[header])}
                                         </td>
                                     ))}
@@ -205,8 +255,11 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={headers.length} className="px-6 py-8 text-center text-gray-500">
-                                    Nenhum registro encontrado com os filtros atuais.
+                                <td colSpan={headers.length} className="px-6 py-12 text-center text-gray-500">
+                                    <div className="flex flex-col items-center justify-center gap-2">
+                                        <Search className="w-8 h-8 text-gray-300" />
+                                        <span>Nenhum registro encontrado</span>
+                                    </div>
                                 </td>
                             </tr>
                         )}
@@ -214,22 +267,23 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
                 </table>
             </div>
 
-            <div className="flex justify-between items-center mt-4">
-                <span className="text-gray-600">
-                    Mostrando {page * LIMIT + 1} a {Math.min((page + 1) * LIMIT, sortedData.length)} de {sortedData.length} registros
+            {/* Pagination Footer */}
+            <div className="border-t border-gray-200 p-4 bg-gray-50 rounded-b-xl flex justify-between items-center text-sm">
+                <span className="text-gray-600 font-medium">
+                    {page * LIMIT + 1}-{Math.min((page + 1) * LIMIT, sortedData.length)} de {sortedData.length}
                 </span>
                 <div className="flex gap-2">
                     <button
                         disabled={page === 0}
                         onClick={() => setPage(p => p - 1)}
-                        className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+                        className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
                     >
                         Anterior
                     </button>
                     <button
                         disabled={page >= totalPages - 1}
                         onClick={() => setPage(p => p + 1)}
-                        className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
+                        className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
                     >
                         Próxima
                     </button>
@@ -239,69 +293,75 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
     );
 };
 
-// Estrutura do Menu (Mantida, com ajustes)
+// Menu Data
 const reportsMenu = [
     {
-        category: "A. Relatórios Operacionais e de Estoque",
-        description: "Controle físico, movimentação e posição atual dos ativos.",
+        category: "A. Relatórios Operacionais",
+        description: "Controle físico, movimentação e posição de estoque.",
+        icon: <BarChart3 className="w-5 h-5" />,
         items: [
-            { id: "A.1", title: "Posição de Inventário Geral (Detalhado)" },
+            { id: "A.1", title: "Posição Geral Detalhada" },
             { id: "A.2", title: "Itens por Filial" },
             { id: "A.3", title: "Itens por Categoria" },
             { id: "A.4", title: "Itens por Responsável" },
-            { id: "A.5", title: "Relatório de Ativos Novos (Últimos 30 dias)" },
+            { id: "A.5", title: "Novos Ativos (30 dias)" },
             { id: "A.6", title: "Histórico de Movimentações (Kardex)" },
-            { id: "A.7", title: "Ativos em Trânsito (Transferências Pendentes)" },
-            { id: "A.9", title: "Relatório de Etiquetas (Com Ativo Fixo)" },
+            { id: "A.7", title: "Transferências Pendentes" },
+            { id: "A.9", title: "Etiquetas de Ativo Fixo" },
         ]
     },
     {
-        category: "B. Relatórios Contábeis e Financeiros",
-        description: "Análise de valor e depreciação.",
+        category: "B. Contábil e Financeiro",
+        description: "Análise de valor, depreciação e baixas.",
+        icon: <FileSpreadsheet className="w-5 h-5" />,
         items: [
-            { id: "B.1", title: "Razão Auxiliar do Ativo (Valor Contábil)" },
-            { id: "B.2", title: "Relatório de Depreciação Acumulada" },
+            { id: "B.1", title: "Razão Auxiliar (Valor Contábil)" },
+            { id: "B.2", title: "Depreciação Acumulada" },
             { id: "B.5", title: "Ativos Totalmente Depreciados" },
-            { id: "B.6", title: "Projeção de Depreciação (Próximos 12 meses)" },
-            { id: "B.7", title: "Relatório de Baixas (Status Baixado)" },
-            { id: "B.9", title: "Relatório de Aquisições (CAPEX)" },
-            { id: "B.10", title: "Resumo de Valores por Categoria" }
+            { id: "B.6", title: "Projeção de Depreciação (12 meses)" },
+            { id: "B.7", title: "Relatório de Baixas" },
+            { id: "B.9", title: "Aquisições (CAPEX)" },
+            { id: "B.10", title: "Resumo por Categoria" }
         ]
     },
     {
         category: "C. Auditoria e Compliance",
-        description: "Rastreabilidade e conformidade.",
+        description: "Rastreabilidade e dados faltantes.",
+        icon: <FileText className="w-5 h-5" />,
         items: [
-            { id: "C.1", title: "Trilha de Auditoria Completa (Logs)" },
-            { id: "C.2", title: "Alterações de Status (Aprovações/Rejeições)" },
-            { id: "C.5", title: "Itens sem Número de Ativo Fixo" },
-            { id: "C.6", title: "Itens com Dados Incompletos" },
+            { id: "C.1", title: "Trilha de Auditoria (Logs)" },
+            { id: "C.2", title: "Mudanças de Status" },
+            { id: "C.5", title: "Sem Número de Ativo Fixo" },
+            { id: "C.6", title: "Dados Incompletos" },
             { id: "C.10", title: "Histórico de Responsáveis" }
         ]
     },
     {
         category: "D. Ciclo de Vida",
         description: "Gestão da vida útil e renovação.",
+        icon: <TableIcon className="w-5 h-5" />,
         items: [
-            { id: "D.1", title: "Idade da Frota/Ativos (Aging)" },
-            { id: "D.3", title: "Ativos com Vida Útil Expirada" },
+            { id: "D.1", title: "Aging (Idade da Frota)" },
+            { id: "D.3", title: "Vida Útil Expirada" },
         ]
     },
     {
         category: "E. Administração",
-        description: "Gestão de usuários e acessos.",
+        description: "Gestão de usuários e parâmetros.",
+        icon: <Search className="w-5 h-5" />,
         items: [
-            { id: "E.1", title: "Relatório de Usuários" },
+            { id: "E.1", title: "Lista de Usuários" },
             { id: "E.2", title: "Matriz de Permissões" },
             { id: "E.4", title: "Usuários por Filial" },
-            { id: "E.6", title: "Parâmetros de Categoria (Depreciação)" }
+            { id: "E.6", title: "Parâmetros de Categoria" }
         ]
     },
     {
-        category: "F. Relatórios Fiscais",
-        description: "Suporte a obrigações.",
+        category: "F. Fiscal",
+        description: "Obrigações e notas fiscais.",
+        icon: <FileText className="w-5 h-5" />,
         items: [
-            { id: "F.4", title: "Relatório de Notas Fiscais de Entrada" }
+            { id: "F.4", title: "Notas Fiscais de Entrada" }
         ]
     }
 ];
@@ -325,9 +385,6 @@ const Reports: React.FC = () => {
         }
         const date = new Date(val);
         if (isNaN(date.getTime())) return val;
-        // Use UTC methods if it looks like a date-only string to avoid timezone issues,
-        // but for safety with ISO strings that might have time, toLocaleDateString is safer if timezone matches.
-        // Given existing inconsistency, let's stick to pt-BR locale.
         return date.toLocaleDateString('pt-BR');
     }
 
@@ -342,94 +399,89 @@ const Reports: React.FC = () => {
         try {
             let data: any[] = [];
 
-            // --- DATA FETCHING STRATEGIES ---
-
             // Strategy 1: Items Base
             if (['A.1', 'A.2', 'A.3', 'A.4', 'A.5', 'A.7', 'A.9', 'B.1', 'B.2', 'B.5', 'B.6', 'B.7', 'B.9', 'B.10', 'C.5', 'C.6', 'D.1', 'D.3', 'F.4'].includes(reportId)) {
                 const response = await api.get('/items/?limit=10000');
                 const items = response.data;
 
-                // --- MAPPING & FILTERING ---
-
-                if (reportId === 'A.1') { // Geral Detalhado
+                if (reportId === 'A.1') {
                     data = items.map((i: any) => ({
                         ID: i.id, Descrição: i.description, Categoria: i.category, Fornecedor: i.supplier?.name, Filial: i.branch?.name,
-                        Status: translateStatus(i.status), "Valor de Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value),
-                        "Data de Compra": formatDate(i.purchase_date), NF: i.invoice_number, "Ativo Fixo": i.fixed_asset_number
+                        Status: translateStatus(i.status), "Vlr. Compra": formatCurrency(i.invoice_value), "Vlr. Contábil": formatCurrency(i.accounting_value),
+                        "Data Compra": formatDate(i.purchase_date), NF: i.invoice_number, "Ativo Fixo": i.fixed_asset_number
                     }));
-                } else if (reportId === 'A.2') { // Por Filial
+                } else if (reportId === 'A.2') {
                     data = items.sort((a: any, b: any) => (a.branch?.name || '').localeCompare(b.branch?.name || '')).map((i: any) => ({
-                        Filial: i.branch?.name, ID: i.id, Descrição: i.description, Categoria: i.category, "Valor de Compra": formatCurrency(i.invoice_value)
+                        Filial: i.branch?.name, ID: i.id, Descrição: i.description, Categoria: i.category, "Valor": formatCurrency(i.invoice_value)
                     }));
-                } else if (reportId === 'A.3') { // Por Categoria
+                } else if (reportId === 'A.3') {
                      data = items.sort((a: any, b: any) => (a.category || '').localeCompare(b.category || '')).map((i: any) => ({
-                        Categoria: i.category, ID: i.id, Descrição: i.description, Filial: i.branch?.name, "Valor de Compra": formatCurrency(i.invoice_value)
+                        Categoria: i.category, ID: i.id, Descrição: i.description, Filial: i.branch?.name, "Valor": formatCurrency(i.invoice_value)
                     }));
-                } else if (reportId === 'A.4') { // Por Responsável
+                } else if (reportId === 'A.4') {
                      data = items.filter((i: any) => i.responsible).map((i: any) => ({
                         Responsável: i.responsible?.name, ID: i.id, Descrição: i.description, Filial: i.branch?.name
                     }));
-                } else if (reportId === 'A.5') { // Novos (30 dias)
+                } else if (reportId === 'A.5') {
                     const cutoff = new Date();
                     cutoff.setDate(cutoff.getDate() - 30);
                     data = items.filter((i: any) => new Date(i.purchase_date) >= cutoff).map((i: any) => ({
-                        "Data de Compra": formatDate(i.purchase_date), ID: i.id, Descrição: i.description, Fornecedor: i.supplier?.name, "Valor de Compra": formatCurrency(i.invoice_value)
+                        "Data Compra": formatDate(i.purchase_date), ID: i.id, Descrição: i.description, Fornecedor: i.supplier?.name, "Valor": formatCurrency(i.invoice_value)
                     }));
-                } else if (reportId === 'A.7') { // Em Trânsito
+                } else if (reportId === 'A.7') {
                     data = items.filter((i: any) => i.status === 'TRANSFER_PENDING').map((i: any) => ({
                         ID: i.id, Descrição: i.description, Origem: i.branch?.name, "Destino (ID)": i.transfer_target_branch_id
                     }));
-                } else if (reportId === 'A.9') { // Etiquetas
+                } else if (reportId === 'A.9') {
                     data = items.filter((i: any) => i.fixed_asset_number).map((i: any) => ({
                         "Ativo Fixo": i.fixed_asset_number, ID: i.id, Descrição: i.description, Filial: i.branch?.name
                     }));
-                } else if (reportId === 'B.1') { // Razão Auxiliar
+                } else if (reportId === 'B.1') {
                     data = items.map((i: any) => ({
                         ID: i.id, "Ativo Fixo": i.fixed_asset_number, Descrição: i.description,
-                        "Valor de Aquisição": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value), "Depreciação Acumulada": formatCurrency(i.invoice_value - (i.accounting_value || 0))
+                        "Vlr. Aquisição": formatCurrency(i.invoice_value), "Vlr. Contábil": formatCurrency(i.accounting_value), "Deprec. Acumulada": formatCurrency(i.invoice_value - (i.accounting_value || 0))
                     }));
-                } else if (reportId === 'B.2') { // Depreciação Acumulada
+                } else if (reportId === 'B.2') {
                     data = items.map((i: any) => ({
-                        ID: i.id, Descrição: i.description, "Data de Compra": formatDate(i.purchase_date), "Meses de Uso": "Calc",
+                        ID: i.id, Descrição: i.description, "Data Compra": formatDate(i.purchase_date),
                         "Depreciação Total": formatCurrency(i.invoice_value - (i.accounting_value || 0))
                     }));
-                } else if (reportId === 'B.5') { // Totalmente Depreciados
+                } else if (reportId === 'B.5') {
                     data = items.filter((i: any) => i.accounting_value === 0).map((i: any) => ({
-                        ID: i.id, Descrição: i.description, "Data de Compra": formatDate(i.purchase_date), "Valor Original": formatCurrency(i.invoice_value)
+                        ID: i.id, Descrição: i.description, "Data Compra": formatDate(i.purchase_date), "Valor Original": formatCurrency(i.invoice_value)
                     }));
-                } else if (reportId === 'B.7') { // Baixas
+                } else if (reportId === 'B.7') {
                     data = items.filter((i: any) => i.status === 'WRITTEN_OFF').map((i: any) => ({
-                        ID: i.id, Descrição: i.description, "Data da Baixa": "Ver Histórico", "Valor Baixado": formatCurrency(i.accounting_value)
+                        ID: i.id, Descrição: i.description, "Valor Baixado": formatCurrency(i.accounting_value)
                     }));
-                } else if (reportId === 'B.9') { // CAPEX
+                } else if (reportId === 'B.9') {
                     data = items.map((i: any) => ({
-                        "Data de Compra": formatDate(i.purchase_date), "Valor de Compra": formatCurrency(i.invoice_value), Descrição: i.description, Fornecedor: i.supplier?.name, Categoria: i.category
+                        "Data": formatDate(i.purchase_date), "Valor": formatCurrency(i.invoice_value), Descrição: i.description, Fornecedor: i.supplier?.name, Categoria: i.category
                     }));
-                } else if (reportId === 'B.10') { // Resumo Valores
-                    // Aggregate
+                } else if (reportId === 'B.10') {
                     const agg: any = {};
                     items.forEach((i: any) => {
                         if (!agg[i.category]) agg[i.category] = 0;
                         agg[i.category] += i.invoice_value;
                     });
                     data = Object.keys(agg).map(k => ({ Categoria: k, "Valor Total": formatCurrency(agg[k]) }));
-                } else if (reportId === 'C.5') { // Sem Ativo Fixo
+                } else if (reportId === 'C.5') {
                     data = items.filter((i: any) => !i.fixed_asset_number).map((i: any) => ({
                         ID: i.id, Descrição: i.description, Status: translateStatus(i.status)
                     }));
-                } else if (reportId === 'C.6') { // Dados Incompletos
+                } else if (reportId === 'C.6') {
                     data = items.filter((i: any) => !i.serial_number || !i.invoice_number).map((i: any) => ({
                         ID: i.id, Descrição: i.description, "Falta Serial": !i.serial_number, "Falta Nota": !i.invoice_number
                     }));
-                } else if (reportId === 'D.1') { // Aging
+                } else if (reportId === 'D.1') {
                      const now = new Date();
                      data = items.map((i: any) => {
                          const days = Math.floor((now.getTime() - new Date(i.purchase_date).getTime()) / (1000 * 3600 * 24));
                          return { ID: i.id, Descrição: i.description, "Dias desde Compra": days, Anos: (days/365).toFixed(1) };
                      });
-                } else if (reportId === 'F.4') { // Notas Fiscais
+                } else if (reportId === 'F.4') {
                     data = items.map((i: any) => ({
-                        NF: i.invoice_number, Data: formatDate(i.purchase_date), "Valor de Compra": formatCurrency(i.invoice_value), Fornecedor: i.supplier?.name, Item: i.description
+                        NF: i.invoice_number, Data: formatDate(i.purchase_date), "Valor": formatCurrency(i.invoice_value), Fornecedor: i.supplier?.name, Item: i.description
                     }));
                 }
             }
@@ -439,15 +491,15 @@ const Reports: React.FC = () => {
                  const response = await api.get('/logs/?limit=5000');
                  const logs = response.data;
 
-                 if (reportId === 'A.6' || reportId === 'C.1') { // Kardex / Trilha
+                 if (reportId === 'A.6' || reportId === 'C.1') {
                      data = logs.map((l: any) => ({
                          Data: new Date(l.timestamp).toLocaleString('pt-BR'), Usuário: l.user?.email, Ação: translateLogAction(l.action), ItemID: l.item_id, Item: l.item?.description
                      }));
-                 } else if (reportId === 'C.2') { // Status changes
+                 } else if (reportId === 'C.2') {
                      data = logs.filter((l: any) => l.action.includes('Status changed')).map((l: any) => ({
                          Data: new Date(l.timestamp).toLocaleString('pt-BR'), Usuário: l.user?.email, Ação: translateLogAction(l.action), Item: l.item?.description
                      }));
-                 } else if (reportId === 'C.10') { // Responsibles (Generic approximation)
+                 } else if (reportId === 'C.10') {
                      data = logs.filter((l: any) => l.action.toLowerCase().includes('respons')).map((l: any) => ({
                          Data: new Date(l.timestamp).toLocaleString('pt-BR'), Usuário: l.user?.email, Ação: translateLogAction(l.action), Item: l.item?.description
                      }));
@@ -474,14 +526,14 @@ const Reports: React.FC = () => {
             else if (reportId === 'E.6') {
                 const response = await api.get('/categories/');
                 data = response.data.map((c: any) => ({
-                    ID: c.id, Nome: c.name, MesesDepreciacao: c.depreciation_months
+                    ID: c.id, Nome: c.name, Meses: c.depreciation_months
                 }));
             }
 
             setReportData(data);
         } catch (error) {
             console.error(error);
-            alert("Erro ao gerar relatório. Verifique permissões ou conexão.");
+            alert("Erro ao gerar relatório. Verifique conexões.");
         } finally {
             setLoading(false);
         }
@@ -504,57 +556,77 @@ const Reports: React.FC = () => {
     }
 
     return (
-        <div className="p-6 bg-gray-50 min-h-full">
-            <h1 className="text-3xl font-bold mb-2 text-gray-800">Menu de Relatórios</h1>
-            <p className="text-gray-600 mb-6">Central completa de relatórios para auditoria, contabilidade e gestão de ativos.</p>
-
-            <div className="mb-6">
-                <input
-                    type="text"
-                    placeholder="Buscar relatório..."
-                    className="w-full md:w-1/2 px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
+        <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                        <FileText className="w-8 h-8 text-indigo-600" />
+                        Central de Relatórios
+                    </h1>
+                    <p className="text-gray-500 mt-1">
+                        Geração de relatórios operacionais, contábeis e de auditoria em tempo real.
+                    </p>
+                </div>
+                <div className="relative w-full md:w-1/3">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Buscar relatório (ex: Depreciação)..."
+                        className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
             </div>
 
             {loading && (
-                <div className="fixed inset-0 bg-gray-600 bg-opacity-25 flex items-center justify-center z-50">
-                    <div className="bg-white p-4 rounded shadow">
-                        <span className="text-blue-600 font-bold">Gerando relatório...</span>
+                <div className="fixed inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center gap-4 animate-in zoom-in duration-200">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+                        <span className="text-gray-700 font-medium">Processando dados...</span>
                     </div>
                 </div>
             )}
 
-            <div className="space-y-4">
+            {/* Reports Grid */}
+            <div className="grid grid-cols-1 gap-6">
                 {filteredMenu.map((section, index) => (
-                    <div key={index} className="bg-white rounded-lg shadow overflow-hidden">
+                    <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all hover:shadow-md">
                         <button
                             onClick={() => toggleCategory(section.category)}
-                            className="w-full px-6 py-4 text-left bg-white hover:bg-gray-50 flex justify-between items-center transition-colors"
+                            className="w-full px-6 py-4 flex justify-between items-center bg-white hover:bg-gray-50 transition-colors group"
                         >
-                            <div>
-                                <h2 className="text-xl font-semibold text-gray-800">{section.category}</h2>
-                                <p className="text-sm text-gray-500 mt-1">{section.description}</p>
+                            <div className="flex items-center gap-4">
+                                <div className={`p-2 rounded-lg ${expandedCategory === section.category || searchTerm ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'} group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors`}>
+                                    {section.icon}
+                                </div>
+                                <div className="text-left">
+                                    <h2 className="text-lg font-semibold text-gray-800 group-hover:text-indigo-700 transition-colors">
+                                        {section.category}
+                                    </h2>
+                                    <p className="text-sm text-gray-500">{section.description}</p>
+                                </div>
                             </div>
-                            <span className={`transform transition-transform ${expandedCategory === section.category || searchTerm ? 'rotate-180' : ''}`}>
-                                ▼
+                            <span className={`transform transition-transform duration-200 text-gray-400 ${expandedCategory === section.category || searchTerm ? 'rotate-180 text-indigo-600' : ''}`}>
+                                <ChevronDown className="w-5 h-5" />
                             </span>
                         </button>
 
                         {(expandedCategory === section.category || searchTerm) && (
-                            <div className="border-t border-gray-100 bg-gray-50 px-6 py-4">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="border-t border-gray-100 bg-gray-50/50 p-6 animate-in slide-in-from-top-2 duration-200">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                     {section.items.map((report) => (
                                         <button
                                             key={report.id}
-                                            className="bg-white p-3 rounded border border-gray-200 hover:shadow-md hover:border-blue-300 transition-all text-left flex items-center group"
+                                            className="bg-white p-3 rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-md hover:translate-y-[-2px] transition-all text-left flex items-center gap-3 group relative overflow-hidden"
                                             onClick={() => handleGenerateReport(report.id, report.title)}
                                         >
-                                            <span className="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded mr-3 whitespace-nowrap">
+                                            <div className="absolute inset-0 bg-indigo-50 opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                                            <span className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded border border-indigo-100 whitespace-nowrap">
                                                 {report.id}
                                             </span>
-                                            <span className="text-gray-700 group-hover:text-blue-700 font-medium text-sm">
+                                            <span className="text-gray-700 font-medium text-sm group-hover:text-indigo-700">
                                                 {report.title}
                                             </span>
                                         </button>
