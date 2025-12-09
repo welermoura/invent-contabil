@@ -353,7 +353,7 @@ const Reports: React.FC = () => {
 
                 if (reportId === 'A.1') { // Geral Detalhado
                     data = items.map((i: any) => ({
-                        ID: i.id, Descrição: i.description, Categoria: i.category, Filial: i.branch?.name,
+                        ID: i.id, Descrição: i.description, Categoria: i.category, Fornecedor: i.supplier?.name, Filial: i.branch?.name,
                         Status: translateStatus(i.status), "Valor de Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value),
                         "Data de Compra": formatDate(i.purchase_date), NF: i.invoice_number, "Ativo Fixo": i.fixed_asset_number
                     }));
@@ -373,7 +373,7 @@ const Reports: React.FC = () => {
                     const cutoff = new Date();
                     cutoff.setDate(cutoff.getDate() - 30);
                     data = items.filter((i: any) => new Date(i.purchase_date) >= cutoff).map((i: any) => ({
-                        "Data de Compra": formatDate(i.purchase_date), ID: i.id, Descrição: i.description, "Valor de Compra": formatCurrency(i.invoice_value)
+                        "Data de Compra": formatDate(i.purchase_date), ID: i.id, Descrição: i.description, Fornecedor: i.supplier?.name, "Valor de Compra": formatCurrency(i.invoice_value)
                     }));
                 } else if (reportId === 'A.7') { // Em Trânsito
                     data = items.filter((i: any) => i.status === 'TRANSFER_PENDING').map((i: any) => ({
@@ -403,7 +403,7 @@ const Reports: React.FC = () => {
                     }));
                 } else if (reportId === 'B.9') { // CAPEX
                     data = items.map((i: any) => ({
-                        "Data de Compra": formatDate(i.purchase_date), "Valor de Compra": formatCurrency(i.invoice_value), Descrição: i.description, Categoria: i.category
+                        "Data de Compra": formatDate(i.purchase_date), "Valor de Compra": formatCurrency(i.invoice_value), Descrição: i.description, Fornecedor: i.supplier?.name, Categoria: i.category
                     }));
                 } else if (reportId === 'B.10') { // Resumo Valores
                     // Aggregate
@@ -429,7 +429,7 @@ const Reports: React.FC = () => {
                      });
                 } else if (reportId === 'F.4') { // Notas Fiscais
                     data = items.map((i: any) => ({
-                        NF: i.invoice_number, Data: formatDate(i.purchase_date), "Valor de Compra": formatCurrency(i.invoice_value), Fornecedor: "N/A", Item: i.description
+                        NF: i.invoice_number, Data: formatDate(i.purchase_date), "Valor de Compra": formatCurrency(i.invoice_value), Fornecedor: i.supplier?.name, Item: i.description
                     }));
                 }
             }
