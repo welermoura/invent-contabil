@@ -4,6 +4,7 @@ import api from '../api';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { translateStatus, translateLogAction } from '../utils/translations';
 
 // --- DATA TABLE COMPONENT ---
 const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = ({ data, title, onBack }) => {
@@ -353,7 +354,7 @@ const Reports: React.FC = () => {
                 if (reportId === 'A.1') { // Geral Detalhado
                     data = items.map((i: any) => ({
                         ID: i.id, Descrição: i.description, Categoria: i.category, Filial: i.branch?.name,
-                        Status: i.status, "Valor de Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value),
+                        Status: translateStatus(i.status), "Valor de Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value),
                         "Data de Compra": formatDate(i.purchase_date), NF: i.invoice_number, "Ativo Fixo": i.fixed_asset_number
                     }));
                 } else if (reportId === 'A.2') { // Por Filial
@@ -398,7 +399,7 @@ const Reports: React.FC = () => {
                     }));
                 } else if (reportId === 'B.7') { // Baixas
                     data = items.filter((i: any) => i.status === 'WRITTEN_OFF').map((i: any) => ({
-                        ID: i.id, Descrição: i.description, "Data da Baixa": "Ver Logs", "Valor Baixado": formatCurrency(i.accounting_value)
+                        ID: i.id, Descrição: i.description, "Data da Baixa": "Ver Histórico", "Valor Baixado": formatCurrency(i.accounting_value)
                     }));
                 } else if (reportId === 'B.9') { // CAPEX
                     data = items.map((i: any) => ({
@@ -414,7 +415,7 @@ const Reports: React.FC = () => {
                     data = Object.keys(agg).map(k => ({ Categoria: k, "Valor Total": formatCurrency(agg[k]) }));
                 } else if (reportId === 'C.5') { // Sem Ativo Fixo
                     data = items.filter((i: any) => !i.fixed_asset_number).map((i: any) => ({
-                        ID: i.id, Descrição: i.description, Status: i.status
+                        ID: i.id, Descrição: i.description, Status: translateStatus(i.status)
                     }));
                 } else if (reportId === 'C.6') { // Dados Incompletos
                     data = items.filter((i: any) => !i.serial_number || !i.invoice_number).map((i: any) => ({
@@ -440,15 +441,15 @@ const Reports: React.FC = () => {
 
                  if (reportId === 'A.6' || reportId === 'C.1') { // Kardex / Trilha
                      data = logs.map((l: any) => ({
-                         Data: new Date(l.timestamp).toLocaleString('pt-BR'), Usuario: l.user?.email, Acao: l.action, ItemID: l.item_id, Item: l.item?.description
+                         Data: new Date(l.timestamp).toLocaleString('pt-BR'), Usuário: l.user?.email, Ação: translateLogAction(l.action), ItemID: l.item_id, Item: l.item?.description
                      }));
                  } else if (reportId === 'C.2') { // Status changes
                      data = logs.filter((l: any) => l.action.includes('Status changed')).map((l: any) => ({
-                         Data: new Date(l.timestamp).toLocaleString('pt-BR'), Usuario: l.user?.email, Acao: l.action, Item: l.item?.description
+                         Data: new Date(l.timestamp).toLocaleString('pt-BR'), Usuário: l.user?.email, Ação: translateLogAction(l.action), Item: l.item?.description
                      }));
                  } else if (reportId === 'C.10') { // Responsibles (Generic approximation)
                      data = logs.filter((l: any) => l.action.toLowerCase().includes('respons')).map((l: any) => ({
-                         Data: new Date(l.timestamp).toLocaleString('pt-BR'), Usuario: l.user?.email, Acao: l.action, Item: l.item?.description
+                         Data: new Date(l.timestamp).toLocaleString('pt-BR'), Usuário: l.user?.email, Ação: translateLogAction(l.action), Item: l.item?.description
                      }));
                  }
             }
