@@ -44,7 +44,7 @@ const Dashboard: React.FC = () => {
                 </div>
                 <div className="bg-white p-6 rounded shadow">
                     <h3 className="text-xl font-semibold mb-2">Valor Pendente</h3>
-                    <p className="text-4xl text-green-500">R$ {stats.pending_items_value.toFixed(2)}</p>
+                    <p className="text-4xl text-green-500">{stats.pending_items_value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                 </div>
             </div>
 

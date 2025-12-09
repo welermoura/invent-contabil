@@ -515,7 +515,7 @@ const Inventory: React.FC = () => {
                             <th className="px-6 py-3 text-left">Descrição</th>
                             <th className="px-6 py-3 text-left">Categoria</th>
                             <th className="px-6 py-3 text-left">Filial</th>
-                            <th className="px-6 py-3 text-left">Valor</th>
+                            <th className="px-6 py-3 text-left">Valor de Compra</th>
                             <th className="px-6 py-3 text-left">Valor Contábil</th>
                             <th className="px-6 py-3 text-left">Status</th>
                             <th className="px-6 py-3 text-left">Ações</th>
