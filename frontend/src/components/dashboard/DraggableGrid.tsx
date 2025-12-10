@@ -35,7 +35,7 @@ import RecentItemsTable from './widgets/RecentItemsTable';
 import RiskMapWidget from './widgets/RiskMapWidget';
 import PurchaseVsAccountingChart from './widgets/PurchaseVsAccountingChart';
 
-import { DollarSign, Package, AlertCircle, FileWarning, TrendingUp, RefreshCw, BarChart2, Activity, Clock } from 'lucide-react';
+import { DollarSign, Package, AlertCircle, FileWarning, Activity, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // Widget Registry
@@ -78,7 +78,7 @@ interface SortableItemProps {
     onRemove: (id: string) => void;
 }
 
-const SortableItem = ({ id, children, className, isEditing, onRemove }: SortableItemProps) => {
+const SortableItem = ({ id, children, className, onRemove }: Omit<SortableItemProps, 'isEditing'>) => {
     const {
         attributes,
         listeners,
@@ -86,7 +86,7 @@ const SortableItem = ({ id, children, className, isEditing, onRemove }: Sortable
         transform,
         transition,
         isDragging
-    } = useSortable({ id, disabled: !isEditing });
+    } = useSortable({ id }); // Removed disabled: !isEditing
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -96,25 +96,27 @@ const SortableItem = ({ id, children, className, isEditing, onRemove }: Sortable
     };
 
     return (
-        <div ref={setNodeRef} style={style} className={`relative group ${className} ${isEditing ? 'ring-2 ring-blue-500/20 rounded-xl bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
-             {isEditing && (
-                 <>
-                    <div
-                        {...attributes}
-                        {...listeners}
-                        className="absolute top-2 right-2 p-1.5 bg-white dark:bg-slate-700 rounded-md shadow-sm text-slate-400 hover:text-blue-500 cursor-grab active:cursor-grabbing z-20 hover:scale-105 transition-all"
-                    >
-                        <GripVertical size={16} />
-                    </div>
-                    <button
-                        onClick={() => onRemove(id)}
-                        className="absolute top-2 left-2 p-1.5 bg-white dark:bg-slate-700 rounded-md shadow-sm text-slate-400 hover:text-red-500 z-20 hover:scale-105 transition-all"
-                    >
-                        <X size={16} />
-                    </button>
-                 </>
-             )}
-            <div className={isEditing ? 'pointer-events-none' : ''}>
+        <div ref={setNodeRef} style={style} className={`relative group ${className}`}>
+             {/* Drag handle and close button always present but hidden until hover */}
+             <div className="absolute top-2 right-2 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div
+                    {...attributes}
+                    {...listeners}
+                    className="p-1.5 bg-white dark:bg-slate-700 rounded-md shadow-sm text-slate-400 hover:text-blue-500 cursor-grab active:cursor-grabbing hover:scale-105 transition-all"
+                    title="Arrastar Widget"
+                >
+                    <GripVertical size={16} />
+                </div>
+                <button
+                    onClick={() => onRemove(id)}
+                    className="p-1.5 bg-white dark:bg-slate-700 rounded-md shadow-sm text-slate-400 hover:text-red-500 hover:scale-105 transition-all"
+                    title="Remover Widget"
+                >
+                    <X size={16} />
+                </button>
+             </div>
+
+            <div>
                 {children}
             </div>
         </div>
@@ -209,7 +211,7 @@ const DraggableGrid: React.FC = () => {
                         const colSpan = def?.className || 'col-span-1';
 
                         return (
-                            <SortableItem key={id} id={id} className={colSpan} isEditing={isEditing} onRemove={removeWidget}>
+                            <SortableItem key={id} id={id} className={colSpan} onRemove={removeWidget}>
                                 {renderWidget(id)}
                             </SortableItem>
                         );
