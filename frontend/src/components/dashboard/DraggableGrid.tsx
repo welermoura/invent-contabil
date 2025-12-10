@@ -20,9 +20,9 @@ import {
   useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, X, Maximize2 } from 'lucide-react';
+import { GripVertical, X } from 'lucide-react';
 
-import { useDashboard, WidgetSize } from './DashboardContext';
+import { useDashboard } from './DashboardContext';
 
 import StatCard from './widgets/StatCard';
 import ValueByBranchChart from './widgets/ValueByBranchChart';
@@ -35,7 +35,7 @@ import RecentItemsTable from './widgets/RecentItemsTable';
 import RiskMapWidget from './widgets/RiskMapWidget';
 import PurchaseVsAccountingChart from './widgets/PurchaseVsAccountingChart';
 
-import { DollarSign, Package, AlertCircle, FileWarning, Activity, Clock } from 'lucide-react';
+import { DollarSign, Package, AlertCircle, FileWarning, TrendingUp, RefreshCw, BarChart2, Activity, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // Widget Registry
@@ -48,19 +48,19 @@ export const WIDGETS: Record<string, any> = {
     'kpi-age': { label: "KPI Idade Média", component: StatCard, type: 'kpi', props: { title: "Idade Média (Meses)", icon: Clock, colorClass: "text-violet-500" } },
     'kpi-zero-dep': { label: "KPI Fim Vida Útil", component: StatCard, type: 'kpi', props: { title: "Fim da Vida Útil", icon: Activity, colorClass: "text-slate-500" } },
 
-    'chart-branch': { label: "Valor por Filial", component: ValueByBranchChart, type: 'chart', defaultSize: 'S' },
-    'chart-branch-count': { label: "Qtd. por Filial", component: CountByBranchChart, type: 'chart', defaultSize: 'S' },
+    'chart-branch': { label: "Valor por Filial", component: ValueByBranchChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
+    'chart-branch-count': { label: "Qtd. por Filial", component: CountByBranchChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
 
-    'chart-category': { label: "Valor por Categoria", component: ValueByCategoryChart, type: 'chart', defaultSize: 'S' },
-    'chart-category-count': { label: "Qtd. por Categoria", component: CountByCategoryChart, type: 'chart', defaultSize: 'S' },
+    'chart-category': { label: "Valor por Categoria", component: ValueByCategoryChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
+    'chart-category-count': { label: "Qtd. por Categoria", component: CountByCategoryChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
 
-    'chart-risk': { label: "Mapa de Risco", component: RiskMapWidget, type: 'chart', defaultSize: 'S' },
-    'chart-purch-vs-acc': { label: "Compra vs Contábil", component: PurchaseVsAccountingChart, type: 'chart', defaultSize: 'S' },
+    'chart-risk': { label: "Mapa de Risco", component: RiskMapWidget, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
+    'chart-purch-vs-acc': { label: "Compra vs Contábil", component: PurchaseVsAccountingChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
 
-    'chart-evolution': { label: "Evolução Patrimonial", component: EvolutionChart, type: 'chart', defaultSize: 'M' },
+    'chart-evolution': { label: "Evolução Patrimonial", component: EvolutionChart, type: 'chart', className: 'md:col-span-2 lg:col-span-2' },
 
-    'table-top-items': { label: "Top Itens", component: TopItemsTable, type: 'chart', defaultSize: 'M' },
-    'table-recent-items': { label: "Itens Recentes", component: RecentItemsTable, type: 'chart', defaultSize: 'M' },
+    'table-top-items': { label: "Top Itens", component: TopItemsTable, type: 'chart', className: 'md:col-span-1 lg:col-span-2' },
+    'table-recent-items': { label: "Itens Recentes", component: RecentItemsTable, type: 'chart', className: 'md:col-span-1 lg:col-span-2' },
 };
 
 const DEFAULT_LAYOUT = [
@@ -76,11 +76,9 @@ interface SortableItemProps {
     className?: string;
     isEditing: boolean;
     onRemove: (id: string) => void;
-    onResize: (id: string) => void;
-    size: WidgetSize;
 }
 
-const SortableItem = ({ id, children, className, isEditing, onRemove, onResize, size }: SortableItemProps) => {
+const SortableItem = ({ id, children, className, isEditing, onRemove }: SortableItemProps) => {
     const {
         attributes,
         listeners,
@@ -97,13 +95,10 @@ const SortableItem = ({ id, children, className, isEditing, onRemove, onResize, 
         opacity: isDragging ? 0.5 : 1,
     };
 
-    const sizeLabels = { 'S': 'Pequeno', 'M': 'Médio', 'L': 'Grande' };
-
     return (
-        <div ref={setNodeRef} style={style} className={`relative group ${className} ${isEditing ? 'ring-2 ring-blue-500/20 rounded-xl bg-blue-50/50 dark:bg-blue-900/10' : ''} min-w-0`}>
+        <div ref={setNodeRef} style={style} className={`relative group ${className} ${isEditing ? 'ring-2 ring-blue-500/20 rounded-xl bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
              {isEditing && (
                  <>
-                    {/* Drag Handle */}
                     <div
                         {...attributes}
                         {...listeners}
@@ -111,29 +106,15 @@ const SortableItem = ({ id, children, className, isEditing, onRemove, onResize, 
                     >
                         <GripVertical size={16} />
                     </div>
-
-                    {/* Remove Button */}
                     <button
                         onClick={() => onRemove(id)}
                         className="absolute top-2 left-2 p-1.5 bg-white dark:bg-slate-700 rounded-md shadow-sm text-slate-400 hover:text-red-500 z-20 hover:scale-105 transition-all"
                     >
                         <X size={16} />
                     </button>
-
-                    {/* Resize Button (Only for charts/tables, not KPIs) */}
-                    {WIDGETS[id].type !== 'kpi' && (
-                        <button
-                            onClick={() => onResize(id)}
-                            className="absolute bottom-2 right-2 p-1.5 bg-white dark:bg-slate-700 rounded-md shadow-sm text-slate-400 hover:text-purple-500 z-20 hover:scale-105 transition-all flex items-center gap-1"
-                            title={`Tamanho Atual: ${sizeLabels[size]}`}
-                        >
-                            <span className="text-[10px] font-bold uppercase">{size}</span>
-                            <Maximize2 size={14} />
-                        </button>
-                    )}
                  </>
              )}
-            <div className={isEditing ? 'pointer-events-none' : 'h-full'}>
+            <div className={isEditing ? 'pointer-events-none' : ''}>
                 {children}
             </div>
         </div>
@@ -141,7 +122,7 @@ const SortableItem = ({ id, children, className, isEditing, onRemove, onResize, 
 };
 
 const DraggableGrid: React.FC = () => {
-    const { layout, setLayout, aggregates, isLoading, isEditing, removeWidget, widgetSizes, setWidgetSize } = useDashboard();
+    const { layout, setLayout, aggregates, isLoading, isEditing, removeWidget } = useDashboard();
     const navigate = useNavigate();
     const [activeId, setActiveId] = React.useState<string | null>(null);
 
@@ -172,30 +153,6 @@ const DraggableGrid: React.FC = () => {
             localStorage.setItem('dashboard_layout', JSON.stringify(newLayout));
         }
         setActiveId(null);
-    };
-
-    const cycleSize = (id: string) => {
-        const currentSize = widgetSizes[id] || WIDGETS[id].defaultSize || 'S';
-        let newSize: WidgetSize = 'S';
-        if (currentSize === 'S') newSize = 'M';
-        else if (currentSize === 'M') newSize = 'L';
-        else newSize = 'S';
-
-        setWidgetSize(id, newSize);
-    };
-
-    const getWidgetClass = (id: string) => {
-        const def = WIDGETS[id];
-        if (def.type === 'kpi') return 'col-span-1';
-
-        const size = widgetSizes[id] || def.defaultSize || 'S';
-
-        switch (size) {
-            case 'S': return 'md:col-span-1 lg:col-span-1'; // 1 col
-            case 'M': return 'md:col-span-2 lg:col-span-2'; // 2 cols
-            case 'L': return 'md:col-span-2 lg:col-span-4'; // Full width
-            default: return 'md:col-span-1 lg:col-span-1';
-        }
     };
 
     const renderWidget = (id: string, _isOverlay = false) => {
@@ -247,19 +204,12 @@ const DraggableGrid: React.FC = () => {
             <SortableContext items={items} strategy={rectSortingStrategy}>
                 <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-10 ${isEditing ? 'p-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl bg-slate-50/50 dark:bg-slate-900/50 min-h-[500px]' : ''}`} id="dashboard-container">
                     {items.map((id: string) => {
-                        const className = getWidgetClass(id);
-                        const size = widgetSizes[id] || WIDGETS[id]?.defaultSize || 'S';
+                        const def = WIDGETS[id];
+                        // Determine grid span based on widget definition
+                        const colSpan = def?.className || 'col-span-1';
 
                         return (
-                            <SortableItem
-                                key={id}
-                                id={id}
-                                className={className}
-                                isEditing={isEditing}
-                                onRemove={removeWidget}
-                                onResize={cycleSize}
-                                size={size}
-                            >
+                            <SortableItem key={id} id={id} className={colSpan} isEditing={isEditing} onRemove={removeWidget}>
                                 {renderWidget(id)}
                             </SortableItem>
                         );
