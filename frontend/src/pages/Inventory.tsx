@@ -66,6 +66,15 @@ const Inventory: React.FC = () => {
 
     const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
+    // NF Parsing State
+    const [nfLoading, setNfLoading] = useState(false);
+    const [nfItems, setNfItems] = useState<any[]>([]);
+    const [isNfModalOpen, setIsNfModalOpen] = useState(false);
+    const [isPurchaseRecent, setIsPurchaseRecent] = useState(false);
+    const [nfFileAttached, setNfFileAttached] = useState(false);
+    const [isNewSupplierModalOpen, setIsNewSupplierModalOpen] = useState(false);
+    const [newSupplierData, setNewSupplierData] = useState<any>({});
+
     // Filter States
     const [filterDescription, setFilterDescription] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
@@ -259,7 +268,94 @@ const Inventory: React.FC = () => {
         doc.save('inventario.pdf');
     };
 
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setNfFileAttached(true);
+        setNfLoading(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await api.post('/invoices/parse', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            const invoiceData = response.data;
+            setNfItems(invoiceData.items || []);
+
+            // Auto-fill Header Data
+            if (invoiceData.invoice_number) setValue('invoice_number', invoiceData.invoice_number);
+            if (invoiceData.issue_date) setValue('purchase_date', invoiceData.issue_date);
+
+            // Check Date for Warning
+            checkRecentDate(invoiceData.issue_date);
+
+            // Handle Supplier
+            if (invoiceData.supplier_cnpj) {
+                const existing = suppliers.find((s: any) => s.cnpj === invoiceData.supplier_cnpj);
+                if (existing) {
+                    setSelectedSupplier(existing);
+                    setValue('supplier_id', existing.id);
+                } else {
+                    // Prompt for new Supplier
+                    setNewSupplierData({
+                        name: invoiceData.supplier_name || 'Novo Fornecedor',
+                        cnpj: invoiceData.supplier_cnpj
+                    });
+                    if (confirm(`Fornecedor com CNPJ ${invoiceData.supplier_cnpj} não encontrado. Deseja cadastrar agora?`)) {
+                        setIsNewSupplierModalOpen(true);
+                    }
+                }
+            }
+
+            setIsNfModalOpen(true);
+
+        } catch (error) {
+            console.error("Erro ao ler NF", error);
+            alert("Erro ao ler dados da Nota Fiscal. Verifique o arquivo.");
+        } finally {
+            setNfLoading(false);
+        }
+    };
+
+    const checkRecentDate = (dateStr: string) => {
+        if (!dateStr) return;
+        const date = new Date(dateStr);
+        const diffTime = Math.abs(new Date().getTime() - date.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        setIsPurchaseRecent(diffDays <= 30);
+    };
+
+    const useNfItem = (item: any) => {
+        setValue('description', item.description.toUpperCase());
+        setValue('invoice_value', item.unit_price);
+        setInvoiceValueDisplay(item.unit_price.toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
+        if (item.code) setValue('observations', `Item importado automaticamente da NF. Código: ${item.code}`);
+        setIsNfModalOpen(false);
+    };
+
+    const handleCreateSupplier = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const res = await api.post('/suppliers/', newSupplierData);
+            setSuppliers(prev => [...prev, res.data]);
+            setSelectedSupplier(res.data);
+            setValue('supplier_id', res.data.id);
+            setIsNewSupplierModalOpen(false);
+            alert("Fornecedor cadastrado!");
+        } catch (error) {
+            console.error("Erro ao criar fornecedor", error);
+            alert("Erro ao criar fornecedor.");
+        }
+    };
+
     const onSubmit = async (data: any) => {
+        if (isPurchaseRecent && !nfFileAttached && !editingItem) {
+             alert("Para compras recentes (últimos 30 dias), é obrigatório anexar a Nota Fiscal.");
+             return;
+        }
+
         if (data.fixed_asset_number) {
             try {
                 let url = `/items/check-asset/${data.fixed_asset_number}`;
@@ -665,8 +761,30 @@ const Inventory: React.FC = () => {
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Data Compra</label>
-                                <input type="date" {...register('purchase_date', { required: true })} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
+                                <input type="date" {...register('purchase_date', { required: true })} onChange={(e) => { checkRecentDate(e.target.value); register('purchase_date').onChange(e); }} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
                             </div>
+
+                            {/* Strategic NF Upload Placement */}
+                            <div className={`space-y-1.5 ${isPurchaseRecent ? 'animate-pulse' : ''}`}>
+                                <label className={`text-xs font-bold uppercase tracking-wide flex justify-between ${isPurchaseRecent ? 'text-blue-600' : 'text-slate-500'}`}>
+                                    Nota Fiscal (Arquivo)
+                                    {isPurchaseRecent && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 rounded">Obrigatório</span>}
+                                </label>
+                                <div className={`relative ${isPurchaseRecent ? 'ring-2 ring-blue-500 ring-offset-2 rounded-lg' : ''}`}>
+                                    <input
+                                        type="file"
+                                        onChange={(e) => {
+                                            register('file').onChange(e);
+                                            handleFileUpload(e);
+                                        }}
+                                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all text-sm text-slate-500"
+                                        disabled={!!editingItem}
+                                    />
+                                    {nfLoading && <div className="absolute inset-0 bg-white/80 flex items-center justify-center text-xs text-blue-600 font-bold">Lendo NF...</div>}
+                                </div>
+                                {isPurchaseRecent && <p className="text-[10px] text-blue-600 font-medium mt-1">Para compras recentes, anexe a NF para preenchimento automático.</p>}
+                            </div>
+
                             <div className="space-y-1.5">
                                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Valor</label>
                                 <input type="text" value={invoiceValueDisplay} onChange={(e) => { let val = e.target.value.replace(/\D/g, ''); if (!val) { setInvoiceValueDisplay(''); setValue('invoice_value', ''); return; } const floatVal = parseFloat(val) / 100; setInvoiceValueDisplay(floatVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })); setValue('invoice_value', floatVal); }} placeholder="0,00" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" />
@@ -691,10 +809,6 @@ const Inventory: React.FC = () => {
                                     {branches.map(branch => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
                                 </select>
                             </div>
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nota Fiscal (Arquivo)</label>
-                                <input type="file" {...register('file')} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all text-sm text-slate-500" disabled={!!editingItem} />
-                            </div>
                             <div className="col-span-1 md:col-span-2 space-y-1.5">
                                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Observações</label>
                                 <textarea {...register('observations')} onChange={(e) => { e.target.value = e.target.value.toUpperCase(); register('observations').onChange(e); }} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" rows={3} />
@@ -703,6 +817,95 @@ const Inventory: React.FC = () => {
                             <div className="col-span-1 md:col-span-2 flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100">
                                 <button type="button" onClick={() => { setIsCreateModalOpen(false); setEditingItem(null); reset(); setSelectedSupplier(null); }} className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 font-medium transition-colors">Cancelar</button>
                                 <button type="submit" className="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium shadow-lg shadow-blue-500/30 transition-all">Salvar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* NF Item Selection Modal */}
+            {isNfModalOpen && (
+                <div className="fixed inset-0 z-[80] flex justify-end">
+                    <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm" onClick={() => setIsNfModalOpen(false)} />
+                    <div className="relative w-full max-w-md bg-white shadow-2xl h-full overflow-y-auto animate-slide-in-right">
+                        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                <FileText className="text-blue-600" /> Itens da Nota Fiscal
+                            </h3>
+                            <button onClick={() => setIsNfModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle size={20}/></button>
+                        </div>
+                        <div className="p-5">
+                            {nfItems.length === 0 ? (
+                                <p className="text-center text-slate-500 py-10">Nenhum item encontrado na NF.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {nfItems.map((item, idx) => (
+                                        <div key={idx} className="bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition-all group">
+                                            <p className="font-medium text-slate-800 text-sm mb-1">{item.description}</p>
+                                            <div className="flex justify-between text-xs text-slate-500 mb-3">
+                                                <span>Qtd: {item.quantity}</span>
+                                                <span className="font-semibold text-slate-700">R$ {item.unit_price.toFixed(2)}</span>
+                                            </div>
+                                            <button
+                                                onClick={() => useNfItem(item)}
+                                                className="w-full py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold uppercase tracking-wide group-hover:bg-blue-600 group-hover:text-white transition-colors"
+                                            >
+                                                Usar este Item
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* New Supplier Modal */}
+            {isNewSupplierModalOpen && (
+                <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 animate-scale-in">
+                        <h3 className="text-lg font-bold mb-4">Cadastrar Fornecedor</h3>
+                        <form onSubmit={handleCreateSupplier} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Razão Social / Nome</label>
+                                <input
+                                    required
+                                    className="w-full border rounded-lg p-2 text-sm"
+                                    value={newSupplierData.name || ''}
+                                    onChange={e => setNewSupplierData({...newSupplierData, name: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">CNPJ</label>
+                                <input
+                                    required
+                                    className="w-full border rounded-lg p-2 text-sm bg-slate-50"
+                                    value={newSupplierData.cnpj || ''}
+                                    readOnly
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">E-mail</label>
+                                <input
+                                    type="email"
+                                    className="w-full border rounded-lg p-2 text-sm"
+                                    value={newSupplierData.email || ''}
+                                    onChange={e => setNewSupplierData({...newSupplierData, email: e.target.value})}
+                                />
+                            </div>
+                             <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Telefone</label>
+                                <input
+                                    type="tel"
+                                    className="w-full border rounded-lg p-2 text-sm"
+                                    value={newSupplierData.phone || ''}
+                                    onChange={e => setNewSupplierData({...newSupplierData, phone: e.target.value})}
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-4">
+                                <button type="button" onClick={() => setIsNewSupplierModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Salvar Fornecedor</button>
                             </div>
                         </form>
                     </div>
