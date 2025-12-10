@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import api from '../../api';
+import { useAuth } from '../../AuthContext';
 import type { DateRange } from './ui/DateRangePicker';
 
 interface DashboardContextType {
@@ -42,9 +43,7 @@ interface DashboardContextType {
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
 
 export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    // Removed useAuth here since we are not using user role for strict security inside the context,
-    // assuming the API calls are already secured by backend which filters items for operators.
-    // If we need pre-selection based on user role, we could add it back, but let's fix the lint error first.
+    const { user } = useAuth();
 
     const [isLoading, setIsLoading] = useState(true);
     const [rawItems, setRawItems] = useState<any[]>([]);
@@ -65,7 +64,26 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     );
     const [layout, setLayout] = useState(() => {
         const saved = localStorage.getItem('dashboard_layout');
-        return saved ? JSON.parse(saved) : []; // Default layout initialized in component
+        if (saved) return JSON.parse(saved);
+
+        // Role-based default layouts
+        if (user?.role === 'OPERATOR') {
+             return [
+                'kpi-total-items', 'kpi-writeoff',
+                'chart-branch-count', 'chart-category-count'
+            ];
+        }
+
+        if (user?.role === 'AUDITOR') {
+             return [
+                'kpi-total-value', 'kpi-pending-value',
+                'chart-evolution',
+                'chart-branch', 'table-top-items'
+            ];
+        }
+
+        // Default Admin/Approver
+        return []; // DraggableGrid will set DEFAULT_LAYOUT if empty
     });
 
     useEffect(() => {

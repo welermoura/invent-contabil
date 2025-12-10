@@ -2,6 +2,7 @@ import React from 'react';
 import { useDashboard } from '../DashboardContext';
 import MultiSelect from './MultiSelect';
 import DateRangePicker from './DateRangePicker';
+import DashboardSettings from './DashboardSettings';
 import { Search, RotateCw, Moon, Sun, Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
@@ -74,6 +75,10 @@ const DashboardControls: React.FC = () => {
                             <Download size={18} />
                             <span className="hidden sm:inline">Exportar</span>
                         </button>
+
+                        <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden md:block" />
+
+                        <DashboardSettings />
                     </div>
                 </div>
 

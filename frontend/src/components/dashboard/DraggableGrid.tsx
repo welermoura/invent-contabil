@@ -26,22 +26,29 @@ import { useDashboard } from './DashboardContext';
 
 import StatCard from './widgets/StatCard';
 import ValueByBranchChart from './widgets/ValueByBranchChart';
+import CountByBranchChart from './widgets/CountByBranchChart';
 import ValueByCategoryChart from './widgets/ValueByCategoryChart';
+import CountByCategoryChart from './widgets/CountByCategoryChart';
 import EvolutionChart from './widgets/EvolutionChart';
 import TopItemsTable from './widgets/TopItemsTable';
 import { DollarSign, Package, AlertCircle, FileWarning } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // Widget Registry
-const WIDGETS: Record<string, any> = {
-    'kpi-total-value': { component: StatCard, type: 'kpi', props: { title: "Valor Contábil Total", icon: DollarSign, colorClass: "text-emerald-600" } },
-    'kpi-total-items': { component: StatCard, type: 'kpi', props: { title: "Itens Totais", icon: Package, colorClass: "text-blue-600" } },
-    'kpi-pending-value': { component: StatCard, type: 'kpi', props: { title: "Valor Pendente", icon: AlertCircle, colorClass: "text-amber-500" } }, // Calculated in frontend now
-    'kpi-writeoff': { component: StatCard, type: 'kpi', props: { title: "Baixas Pendentes", icon: FileWarning, colorClass: "text-red-500" } },
-    'chart-branch': { component: ValueByBranchChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
-    'chart-category': { component: ValueByCategoryChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
-    'chart-evolution': { component: EvolutionChart, type: 'chart', className: 'md:col-span-2 lg:col-span-2' }, // Full width
-    'table-top-items': { component: TopItemsTable, type: 'chart', className: 'md:col-span-1 lg:col-span-2' }, // Wide
+export const WIDGETS: Record<string, any> = {
+    'kpi-total-value': { label: "KPI Valor Total", component: StatCard, type: 'kpi', props: { title: "Valor Contábil Total", icon: DollarSign, colorClass: "text-emerald-600" } },
+    'kpi-total-items': { label: "KPI Total Itens", component: StatCard, type: 'kpi', props: { title: "Itens Totais", icon: Package, colorClass: "text-blue-600" } },
+    'kpi-pending-value': { label: "KPI Valor Pendente", component: StatCard, type: 'kpi', props: { title: "Valor Pendente", icon: AlertCircle, colorClass: "text-amber-500" } },
+    'kpi-writeoff': { label: "KPI Baixas", component: StatCard, type: 'kpi', props: { title: "Baixas Pendentes", icon: FileWarning, colorClass: "text-red-500" } },
+
+    'chart-branch': { label: "Valor por Filial", component: ValueByBranchChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
+    'chart-branch-count': { label: "Qtd. por Filial", component: CountByBranchChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
+
+    'chart-category': { label: "Valor por Categoria", component: ValueByCategoryChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
+    'chart-category-count': { label: "Qtd. por Categoria", component: CountByCategoryChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
+
+    'chart-evolution': { label: "Evolução Patrimonial", component: EvolutionChart, type: 'chart', className: 'md:col-span-2 lg:col-span-2' },
+    'table-top-items': { label: "Top Itens", component: TopItemsTable, type: 'chart', className: 'md:col-span-1 lg:col-span-2' },
 };
 
 const DEFAULT_LAYOUT = [
