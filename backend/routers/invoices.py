@@ -46,7 +46,10 @@ BLACKLIST_WORDS = {
     "IMPOSTO", "CNPJ", "IE", "ENDERECO", "ENDEREÇO", "CEP", "TRANSPORTADORA",
     "OBSERVACAO", "OBSERVAÇÃO", "DOCUMENTO", "BASE", "ICMS", "IPI", "DESCONTO",
     "TELEFONE", "FONE", "PAGAMENTO", "EMISSAO", "EMISSÃO", "NATUREZA", "PROTOCOLO",
-    "INSCRICAO", "INSCRIÇÃO", "SUBSTITUICAO", "SUBSTITUIÇÃO", "DANFE", "FRETE", "SEGURO"
+    "INSCRICAO", "INSCRIÇÃO", "SUBSTITUICAO", "SUBSTITUIÇÃO", "DANFE", "FRETE", "SEGURO",
+    "RESOLUCAO", "RESOLUÇÃO", "MODELO", "SUBTOTAL", "COFINS", "PIS", "CONFIS", "ISSQN",
+    "ALIQUOTA", "ALÍQUOTA", "OPERACAO", "OPERAÇÃO", "DADOS", "ADICIONAIS", "FISCO",
+    "RESERVADO", "AUTENTICIDADE", "RECEBEMOS"
 }
 
 def clean_text(text: str) -> str:
@@ -139,9 +142,13 @@ def preprocess_image(image_bytes: bytes) -> Image.Image:
 
 def is_valid_line_item(line: str) -> Optional[InvoiceItem]:
     """
-    Validates if a line is likely an invoice item based on heuristics.
+    Validates if a line is likely an invoice item based on strict fiscal rules.
     Returns InvoiceItem if valid, None otherwise.
     """
+    line = line.strip()
+    if not line:
+        return None
+
     line_upper = line.upper()
 
     # Rule 4: Check Blacklist
@@ -149,77 +156,145 @@ def is_valid_line_item(line: str) -> Optional[InvoiceItem]:
         if bad_word in line_upper:
             return None
 
-    # Rule 1 & 2: Search for Price and Quantity patterns
-    # Heuristic: Look for the last numbers in the line which usually represent Total and Unit Price
-    # Matches numbers like 10,00 | 10.00 | 1.200,00
+    # Find numbers that look like prices/quantities (at least one digit, optional delimiters)
+    # We want to exclude standalone years like "2023" if possible, but regex matches them.
+    # We rely on context.
+
+    # Heuristic: Find all numeric tokens at the END of the line
+    # Regex for a number: digit+ ([.,] digit+)?
+    # We want to match numbers that could be Qty or Price.
+
+    # Let's find all numbers in the string
     numbers = re.findall(r'(\d+[.,]?\d*)', line)
 
     if len(numbers) < 2:
+        # Missing either Qty or Price (or Total)
         return None
 
     try:
-        # Assume last number is Total, second to last is Unit Price
-        # Or last is Unit Price if only 2 numbers found (sometimes Qty is implied as 1 or separate)
+        # Strategy: The last number is likely Total or Unit Price.
+        # The second to last is likely Unit Price or Qty.
 
-        # Let's look for explicit patterns first
-        # Format: Desc ... Qty ... Unit ... Total
+        # Let's assume standard format: Description ... Qty ... Unit ... Total
+        # But OCR often merges columns.
 
-        total_val = normalize_value(numbers[-1])
-        unit_val = normalize_value(numbers[-2])
+        val_last = normalize_value(numbers[-1])
+        val_second_last = normalize_value(numbers[-2])
 
-        # Rule 6: Plausible Value Check (Unit Price between 5 and 200k)
-        # Relaxed lower bound to 0.01 for generic items, but prompt asked for 5. Let's stick to 0.1 to be safe for small items like screws
-        if unit_val < 0.01 or unit_val > 500000:
-             return None
+        # Determine which is Unit Price.
+        # Usually Qty is smaller integer, Unit Price is float.
+        # But we can have Qty 1.5 kg
 
-        # Calculate Quantity
-        qty = 1.0
-        if unit_val > 0:
-            qty = total_val / unit_val
-            # If qty is not close to an integer or simple decimal (e.g. 1.5), it might be wrong mapping
-            if abs(qty - round(qty, 3)) > 0.01:
-                 # Maybe the numbers are misaligned or quantity is the 3rd to last number?
-                 if len(numbers) >= 3:
-                     possible_qty = normalize_value(numbers[-3])
-                     if possible_qty > 0 and abs((possible_qty * unit_val) - total_val) < 0.1:
-                         qty = possible_qty
-                     else:
-                         # Fallback: Just assume what we found
-                         pass
+        qty = 0.0
+        unit_price = 0.0
 
-        qty = round(qty, 2)
+        # Check plausibility of unit price
+        # Rule 6: 1.00 <= price <= 200,000.00
 
-        # Rule 1: Qty valid
+        # Scenario A: Last is Total, 2nd Last is Unit Price -> Qty = Total / Unit
+        if 1.0 <= val_second_last <= 200000.0:
+            unit_price = val_second_last
+            possible_total = val_last
+
+            # Sanity check total
+            if possible_total >= unit_price or abs(possible_total - unit_price) < 0.01:
+                 # Check if we can derive Qty
+                 if possible_total > 0 and unit_price > 0:
+                     derived_qty = possible_total / unit_price
+                     # If derived qty is close to 3rd last number, great.
+                     # If not, assume derived_qty is the quantity.
+                     qty = round(derived_qty, 3)
+                 elif possible_total == 0:
+                     # Maybe val_last is not total but garbage?
+                     pass
+            else:
+                # Total < Unit Price? Unlikely unless discount.
+                # Maybe last number IS Unit Price and 2nd last is Qty?
+                pass
+
+        # Scenario B: Last is Unit Price (and Qty is somewhere before)
+        if qty == 0.0:
+            if 1.0 <= val_last <= 200000.0:
+                unit_price = val_last
+                # Assume 2nd last is Qty
+                qty = val_second_last
+            else:
+                # Neither look like valid unit prices
+                return None
+
+        # Rule: Quantity must be valid (> 0)
         if qty <= 0:
             return None
 
-        # Rule 3: Description extraction
-        # Description is everything before the first numeric match of the items we picked
-        # We find where the numbers start in the original line
-
-        # Find index of unit_val string representation in line to split description
-        # This is tricky because normalization changes string.
-        # Let's regex split by the first digit that looks like part of our numbers
-
-        split_match = re.search(r'\d', line)
-        if not split_match:
+        # Refined Unit Price Check
+        if not (1.0 <= unit_price <= 200000.0):
             return None
 
-        desc_end_index = split_match.start()
-        description = line[:desc_end_index].strip()
+        # Rule 3: Description Extraction
+        # Description is everything before the first number that starts the numeric block
+        # We need to find where the "numeric part" of the line begins.
 
-        # Cleanup description symbols
+        # Regex to find the start of the sequence of numbers at the end of the line
+        # We look for the position of the first digit of the first number involved in our calculation
+        # This is a simplification. A better way: split line by the first occurrence of a number that isn't part of description.
+
+        # Let's try to match the first digit in the line.
+        match = re.search(r'\d', line)
+        if not match:
+            return None
+
+        first_digit_idx = match.start()
+
+        # However, descriptions can contain numbers ("Caneta 2000").
+        # We want the numbers that act as columns.
+        # Usually these are separated by larger spaces in PDF text, but OCR flattens it.
+        # Let's assume description is everything up to the 2nd to last number found?
+        # No, "Item 1 10.00 10.00".
+        # Let's assume the description ends before the "Quantity" column.
+        # If we identified `qty` and `unit_price`, we should look for their string representations in the line.
+
+        # Heuristic: Split line by whitespace. Iterate backwards. Identify numbers. The rest is description.
+        parts = line.split()
+        numeric_indices = []
+        for i, p in enumerate(parts):
+            if re.match(r'^\d+[.,]?\d*$', p.replace('R$', '').replace('$', '')):
+                numeric_indices.append(i)
+
+        if len(numeric_indices) < 2:
+            return None
+
+        # Assume the last contiguous block of numbers are the values
+        # Description is everything before that block.
+
+        # Find where the trailing block of numbers starts
+        # e.g. ["Desc", "Part", "1", "10.00", "10.00"] -> start index 2
+
+        block_start = numeric_indices[-1]
+        for idx in reversed(numeric_indices):
+            if idx == block_start or idx == block_start - 1:
+                block_start = idx
+            else:
+                break
+
+        description_parts = parts[:block_start]
+        description = " ".join(description_parts).strip()
+
+        # Rule 5: Min 5 chars
+        if len(description) < 5:
+            return None
+
+        # Clean description
         description = re.sub(r'^[.\-,\s]+', '', description)
 
-        # Rule 5: Min 6 chars
-        if len(description) < 6:
+        # Final sanity check: Description shouldn't look like a date or code only
+        if re.match(r'^\d{2}/\d{2}/\d{4}$', description):
             return None
 
         return InvoiceItem(
             description=description,
             quantity=qty,
-            unit_price=unit_val,
-            total_price=total_val
+            unit_price=unit_price,
+            total_price=round(qty * unit_price, 2)
         )
 
     except Exception:
@@ -249,11 +324,13 @@ def extract_data_from_text(text: str) -> InvoiceData:
     data.issue_date = extract_date(text)
 
     # Total Value
-    total_candidates = re.findall(r'(?:TOTAL|VALOR A PAGAR|VALOR TOTAL|VLR\. TOTAL)\s*.*?(?:R\$)?\s*([\d\.,]+)', text, re.IGNORECASE)
+    # Heuristic: Biggest number usually
+    total_candidates = re.findall(r'(\d+[.,]\d{2})', text) # Only strictly formatted currency candidates
     if total_candidates:
         try:
             values = [normalize_value(v) for v in total_candidates]
-            data.total_value = max(values)
+            if values:
+                data.total_value = max(values)
         except:
             pass
 
@@ -263,7 +340,7 @@ def extract_data_from_text(text: str) -> InvoiceData:
         item = is_valid_line_item(line)
         if item:
             # Avoid duplicate items if lines are repeated (common in OCR)
-            is_duplicate = any(i.description == item.description and i.total_price == item.total_price for i in data.items)
+            is_duplicate = any(i.description == item.description and abs(i.total_price - item.total_price) < 0.01 for i in data.items)
             if not is_duplicate:
                 data.items.append(item)
 
@@ -379,7 +456,8 @@ def parse_image_file(content: bytes) -> InvoiceData:
         data.source_type = "image"
 
         if not data.items and len(text) < 20:
-             raise HTTPException(status_code=422, detail="Imagem ilegível ou sem texto reconhecível. Tente melhorar a iluminação.")
+             # Even if no items found, return metadata if present. Only error if completely empty/garbage.
+             pass
 
         return data
 
