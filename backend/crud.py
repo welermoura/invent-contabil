@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
-from sqlalchemy import or_
+from sqlalchemy import or_, cast, String
 from backend import models, schemas
 from backend.auth import get_password_hash
 
@@ -206,7 +206,19 @@ async def delete_supplier(db: AsyncSession, supplier_id: int):
     return False
 
 # Items
-async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: str = None, category: str = None, branch_id: int = None, search: str = None, allowed_branch_ids: list[int] = None):
+async def get_items(
+    db: AsyncSession,
+    skip: int = 0,
+    limit: int = 100,
+    status: str = None,
+    category: str = None,
+    branch_id: int = None,
+    search: str = None,
+    allowed_branch_ids: list[int] = None,
+    description: str = None,
+    fixed_asset_number: str = None,
+    purchase_date: str = None
+):
     query = select(models.Item).options(
         selectinload(models.Item.branch),
         selectinload(models.Item.transfer_target_branch),
@@ -222,12 +234,22 @@ async def get_items(db: AsyncSession, skip: int = 0, limit: int = 100, status: s
         query = query.where(models.Item.branch_id == branch_id)
     if allowed_branch_ids is not None:
         query = query.where(models.Item.branch_id.in_(allowed_branch_ids))
+
+    # Specific column filters
+    if description:
+        query = query.where(models.Item.description.ilike(f"%{description}%"))
+    if fixed_asset_number:
+        query = query.where(models.Item.fixed_asset_number.ilike(f"%{fixed_asset_number}%"))
+    if purchase_date:
+        query = query.where(cast(models.Item.purchase_date, String).ilike(f"%{purchase_date}%"))
+
     if search:
         search_filter = f"%{search}%"
         query = query.where(
             (models.Item.description.ilike(search_filter)) |
             (models.Item.serial_number.ilike(search_filter)) |
-            (models.Item.invoice_number.ilike(search_filter))
+            (models.Item.invoice_number.ilike(search_filter)) |
+            (models.Item.fixed_asset_number.ilike(search_filter))
         )
 
     result = await db.execute(query.offset(skip).limit(limit))

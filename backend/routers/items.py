@@ -21,6 +21,9 @@ async def read_items(
     category: Optional[str] = None,
     branch_id: Optional[int] = None,
     search: Optional[str] = None,
+    description: Optional[str] = None,
+    fixed_asset_number: Optional[str] = None,
+    purchase_date: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -42,10 +45,33 @@ async def read_items(
                  # Vamos forçar um filtro impossível ou levantar erro.
                  raise HTTPException(status_code=403, detail="Acesso negado a esta filial")
         else:
-            return await crud.get_items(db, skip=skip, limit=limit, status=status, category=category, branch_id=None, search=search, allowed_branch_ids=allowed_branches)
+            return await crud.get_items(
+                db,
+                skip=skip,
+                limit=limit,
+                status=status,
+                category=category,
+                branch_id=None,
+                search=search,
+                allowed_branch_ids=allowed_branches,
+                description=description,
+                fixed_asset_number=fixed_asset_number,
+                purchase_date=purchase_date
+            )
 
     # If the user IS Admin, Approver or Auditor, and they passed a branch_id, we use it.
-    return await crud.get_items(db, skip=skip, limit=limit, status=status, category=category, branch_id=branch_id, search=search)
+    return await crud.get_items(
+        db,
+        skip=skip,
+        limit=limit,
+        status=status,
+        category=category,
+        branch_id=branch_id,
+        search=search,
+        description=description,
+        fixed_asset_number=fixed_asset_number,
+        purchase_date=purchase_date
+    )
 
 from pydantic import BaseModel
 
