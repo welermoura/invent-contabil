@@ -10,34 +10,47 @@ interface DashboardContextType {
     filters: {
         branches: (string | number)[];
         categories: (string | number)[];
+        status: string[];
         dateRange: DateRange;
         search: string;
+        valueRange: { min: number | null, max: number | null };
     };
     setFilters: React.Dispatch<React.SetStateAction<{
         branches: (string | number)[];
         categories: (string | number)[];
+        status: string[];
         dateRange: DateRange;
         search: string;
+        valueRange: { min: number | null, max: number | null };
     }>>;
     availableBranches: any[];
     availableCategories: any[];
     aggregates: {
         totalValue: number;
+        totalPurchaseValue: number;
         totalItems: number;
         pendingValue: number;
         pendingCount: number;
+        averageAssetAgeMonths: number;
+        zeroDepreciationCount: number;
         valueByBranch: { [key: string]: number };
         valueByCategory: { [key: string]: number };
         countByBranch: { [key: string]: number };
         countByCategory: { [key: string]: number };
         itemsByStatus: { [key: string]: number };
         topItems: any[];
+        recentItems: any[];
     };
     refreshData: () => void;
     layout: any[];
     setLayout: (layout: any[]) => void;
+    isEditing: boolean;
+    setIsEditing: (isEditing: boolean) => void;
     theme: 'light' | 'dark';
     toggleTheme: () => void;
+    addWidget: (widgetId: string) => void;
+    removeWidget: (widgetId: string) => void;
+    resetLayout: () => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -54,20 +67,21 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const [filters, setFilters] = useState({
         branches: [] as (string | number)[],
         categories: [] as (string | number)[],
+        status: [] as string[],
         dateRange: { startDate: null, endDate: null, label: 'Todo o Período' } as DateRange,
         search: '',
+        valueRange: { min: null, max: null } as { min: number | null, max: number | null },
     });
 
     // Theme & Layout
     const [theme, setTheme] = useState<'light' | 'dark'>(() =>
         (localStorage.getItem('dashboard_theme') as 'light' | 'dark') || 'light'
     );
-    const [layout, setLayout] = useState(() => {
-        const saved = localStorage.getItem('dashboard_layout');
-        if (saved) return JSON.parse(saved);
+    const [isEditing, setIsEditing] = useState(false);
 
-        // Role-based default layouts
-        if (user?.role === 'OPERATOR') {
+    const getDefaultLayout = () => {
+         // Role-based default layouts
+         if (user?.role === 'OPERATOR') {
              return [
                 'kpi-total-items', 'kpi-writeoff',
                 'chart-branch-count', 'chart-category-count'
@@ -83,7 +97,18 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
 
         // Default Admin/Approver
-        return []; // DraggableGrid will set DEFAULT_LAYOUT if empty
+        return [
+            'kpi-total-value', 'kpi-total-items', 'kpi-pending-value', 'kpi-writeoff',
+            'chart-evolution',
+            'chart-branch', 'chart-category',
+            'table-top-items'
+        ];
+    };
+
+    const [layout, setLayout] = useState(() => {
+        const saved = localStorage.getItem('dashboard_layout');
+        if (saved) return JSON.parse(saved);
+        return getDefaultLayout();
     });
 
     useEffect(() => {
@@ -96,6 +121,26 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }, [theme]);
 
     const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
+
+    const addWidget = (widgetId: string) => {
+        if (!layout.includes(widgetId)) {
+            const newLayout = [...layout, widgetId];
+            setLayout(newLayout);
+            localStorage.setItem('dashboard_layout', JSON.stringify(newLayout));
+        }
+    };
+
+    const removeWidget = (widgetId: string) => {
+        const newLayout = layout.filter((id: string) => id !== widgetId);
+        setLayout(newLayout);
+        localStorage.setItem('dashboard_layout', JSON.stringify(newLayout));
+    };
+
+    const resetLayout = () => {
+        const def = getDefaultLayout();
+        setLayout(def);
+        localStorage.setItem('dashboard_layout', JSON.stringify(def));
+    };
 
     // Data Fetching
     const fetchData = async () => {
@@ -159,7 +204,20 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             );
         }
 
-        // 3. Search
+        // 3. Status Filter
+        if (filters.status.length > 0) {
+            filtered = filtered.filter((item: any) => filters.status.includes(item.status));
+        }
+
+        // 4. Value Range Filter
+        if (filters.valueRange.min !== null) {
+            filtered = filtered.filter((item: any) => (item.accounting_value || 0) >= (filters.valueRange.min as number));
+        }
+        if (filters.valueRange.max !== null) {
+            filtered = filtered.filter((item: any) => (item.accounting_value || 0) <= (filters.valueRange.max as number));
+        }
+
+        // 5. Search
         if (filters.search) {
             const lowerSearch = filters.search.toLowerCase();
             filtered = filtered.filter((item: any) =>
@@ -168,7 +226,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             );
         }
 
-        // 4. Date Range (Purchase Date)
+        // 6. Date Range (Purchase Date)
         if (filters.dateRange.startDate && filters.dateRange.endDate) {
             const start = filters.dateRange.startDate.getTime();
             const end = filters.dateRange.endDate.getTime();
@@ -180,21 +238,37 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
         // --- Aggregations ---
         let totalValue = 0;
+        let totalPurchaseValue = 0;
         let totalItems = 0;
         let pendingValue = 0;
         let pendingCount = 0;
+        let totalAgeMonths = 0;
+        let zeroDepreciationCount = 0;
+
         const valueByBranch: Record<string, number> = {};
         const valueByCategory: Record<string, number> = {};
         const countByBranch: Record<string, number> = {};
         const countByCategory: Record<string, number> = {};
         const itemsByStatus: Record<string, number> = {};
 
+        const now = new Date().getTime();
+
         filtered.forEach((item: any) => {
             const val = item.accounting_value || 0;
+            const purchVal = item.invoice_value || 0;
 
             // Totals
             totalValue += val;
+            totalPurchaseValue += purchVal;
             totalItems += 1;
+
+            if (val === 0) zeroDepreciationCount += 1;
+
+            if (item.purchase_date) {
+                 const pDate = new Date(item.purchase_date).getTime();
+                 const ageMonths = (now - pDate) / (1000 * 60 * 60 * 24 * 30.44); // Approx months
+                 if (ageMonths > 0) totalAgeMonths += ageMonths;
+            }
 
             // Pending
             if (item.status === 'PENDING' || item.status === 'WRITE_OFF_PENDING' || item.status === 'TRANSFER_PENDING') {
@@ -221,19 +295,28 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             .sort((a: any, b: any) => (b.accounting_value || 0) - (a.accounting_value || 0))
             .slice(0, 10);
 
+        // Recent Items (Sort by ID desc as proxy for recency if created_at not available, or purchase_date)
+        const recentItems = [...filtered]
+             .sort((a: any, b: any) => (b.id || 0) - (a.id || 0))
+             .slice(0, 10);
+
         return {
             filteredItems: filtered,
             aggregates: {
                 totalValue,
+                totalPurchaseValue,
                 totalItems,
                 pendingValue,
                 pendingCount,
+                averageAssetAgeMonths: totalItems > 0 ? totalAgeMonths / totalItems : 0,
+                zeroDepreciationCount,
                 valueByBranch,
                 valueByCategory,
                 countByBranch,
                 countByCategory,
                 itemsByStatus,
-                topItems
+                topItems,
+                recentItems
             }
         };
 
@@ -252,8 +335,13 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             refreshData: fetchData,
             layout,
             setLayout,
+            isEditing,
+            setIsEditing,
             theme,
-            toggleTheme
+            toggleTheme,
+            addWidget,
+            removeWidget,
+            resetLayout
         }}>
             {children}
         </DashboardContext.Provider>

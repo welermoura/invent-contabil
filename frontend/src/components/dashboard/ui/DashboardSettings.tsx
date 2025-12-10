@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
 import { useDashboard } from '../DashboardContext';
 import { WIDGETS } from '../DraggableGrid';
-import { Settings, Save, Layout, Check, X, Eye, EyeOff, RotateCcw } from 'lucide-react';
+import { Settings, Save, Layout, Check, X, Eye, EyeOff, RotateCcw, Download, Upload } from 'lucide-react';
 
 const DashboardSettings: React.FC = () => {
-    const { layout, setLayout } = useDashboard();
+    const { layout, setLayout, resetLayout } = useDashboard();
     const [isOpen, setIsOpen] = useState(false);
     const [presetName, setPresetName] = useState('');
 
     const toggleWidget = (widgetId: string) => {
         if (layout.includes(widgetId)) {
             setLayout(layout.filter((id: string) => id !== widgetId));
+            localStorage.setItem('dashboard_layout', JSON.stringify(layout.filter((id: string) => id !== widgetId)));
         } else {
-            setLayout([...layout, widgetId]);
+            const newLayout = [...layout, widgetId];
+            setLayout(newLayout);
+            localStorage.setItem('dashboard_layout', JSON.stringify(newLayout));
         }
     };
 
@@ -29,21 +32,43 @@ const DashboardSettings: React.FC = () => {
         const presets = JSON.parse(localStorage.getItem('dashboard_presets') || '{}');
         if (presets[name]) {
             setLayout(presets[name]);
+            localStorage.setItem('dashboard_layout', JSON.stringify(presets[name]));
             setIsOpen(false);
         }
     };
 
-    const availablePresets = Object.keys(JSON.parse(localStorage.getItem('dashboard_presets') || '{}'));
+    const exportLayout = () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(layout));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href",     dataStr);
+        downloadAnchorNode.setAttribute("download", "dashboard_layout.json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    };
 
-    const resetLayout = () => {
-        const DEFAULT_LAYOUT = [
-            'kpi-total-value', 'kpi-total-items', 'kpi-pending-value', 'kpi-writeoff',
-            'chart-evolution',
-            'chart-branch', 'chart-category',
-            'table-top-items'
-        ];
-        setLayout(DEFAULT_LAYOUT);
-    }
+    const importLayout = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const fileReader = new FileReader();
+        if (event.target.files && event.target.files[0]) {
+            fileReader.readAsText(event.target.files[0], "UTF-8");
+            fileReader.onload = e => {
+                if (e.target?.result) {
+                    try {
+                        const parsed = JSON.parse(e.target.result as string);
+                        if (Array.isArray(parsed)) {
+                            setLayout(parsed);
+                            localStorage.setItem('dashboard_layout', JSON.stringify(parsed));
+                            alert("Layout importado com sucesso!");
+                        }
+                    } catch (err) {
+                        alert("Erro ao ler arquivo de layout.");
+                    }
+                }
+            };
+        }
+    };
+
+    const availablePresets = Object.keys(JSON.parse(localStorage.getItem('dashboard_presets') || '{}'));
 
     if (!isOpen) {
         return (
@@ -75,7 +100,19 @@ const DashboardSettings: React.FC = () => {
 
                 <div className="p-6 overflow-y-auto flex-1">
                     <div className="mb-6">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Widgets Visíveis</h4>
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Widgets Visíveis</h4>
+                            <div className="flex gap-2">
+                                <button onClick={exportLayout} className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-700 dark:text-blue-400">
+                                    <Download size={14}/> Exportar JSON
+                                </button>
+                                <label className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer">
+                                    <Upload size={14}/> Importar JSON
+                                    <input type="file" className="hidden" accept=".json" onChange={importLayout} />
+                                </label>
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {Object.entries(WIDGETS).map(([id, def]) => {
                                 const isVisible = layout.includes(id);
