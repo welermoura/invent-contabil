@@ -615,7 +615,7 @@ const Inventory: React.FC = () => {
                      </span>
                     <div className="flex gap-2">
                         <button
-                            onClick={() => { if(page > 0) { const prev = page -1; setPage(prev); fetchItems(globalSearch, prev).then(res => setItems(res?.data || [])) } }}
+                            onClick={() => { if(page > 0) { const prev = page -1; setPage(prev); fetchItems(globalSearch, prev) } }}
                             disabled={page === 0}
                             className="px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
                         >
@@ -623,7 +623,7 @@ const Inventory: React.FC = () => {
                         </button>
                         <span className="text-sm text-slate-500 font-medium px-2 py-2">Página {page + 1}</span>
                         <button
-                            onClick={() => { if(hasMore) { const next = page + 1; setPage(next); fetchItems(globalSearch, next).then(res => setItems(res?.data || [])) } }}
+                            onClick={() => { if(hasMore) { const next = page + 1; setPage(next); fetchItems(globalSearch, next) } }}
                             disabled={!hasMore}
                             className="px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
                         >

@@ -55,7 +55,7 @@ const WidgetLibrary: React.FC = () => {
 
             <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
                  <p className="text-xs text-slate-400 text-center">
-                    Arraste os widgets no painel principal para reorganizar.
+                    Adicione widgets aqui e organize-os diretamente no Dashboard.
                  </p>
             </div>
         </div>
