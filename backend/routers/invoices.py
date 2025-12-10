@@ -5,6 +5,7 @@ import pdfplumber
 import pytesseract
 import cv2
 import numpy as np
+import pdf2image
 from PIL import Image
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from typing import List, Optional
@@ -62,8 +63,8 @@ def normalize_value(value_str: str) -> float:
         elif ',' in cleaned:
              cleaned = cleaned.replace(',', '.')
 
-        # Fix OCR errors (e.g., 'O' instead of '0', 'l' instead of '1') in numeric context
-        # This is risky for mixed strings, but okay if we are sure it's value
+        # Fix OCR errors (e.g., 'O' instead of '0', 'l' instead of '1', 'I' instead of '1') in numeric context
+        cleaned = cleaned.replace('o', '0').replace('l', '1').replace('i', '1')
 
         return float(cleaned)
     except Exception:
@@ -154,29 +155,21 @@ def extract_data_from_text(text: str) -> InvoiceData:
 
     # Total Value
     # Look for "Total" followed by currency
-    total_match = re.search(r'(?:TOTAL|VALOR)\s*(?:DA\s*NOTA)?\s*(?:R\$)?\s*([\d\.,]+)', text, re.IGNORECASE)
-    if total_match:
+    # Try to find the biggest number near "Total" or at the bottom
+    # We must be careful not to pick up quantity or random numbers.
+    total_candidates = re.findall(r'(?:TOTAL|VALOR A PAGAR|VALOR TOTAL|VLR\. TOTAL)\s*.*?(?:R\$)?\s*([\d\.,]+)', text, re.IGNORECASE)
+    if total_candidates:
+        # Heuristic: the largest value is likely the total
         try:
-             # Find the last match which is usually the grand total at the bottom
-             all_matches = re.findall(r'(?:TOTAL|VALOR A PAGAR|VALOR TOTAL)\s*.*?(?:R\$)?\s*([\d\.,]+)', text, re.IGNORECASE)
-             if all_matches:
-                 # Take the one that looks most like a large number (heuristic)
-                 # Or just the last one
-                 data.total_value = normalize_value(all_matches[-1])
+            values = [normalize_value(v) for v in total_candidates]
+            data.total_value = max(values)
         except:
-             pass
+            pass
 
     # Items Extraction (Heuristic)
     # Attempt to find lines with Quantity and Price
     lines = text.split('\n')
     for line in lines:
-        # Simple heuristic: Look for a line ending with a number (price)
-        # and containing a description. This is very prone to errors without layout analysis.
-        # But we can try to grab lines that have:  Text ... Number ... Number
-
-        # Regex for Line Item:  Description ... (Qty)? ... UnitPrice ... TotalPrice
-        # Example: "Caneta Azul  2 UN  1.50  3.00"
-
         # We look for lines with at least 2 numbers at the end
         parts = re.findall(r'([\d\.,]+)', line)
         if len(parts) >= 2:
@@ -274,19 +267,14 @@ def parse_pdf(content: bytes) -> InvoiceData:
         # If text is too short, it's likely an image-based PDF
         if len(text.strip()) < 50:
             logger.info("PDF has little text, attempting OCR on PDF images...")
-            # Extract images from PDF or Convert PDF to Image
-            # For simplicity using pdfplumber, we can try to extract images or just fallback
-            # Since pdfplumber image extraction can be complex, let's assume if text fails,
-            # we treat it as "image" but we need a way to render it.
-            # pypdfium2 (installed) can render pages to images.
-            import pypdfium2 as pdfium
 
-            pdf = pdfium.PdfDocument(content)
+            # Use pdf2image to convert PDF to images
+            images = pdf2image.convert_from_bytes(content, dpi=300)
             full_text_ocr = ""
-            for i in range(len(pdf)):
-                page = pdf[i]
-                image = page.render(scale=2).to_pil() # Render high res
-                # Preprocess
+
+            for i, image in enumerate(images):
+                # Preprocess each page image
+                # Convert PIL to OpenCV
                 cv_img = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
                 _, encoded_img = cv2.imencode('.jpg', cv_img)
                 processed_pil = preprocess_image(encoded_img.tobytes())
@@ -307,7 +295,7 @@ def parse_pdf(content: bytes) -> InvoiceData:
 
     except Exception as e:
         logger.error(f"PDF Parsing Error: {e}")
-        raise HTTPException(status_code=400, detail="Erro ao processar PDF da NF")
+        raise HTTPException(status_code=400, detail="Erro ao processar PDF da NF. Verifique se o arquivo não está corrompido.")
 
 def parse_image_file(content: bytes) -> InvoiceData:
     try:

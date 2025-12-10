@@ -11,7 +11,7 @@ pip install -r requirements.txt
 # Como não temos sudo, isso pode falhar se não formos root. A imagem python:3.11-slim geralmente roda como root.
 if [ -x "$(command -v apt-get)" ]; then
     echo "Updating system packages for OCR..."
-    apt-get update && apt-get install -y tesseract-ocr tesseract-ocr-por libgl1 || echo "Failed to install system packages, OCR might fail."
+    apt-get update && apt-get install -y tesseract-ocr tesseract-ocr-por libgl1 poppler-utils || echo "Failed to install system packages, OCR might fail."
 fi
 
 # Esperar o banco de dados estar pronto
