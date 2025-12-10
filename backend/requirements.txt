@@ -15,3 +15,5 @@ pandas
 openpyxl
 reportlab
 werkzeug
+pdfplumber
+xmltodict
