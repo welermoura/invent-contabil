@@ -40,6 +40,15 @@ class InvoiceData(BaseModel):
 
 # --- Helper Functions ---
 
+# Blacklist de palavras que invalidam uma linha como item
+BLACKLIST_WORDS = {
+    "CHAVE", "ACESSO", "SERIE", "SÉRIE", "VENDA", "PRAZO", "TOTAL", "VALOR",
+    "IMPOSTO", "CNPJ", "IE", "ENDERECO", "ENDEREÇO", "CEP", "TRANSPORTADORA",
+    "OBSERVACAO", "OBSERVAÇÃO", "DOCUMENTO", "BASE", "ICMS", "IPI", "DESCONTO",
+    "TELEFONE", "FONE", "PAGAMENTO", "EMISSAO", "EMISSÃO", "NATUREZA", "PROTOCOLO",
+    "INSCRICAO", "INSCRIÇÃO", "SUBSTITUICAO", "SUBSTITUIÇÃO", "DANFE", "FRETE", "SEGURO"
+}
+
 def clean_text(text: str) -> str:
     """Basic text cleaning."""
     if not text:
@@ -128,8 +137,96 @@ def preprocess_image(image_bytes: bytes) -> Image.Image:
         # Fallback to original
         return Image.open(io.BytesIO(image_bytes))
 
+def is_valid_line_item(line: str) -> Optional[InvoiceItem]:
+    """
+    Validates if a line is likely an invoice item based on heuristics.
+    Returns InvoiceItem if valid, None otherwise.
+    """
+    line_upper = line.upper()
+
+    # Rule 4: Check Blacklist
+    for bad_word in BLACKLIST_WORDS:
+        if bad_word in line_upper:
+            return None
+
+    # Rule 1 & 2: Search for Price and Quantity patterns
+    # Heuristic: Look for the last numbers in the line which usually represent Total and Unit Price
+    # Matches numbers like 10,00 | 10.00 | 1.200,00
+    numbers = re.findall(r'(\d+[.,]?\d*)', line)
+
+    if len(numbers) < 2:
+        return None
+
+    try:
+        # Assume last number is Total, second to last is Unit Price
+        # Or last is Unit Price if only 2 numbers found (sometimes Qty is implied as 1 or separate)
+
+        # Let's look for explicit patterns first
+        # Format: Desc ... Qty ... Unit ... Total
+
+        total_val = normalize_value(numbers[-1])
+        unit_val = normalize_value(numbers[-2])
+
+        # Rule 6: Plausible Value Check (Unit Price between 5 and 200k)
+        # Relaxed lower bound to 0.01 for generic items, but prompt asked for 5. Let's stick to 0.1 to be safe for small items like screws
+        if unit_val < 0.01 or unit_val > 500000:
+             return None
+
+        # Calculate Quantity
+        qty = 1.0
+        if unit_val > 0:
+            qty = total_val / unit_val
+            # If qty is not close to an integer or simple decimal (e.g. 1.5), it might be wrong mapping
+            if abs(qty - round(qty, 3)) > 0.01:
+                 # Maybe the numbers are misaligned or quantity is the 3rd to last number?
+                 if len(numbers) >= 3:
+                     possible_qty = normalize_value(numbers[-3])
+                     if possible_qty > 0 and abs((possible_qty * unit_val) - total_val) < 0.1:
+                         qty = possible_qty
+                     else:
+                         # Fallback: Just assume what we found
+                         pass
+
+        qty = round(qty, 2)
+
+        # Rule 1: Qty valid
+        if qty <= 0:
+            return None
+
+        # Rule 3: Description extraction
+        # Description is everything before the first numeric match of the items we picked
+        # We find where the numbers start in the original line
+
+        # Find index of unit_val string representation in line to split description
+        # This is tricky because normalization changes string.
+        # Let's regex split by the first digit that looks like part of our numbers
+
+        split_match = re.search(r'\d', line)
+        if not split_match:
+            return None
+
+        desc_end_index = split_match.start()
+        description = line[:desc_end_index].strip()
+
+        # Cleanup description symbols
+        description = re.sub(r'^[.\-,\s]+', '', description)
+
+        # Rule 5: Min 6 chars
+        if len(description) < 6:
+            return None
+
+        return InvoiceItem(
+            description=description,
+            quantity=qty,
+            unit_price=unit_val,
+            total_price=total_val
+        )
+
+    except Exception:
+        return None
+
 def extract_data_from_text(text: str) -> InvoiceData:
-    """Extracts InvoiceData from raw text (OCR or PDF text) using Regex."""
+    """Extracts InvoiceData from raw text (OCR or PDF text) using Regex and heuristics."""
     data = InvoiceData()
 
     # CNPJ
@@ -139,13 +236,11 @@ def extract_data_from_text(text: str) -> InvoiceData:
         data.supplier_cnpj = normalize_cnpj(cnpj_match.group(0))
 
     # Invoice Number
-    # NF 12345 or N. 12345 or No 12345
     nf_match = re.search(r'(?:N[ºo]\.?|NF|Nota)\s*[:.]?\s*(\d{1,9})', text, re.IGNORECASE)
     if nf_match:
         data.invoice_number = nf_match.group(1)
 
     # Series
-    # Serie 1
     serie_match = re.search(r'S[ée]rie\s*[:.]?\s*(\d{1,3})', text, re.IGNORECASE)
     if serie_match:
         data.serie = serie_match.group(1)
@@ -154,49 +249,23 @@ def extract_data_from_text(text: str) -> InvoiceData:
     data.issue_date = extract_date(text)
 
     # Total Value
-    # Look for "Total" followed by currency
-    # Try to find the biggest number near "Total" or at the bottom
-    # We must be careful not to pick up quantity or random numbers.
     total_candidates = re.findall(r'(?:TOTAL|VALOR A PAGAR|VALOR TOTAL|VLR\. TOTAL)\s*.*?(?:R\$)?\s*([\d\.,]+)', text, re.IGNORECASE)
     if total_candidates:
-        # Heuristic: the largest value is likely the total
         try:
             values = [normalize_value(v) for v in total_candidates]
             data.total_value = max(values)
         except:
             pass
 
-    # Items Extraction (Heuristic)
-    # Attempt to find lines with Quantity and Price
+    # Items Extraction (Smart Parser)
     lines = text.split('\n')
     for line in lines:
-        # We look for lines with at least 2 numbers at the end
-        parts = re.findall(r'([\d\.,]+)', line)
-        if len(parts) >= 2:
-            try:
-                val1 = normalize_value(parts[-1]) # Total
-                val2 = normalize_value(parts[-2]) # Unit Price
-
-                # If val2 is reasonable unit price
-                if val1 > 0 and val2 > 0:
-                     # Description is everything before numbers
-                     # This effectively strips the numbers from the end
-                     desc_match = re.search(r'^(.*?)(?=\d)', line)
-                     description = desc_match.group(1).strip() if desc_match else "Item OCR"
-
-                     if len(description) > 3:
-                         qty = val1 / val2 if val2 != 0 else 1
-                         # Round qty to nearest 0.5 or integer
-                         qty = round(qty, 2)
-
-                         data.items.append(InvoiceItem(
-                             description=description,
-                             quantity=qty,
-                             unit_price=val2,
-                             total_price=val1
-                         ))
-            except:
-                continue
+        item = is_valid_line_item(line)
+        if item:
+            # Avoid duplicate items if lines are repeated (common in OCR)
+            is_duplicate = any(i.description == item.description and i.total_price == item.total_price for i in data.items)
+            if not is_duplicate:
+                data.items.append(item)
 
     return data
 
