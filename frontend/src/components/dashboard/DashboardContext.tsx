@@ -1,0 +1,251 @@
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import api from '../../api';
+import type { DateRange } from './ui/DateRangePicker';
+
+interface DashboardContextType {
+    isLoading: boolean;
+    items: any[];
+    filteredItems: any[];
+    filters: {
+        branches: (string | number)[];
+        categories: (string | number)[];
+        dateRange: DateRange;
+        search: string;
+    };
+    setFilters: React.Dispatch<React.SetStateAction<{
+        branches: (string | number)[];
+        categories: (string | number)[];
+        dateRange: DateRange;
+        search: string;
+    }>>;
+    availableBranches: any[];
+    availableCategories: any[];
+    aggregates: {
+        totalValue: number;
+        totalItems: number;
+        pendingValue: number;
+        pendingCount: number;
+        valueByBranch: { [key: string]: number };
+        valueByCategory: { [key: string]: number };
+        countByBranch: { [key: string]: number };
+        countByCategory: { [key: string]: number };
+        itemsByStatus: { [key: string]: number };
+        topItems: any[];
+    };
+    refreshData: () => void;
+    layout: any[];
+    setLayout: (layout: any[]) => void;
+    theme: 'light' | 'dark';
+    toggleTheme: () => void;
+}
+
+const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
+
+export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    // Removed useAuth here since we are not using user role for strict security inside the context,
+    // assuming the API calls are already secured by backend which filters items for operators.
+    // If we need pre-selection based on user role, we could add it back, but let's fix the lint error first.
+
+    const [isLoading, setIsLoading] = useState(true);
+    const [rawItems, setRawItems] = useState<any[]>([]);
+    const [availableBranches, setAvailableBranches] = useState<any[]>([]);
+    const [availableCategories, setAvailableCategories] = useState<any[]>([]);
+
+    // Filters
+    const [filters, setFilters] = useState({
+        branches: [] as (string | number)[],
+        categories: [] as (string | number)[],
+        dateRange: { startDate: null, endDate: null, label: 'Todo o Período' } as DateRange,
+        search: '',
+    });
+
+    // Theme & Layout
+    const [theme, setTheme] = useState<'light' | 'dark'>(() =>
+        (localStorage.getItem('dashboard_theme') as 'light' | 'dark') || 'light'
+    );
+    const [layout, setLayout] = useState(() => {
+        const saved = localStorage.getItem('dashboard_layout');
+        return saved ? JSON.parse(saved) : []; // Default layout initialized in component
+    });
+
+    useEffect(() => {
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        localStorage.setItem('dashboard_theme', theme);
+    }, [theme]);
+
+    const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
+
+    // Data Fetching
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            // Fetch metadata
+            const [branchesRes, categoriesRes] = await Promise.all([
+                api.get('/branches/'),
+                api.get('/categories/')
+            ]);
+            setAvailableBranches(branchesRes.data);
+            setAvailableCategories(categoriesRes.data);
+
+            // Fetch Items
+            let allItems: any[] = [];
+            let skip = 0;
+            const limit = 1000; // Chunk size
+            let keepFetching = true;
+
+            while (keepFetching) {
+                const itemsRes = await api.get(`/items/?limit=${limit}&skip=${skip}`);
+                const data = itemsRes.data;
+                allItems = [...allItems, ...data];
+
+                if (data.length < limit) {
+                    keepFetching = false;
+                } else {
+                    skip += limit;
+                }
+
+                // Safety break
+                if (allItems.length > 20000) break;
+            }
+
+            setRawItems(allItems);
+
+        } catch (error) {
+            console.error("Failed to fetch dashboard data", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    // Aggregation Logic
+    const { filteredItems, aggregates } = useMemo(() => {
+        let filtered = rawItems;
+
+        // 1. Branch Filter
+        if (filters.branches.length > 0) {
+            filtered = filtered.filter((item: any) => filters.branches.includes(item.branch_id));
+        }
+
+        // 2. Category Filter
+        if (filters.categories.length > 0) {
+            filtered = filtered.filter((item: any) =>
+                item.category_rel ? filters.categories.includes(item.category_rel.id) : false
+            );
+        }
+
+        // 3. Search
+        if (filters.search) {
+            const lowerSearch = filters.search.toLowerCase();
+            filtered = filtered.filter((item: any) =>
+                item.description.toLowerCase().includes(lowerSearch) ||
+                (item.fixed_asset_number && item.fixed_asset_number.toLowerCase().includes(lowerSearch))
+            );
+        }
+
+        // 4. Date Range (Purchase Date)
+        if (filters.dateRange.startDate && filters.dateRange.endDate) {
+            const start = filters.dateRange.startDate.getTime();
+            const end = filters.dateRange.endDate.getTime();
+            filtered = filtered.filter((item: any) => {
+                const pDate = new Date(item.purchase_date).getTime();
+                return pDate >= start && pDate <= end;
+            });
+        }
+
+        // --- Aggregations ---
+        let totalValue = 0;
+        let totalItems = 0;
+        let pendingValue = 0;
+        let pendingCount = 0;
+        const valueByBranch: Record<string, number> = {};
+        const valueByCategory: Record<string, number> = {};
+        const countByBranch: Record<string, number> = {};
+        const countByCategory: Record<string, number> = {};
+        const itemsByStatus: Record<string, number> = {};
+
+        filtered.forEach((item: any) => {
+            const val = item.accounting_value || 0;
+
+            // Totals
+            totalValue += val;
+            totalItems += 1;
+
+            // Pending
+            if (item.status === 'PENDING' || item.status === 'WRITE_OFF_PENDING' || item.status === 'TRANSFER_PENDING') {
+                pendingCount += 1;
+                pendingValue += val;
+            }
+
+            // By Branch
+            const branchName = item.branch ? item.branch.name : 'Sem Filial';
+            valueByBranch[branchName] = (valueByBranch[branchName] || 0) + val;
+            countByBranch[branchName] = (countByBranch[branchName] || 0) + 1;
+
+            // By Category
+            const catName = item.category || 'Sem Categoria';
+            valueByCategory[catName] = (valueByCategory[catName] || 0) + val;
+            countByCategory[catName] = (countByCategory[catName] || 0) + 1;
+
+            // By Status
+            itemsByStatus[item.status] = (itemsByStatus[item.status] || 0) + 1;
+        });
+
+        // Top Items (Sort by Value)
+        const topItems = [...filtered]
+            .sort((a: any, b: any) => (b.accounting_value || 0) - (a.accounting_value || 0))
+            .slice(0, 10);
+
+        return {
+            filteredItems: filtered,
+            aggregates: {
+                totalValue,
+                totalItems,
+                pendingValue,
+                pendingCount,
+                valueByBranch,
+                valueByCategory,
+                countByBranch,
+                countByCategory,
+                itemsByStatus,
+                topItems
+            }
+        };
+
+    }, [rawItems, filters]);
+
+    return (
+        <DashboardContext.Provider value={{
+            isLoading,
+            items: rawItems,
+            filteredItems,
+            filters,
+            setFilters,
+            availableBranches,
+            availableCategories,
+            aggregates,
+            refreshData: fetchData,
+            layout,
+            setLayout,
+            theme,
+            toggleTheme
+        }}>
+            {children}
+        </DashboardContext.Provider>
+    );
+};
+
+export const useDashboard = () => {
+    const context = useContext(DashboardContext);
+    if (!context) {
+        throw new Error('useDashboard must be used within a DashboardProvider');
+    }
+    return context;
+};
