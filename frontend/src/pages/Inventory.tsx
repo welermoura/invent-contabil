@@ -773,6 +773,7 @@ const Inventory: React.FC = () => {
                                 <div className={`relative ${isPurchaseRecent ? 'ring-2 ring-blue-500 ring-offset-2 rounded-lg' : ''}`}>
                                     <input
                                         type="file"
+                                        accept=".pdf, .xml, .jpg, .jpeg, .png, .heic, .webp"
                                         onChange={(e) => {
                                             register('file').onChange(e);
                                             handleFileUpload(e);

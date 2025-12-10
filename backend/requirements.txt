@@ -17,3 +17,7 @@ reportlab
 werkzeug
 pdfplumber
 xmltodict
+pytesseract
+pillow
+opencv-python-headless
+python-multipart
