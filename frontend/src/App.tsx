@@ -134,8 +134,8 @@ const Layout = () => {
                     </div>
                 </header>
 
-                <main className="flex-1 overflow-y-auto p-4 lg:p-8">
-                    <div className="max-w-7xl mx-auto">
+                <main className={`flex-1 overflow-y-auto ${isActive('/') ? 'p-2 lg:p-4' : 'p-4 lg:p-8'}`}>
+                    <div className={`mx-auto ${isActive('/') ? '' : 'max-w-7xl'}`}>
                         <Outlet />
                     </div>
                 </main>
