@@ -2,7 +2,8 @@ import React from 'react';
 import { useDashboard } from '../DashboardContext';
 import MultiSelect from './MultiSelect';
 import DateRangePicker from './DateRangePicker';
-import { Search, RotateCw, Moon, Sun, Download } from 'lucide-react';
+import DashboardSettings from './DashboardSettings';
+import { Search, RotateCw, Moon, Sun, Download, Edit2, Check } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
 const DashboardControls: React.FC = () => {
@@ -14,11 +15,21 @@ const DashboardControls: React.FC = () => {
         refreshData,
         theme,
         toggleTheme,
-        isLoading
+        isLoading,
+        isEditing,
+        setIsEditing
     } = useDashboard();
 
     const branchOptions = availableBranches.map((b: any) => ({ id: b.id, label: b.name }));
     const categoryOptions = availableCategories.map((c: any) => ({ id: c.id, label: c.name }));
+
+    const statusOptions = [
+        { id: 'APPROVED', label: 'Aprovado' },
+        { id: 'PENDING', label: 'Pendente' },
+        { id: 'WRITE_OFF_PENDING', label: 'Baixa Pendente' },
+        { id: 'TRANSFER_PENDING', label: 'Em Transferência' },
+        { id: 'WRITTEN_OFF', label: 'Baixado' },
+    ];
 
     const handleExport = async () => {
         const dashboardElement = document.getElementById('dashboard-container');
@@ -26,7 +37,7 @@ const DashboardControls: React.FC = () => {
             try {
                 const canvas = await html2canvas(dashboardElement, {
                     scale: 2,
-                    backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc', // slate-900 or slate-50
+                    backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
                 });
                 const link = document.createElement('a');
                 link.download = `dashboard-contabil-${new Date().toISOString().split('T')[0]}.png`;
@@ -49,6 +60,14 @@ const DashboardControls: React.FC = () => {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
+                         <button
+                            onClick={() => setIsEditing(!isEditing)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isEditing ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300'}`}
+                        >
+                            {isEditing ? <Check size={18} /> : <Edit2 size={18} />}
+                            <span className="hidden sm:inline">{isEditing ? 'Concluir Edição' : 'Personalizar'}</span>
+                        </button>
+
                          <button
                             onClick={refreshData}
                             className="p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg transition-colors"
@@ -74,11 +93,15 @@ const DashboardControls: React.FC = () => {
                             <Download size={18} />
                             <span className="hidden sm:inline">Exportar</span>
                         </button>
+
+                        <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden md:block" />
+
+                        <DashboardSettings />
                     </div>
                 </div>
 
                 {/* Bottom Row: Filters */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                     <MultiSelect
                         label="Filiais"
                         options={branchOptions}
@@ -95,6 +118,14 @@ const DashboardControls: React.FC = () => {
                         placeholder="Todas as Categorias"
                     />
 
+                     <MultiSelect
+                        label="Status"
+                        options={statusOptions}
+                        value={filters.status}
+                        onChange={(val) => setFilters((prev: any) => ({ ...prev, status: val }))}
+                        placeholder="Todos os Status"
+                    />
+
                     <DateRangePicker
                         value={filters.dateRange}
                         onChange={(val) => setFilters((prev: any) => ({ ...prev, dateRange: val }))}
@@ -106,7 +137,7 @@ const DashboardControls: React.FC = () => {
                             <Search size={16} className="absolute left-3 top-2.5 text-slate-400" />
                             <input
                                 type="text"
-                                placeholder="Nome, código, patrimônio..."
+                                placeholder="Nome, código..."
                                 className="w-full pl-9 pr-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 text-slate-700 dark:text-slate-200 shadow-sm"
                                 value={filters.search}
                                 onChange={(e) => setFilters((prev: any) => ({ ...prev, search: e.target.value }))}
