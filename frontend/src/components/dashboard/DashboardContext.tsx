@@ -3,6 +3,8 @@ import api from '../../api';
 import { useAuth } from '../../AuthContext';
 import type { DateRange } from './ui/DateRangePicker';
 
+export type WidgetSize = 'S' | 'M' | 'L';
+
 interface DashboardContextType {
     isLoading: boolean;
     items: any[];
@@ -44,6 +46,8 @@ interface DashboardContextType {
     refreshData: () => void;
     layout: any[];
     setLayout: (layout: any[]) => void;
+    widgetSizes: Record<string, WidgetSize>;
+    setWidgetSize: (id: string, size: WidgetSize) => void;
     isEditing: boolean;
     setIsEditing: (isEditing: boolean) => void;
     theme: 'light' | 'dark';
@@ -111,6 +115,17 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return getDefaultLayout();
     });
 
+    const [widgetSizes, setWidgetSizesState] = useState<Record<string, WidgetSize>>(() => {
+        const saved = localStorage.getItem('dashboard_widget_sizes');
+        return saved ? JSON.parse(saved) : {};
+    });
+
+    const setWidgetSize = (id: string, size: WidgetSize) => {
+        const newSizes = { ...widgetSizes, [id]: size };
+        setWidgetSizesState(newSizes);
+        localStorage.setItem('dashboard_widget_sizes', JSON.stringify(newSizes));
+    };
+
     useEffect(() => {
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');
@@ -140,6 +155,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const def = getDefaultLayout();
         setLayout(def);
         localStorage.setItem('dashboard_layout', JSON.stringify(def));
+        setWidgetSizesState({});
+        localStorage.removeItem('dashboard_widget_sizes');
     };
 
     // Data Fetching
@@ -335,6 +352,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             refreshData: fetchData,
             layout,
             setLayout,
+            widgetSizes,
+            setWidgetSize,
             isEditing,
             setIsEditing,
             theme,
