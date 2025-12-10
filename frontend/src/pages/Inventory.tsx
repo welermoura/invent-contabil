@@ -5,7 +5,10 @@ import { useForm } from 'react-hook-form';
 import { useAuth } from '../AuthContext';
 import { useSearchParams } from 'react-router-dom';
 import { translateStatus, translateLogAction } from '../utils/translations';
-import { Edit2, Eye, CheckCircle, XCircle, ArrowRightLeft, FileText, Search, Plus, FileWarning, AlertCircle } from 'lucide-react';
+import { Edit2, Eye, CheckCircle, XCircle, ArrowRightLeft, FileText, Search, Plus, FileWarning, AlertCircle, Download, FileSpreadsheet, Table as TableIcon, ChevronDown } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const StatusBadge = ({ status }: { status: string }) => {
     const map: any = {
@@ -61,29 +64,68 @@ const Inventory: React.FC = () => {
     const [editingItem, setEditingItem] = useState<any>(null);
     const [approvalCategory, setApprovalCategory] = useState('');
 
+    const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+
+    // Filter States
+    const [filterDescription, setFilterDescription] = useState('');
+    const [filterCategory, setFilterCategory] = useState('');
+    const [filterBranch, setFilterBranch] = useState('');
+    const [filterFixedAsset, setFilterFixedAsset] = useState('');
+    const [filterPurchaseDate, setFilterPurchaseDate] = useState('');
+    const [globalSearch, setGlobalSearch] = useState('');
+
+    // Debounce Logic helper
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchItems(globalSearch, 0);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [filterDescription, filterCategory, filterBranch, filterFixedAsset, filterPurchaseDate, globalSearch]); // Trigger on filter change
+
+    // Sync URL params with local state on load
+    useEffect(() => {
+        const cat = searchParams.get('category');
+        const br = searchParams.get('branch_id');
+
+        if (cat) setFilterCategory(cat);
+        if (br) setFilterBranch(br);
+    }, []);
+
     const fetchItems = async (search?: string, pageNum: number = 0) => {
         try {
             const statusFilter = searchParams.get('status');
-            const categoryFilter = searchParams.get('category');
-            const branchFilter = searchParams.get('branch_id');
+            // We use local state for other filters now, but respect URL status
 
             const params: any = {
-                search,
+                search: search !== undefined ? search : globalSearch,
                 skip: pageNum * LIMIT,
                 limit: LIMIT
             };
 
             if (statusFilter) params.status = statusFilter;
-            if (categoryFilter) params.category = categoryFilter;
-            if (branchFilter) params.branch_id = branchFilter;
+
+            // Apply column filters
+            if (filterCategory) params.category = filterCategory;
+            if (filterBranch) params.branch_id = filterBranch;
+            if (filterDescription) params.description = filterDescription;
+            if (filterFixedAsset) params.fixed_asset_number = filterFixedAsset;
+            if (filterPurchaseDate) params.purchase_date = filterPurchaseDate;
 
             const response = await api.get('/items/', { params });
+
+            if (pageNum === 0) {
+                setItems(response.data);
+            } else {
+                 setItems(prev => [...prev, ...response.data]);
+            }
+
             if (response.data.length < LIMIT) {
                 setHasMore(false);
             } else {
                 setHasMore(true);
             }
-            setItems(response.data);
+            if (pageNum === 0) setPage(0);
+
         } catch (error) {
             console.error("Erro ao carregar itens", error);
         }
@@ -117,10 +159,105 @@ const Inventory: React.FC = () => {
     }
 
     useEffect(() => {
-        fetchItems(undefined, page);
+        // Initial load
+        // fetchItems is triggered by the debounce effect on filters initially too,
+        // but we need to load auxiliary data
         fetchBranches();
         fetchCategories();
-    }, [page, searchParams.toString()]);
+    }, []);
+
+    // Pagination logic uses fetchItems directly in the JSX buttons, but we can clean this up.
+    // The previous handleNextPage was unused because I inlined the logic in the buttons
+    // to handle the "dirty manual fetch". I will remove this unused function.
+
+    // Export Logic
+    const getAllFilteredItems = async () => {
+        const statusFilter = searchParams.get('status');
+        const params: any = {
+            search: globalSearch,
+            skip: 0,
+            limit: 100000, // Large limit for export
+            status: statusFilter || undefined,
+            category: filterCategory || undefined,
+            branch_id: filterBranch || undefined,
+            description: filterDescription || undefined,
+            fixed_asset_number: filterFixedAsset || undefined,
+            purchase_date: filterPurchaseDate || undefined
+        };
+        const response = await api.get('/items/', { params });
+        return response.data;
+    }
+
+    const exportCSV = async () => {
+        const data = await getAllFilteredItems();
+        const csvHeader = "ID,Descrição,Categoria,Status,Valor Compra,Valor Contábil,Data de Compra,Número da Nota,Número de Série,Ativo Fixo,Filial,Responsável,Observações,Arquivo da Nota,Histórico de Ações\n";
+        const csvBody = data.map((item: any) => {
+            const logsStr = item.logs && item.logs.length > 0
+                ? item.logs.map((log: any) => `[${new Date(log.timestamp).toLocaleDateString()}] ${log.user?.name || 'Sistema'}: ${translateLogAction(log.action)}`).join('; ')
+                : "Sem histórico";
+            const purchaseDate = item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '';
+            return `${item.id},"${item.description}","${item.category}",${translateStatus(item.status)},${item.invoice_value},${item.accounting_value || 0},"${purchaseDate}","${item.invoice_number || ''}","${item.serial_number || ''}","${item.fixed_asset_number || ''}","${item.branch?.name || ''}","${item.responsible?.name || ''}","${item.observations || ''}","${item.invoice_file || ''}","${logsStr}"`;
+        }).join("\n");
+        const csvContent = csvHeader + csvBody;
+        const latin1Bytes = new Uint8Array(csvContent.length);
+        for (let i = 0; i < csvContent.length; i++) {
+            const charCode = csvContent.charCodeAt(i);
+            latin1Bytes[i] = charCode & 0xFF;
+        }
+        const blob = new Blob([latin1Bytes], { type: 'text/csv;charset=windows-1252' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'inventario_detalhado.csv';
+        a.click();
+    };
+
+    const exportXLSX = async () => {
+        const data = await getAllFilteredItems();
+        const formattedData = data.map((item: any) => ({
+            ID: item.id,
+            Descrição: item.description,
+            Categoria: item.category,
+            Status: translateStatus(item.status),
+            'Valor Compra': item.invoice_value,
+            'Valor Contábil': item.accounting_value || 0,
+            'Data Compra': item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '',
+            'Nota Fiscal': item.invoice_number,
+            'Ativo Fixo': item.fixed_asset_number,
+            Filial: item.branch?.name,
+            Responsável: item.responsible?.name
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(formattedData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Inventário");
+        XLSX.writeFile(wb, "inventario.xlsx");
+    };
+
+    const exportPDF = async () => {
+        const data = await getAllFilteredItems();
+        const doc = new jsPDF('l', 'mm', 'a4');
+        const headers = [['ID', 'Descrição', 'Categoria', 'Status', 'Valor', 'Data', 'Ativo Fixo', 'Filial']];
+        const rows = data.map((item: any) => [
+            item.id,
+            item.description,
+            item.category,
+            translateStatus(item.status),
+            new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.invoice_value),
+            item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '',
+            item.fixed_asset_number || '',
+            item.branch?.name || ''
+        ]);
+
+        autoTable(doc, {
+            head: headers,
+            body: rows,
+            startY: 20,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [79, 70, 229] }
+        });
+        doc.save('inventario.pdf');
+    };
 
     const onSubmit = async (data: any) => {
         if (data.fixed_asset_number) {
@@ -184,7 +321,7 @@ const Inventory: React.FC = () => {
             setEditingItem(null);
             setSelectedSupplier(null);
             setInvoiceValueDisplay('');
-            fetchItems();
+            fetchItems(globalSearch, 0); // Reload
         } catch (error) {
             console.error("Erro ao salvar item", error);
             alert("Erro ao salvar item.");
@@ -203,7 +340,7 @@ const Inventory: React.FC = () => {
                 url += `&fixed_asset_number=${fixedAsset}`;
             }
             await api.put(url);
-            fetchItems(undefined, page);
+            fetchItems(globalSearch, 0);
             setIsApproveModalOpen(false);
             setSelectedItem(null);
             setFixedAssetNumber('');
@@ -268,7 +405,7 @@ const Inventory: React.FC = () => {
         if (!selectedItem || !transferTargetBranch) return;
         try {
             await api.post(`/items/${selectedItem.id}/transfer?target_branch_id=${transferTargetBranch}`);
-            fetchItems(undefined, page);
+            fetchItems(globalSearch, 0);
             setIsTransferModalOpen(false);
             setSelectedItem(null);
             setTransferTargetBranch('');
@@ -287,7 +424,7 @@ const Inventory: React.FC = () => {
 
         try {
             await api.post(`/items/${selectedItem.id}/write-off`, formData);
-            fetchItems(undefined, page);
+            fetchItems(globalSearch, 0);
             setIsWriteOffModalOpen(false);
             setSelectedItem(null);
             setWriteOffJustification('');
@@ -297,14 +434,6 @@ const Inventory: React.FC = () => {
             alert("Erro ao solicitar baixa.");
         }
     }
-
-    const handlePrevPage = () => {
-        if (page > 0) setPage(page - 1);
-    };
-
-    const handleNextPage = () => {
-        if (hasMore) setPage(page + 1);
-    };
 
     return (
         <div className="space-y-6 animate-fade-in">
@@ -319,38 +448,37 @@ const Inventory: React.FC = () => {
                             type="text"
                             placeholder="Buscar item..."
                             className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                            onChange={(e) => fetchItems(e.target.value)}
+                            value={globalSearch}
+                            onChange={(e) => setGlobalSearch(e.target.value)}
                         />
                     </div>
 
-                    <button
-                        onClick={() => {
-                            // CSV Export Logic (Simplificado para manter funcionalidade)
-                            const csvHeader = "ID,Descrição,Categoria,Status,Valor Compra,Valor Contábil,Data de Compra,Número da Nota,Número de Série,Ativo Fixo,Filial,Responsável,Observações,Arquivo da Nota,Histórico de Ações\n";
-                            const csvBody = items.map(item => {
-                                const logsStr = item.logs && item.logs.length > 0
-                                    ? item.logs.map((log: any) => `[${new Date(log.timestamp).toLocaleDateString()}] ${log.user?.name || 'Sistema'}: ${translateLogAction(log.action)}`).join('; ')
-                                    : "Sem histórico";
-                                const purchaseDate = item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '';
-                                return `${item.id},"${item.description}","${item.category}",${translateStatus(item.status)},${item.invoice_value},${item.accounting_value || 0},"${purchaseDate}","${item.invoice_number || ''}","${item.serial_number || ''}","${item.fixed_asset_number || ''}","${item.branch?.name || ''}","${item.responsible?.name || ''}","${item.observations || ''}","${item.invoice_file || ''}","${logsStr}"`;
-                            }).join("\n");
-                            const csvContent = csvHeader + csvBody;
-                            const latin1Bytes = new Uint8Array(csvContent.length);
-                            for (let i = 0; i < csvContent.length; i++) {
-                                const charCode = csvContent.charCodeAt(i);
-                                latin1Bytes[i] = charCode & 0xFF;
-                            }
-                            const blob = new Blob([latin1Bytes], { type: 'text/csv;charset=windows-1252' });
-                            const url = window.URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = 'inventario_detalhado.csv';
-                            a.click();
-                        }}
-                        className="bg-slate-100 text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-200 transition-colors text-sm font-medium flex items-center gap-2"
-                    >
-                        <FileText size={16} /> Exportar
-                    </button>
+                    <div className="relative">
+                        <button
+                            onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                            className="bg-slate-100 text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-200 transition-colors text-sm font-medium flex items-center gap-2"
+                        >
+                            <Download size={16} /> Exportar
+                            <ChevronDown size={14} />
+                        </button>
+                         {isExportMenuOpen && (
+                            <>
+                                <div className="fixed inset-0 z-10" onClick={() => setIsExportMenuOpen(false)}></div>
+                                <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-xl py-1 z-20 border border-slate-100">
+                                    <button onClick={() => { exportXLSX(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2">
+                                        <FileSpreadsheet size={16} className="text-green-600" /> Excel (.xlsx)
+                                    </button>
+                                    <button onClick={() => { exportCSV(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2">
+                                        <TableIcon size={16} className="text-blue-600" /> CSV (.csv)
+                                    </button>
+                                    <button onClick={() => { exportPDF(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2">
+                                        <FileText size={16} className="text-red-600" /> PDF (.pdf)
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
                     {user?.role !== 'AUDITOR' && (
                         <button
                             onClick={() => setIsCreateModalOpen(true)}
@@ -363,13 +491,40 @@ const Inventory: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm text-left">
+                <div className="overflow-x-auto min-h-[500px]">
+                    <table className="min-w-full text-sm text-left relative">
                         <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold uppercase tracking-wider text-xs">
                             <tr>
-                                <th className="px-6 py-4">Descrição</th>
-                                <th className="px-6 py-4">Categoria</th>
-                                <th className="px-6 py-4">Filial</th>
+                                <th className="px-6 py-4 min-w-[200px]">
+                                    <div className="flex flex-col gap-2">
+                                        <span>Descrição</span>
+                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 rounded font-normal normal-case bg-white" value={filterDescription} onChange={e => setFilterDescription(e.target.value)} />
+                                    </div>
+                                </th>
+                                <th className="px-6 py-4 min-w-[150px]">
+                                     <div className="flex flex-col gap-2">
+                                        <span>Categoria</span>
+                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 rounded font-normal normal-case bg-white" value={filterCategory} onChange={e => setFilterCategory(e.target.value)} />
+                                    </div>
+                                </th>
+                                <th className="px-6 py-4 min-w-[150px]">
+                                     <div className="flex flex-col gap-2">
+                                        <span>Filial</span>
+                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 rounded font-normal normal-case bg-white" value={filterBranch} onChange={e => setFilterBranch(e.target.value)} />
+                                    </div>
+                                </th>
+                                <th className="px-6 py-4 min-w-[130px]">
+                                     <div className="flex flex-col gap-2">
+                                        <span>Ativo Fixo</span>
+                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 rounded font-normal normal-case bg-white" value={filterFixedAsset} onChange={e => setFilterFixedAsset(e.target.value)} />
+                                    </div>
+                                </th>
+                                <th className="px-6 py-4 min-w-[130px]">
+                                     <div className="flex flex-col gap-2">
+                                        <span>Data Compra</span>
+                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 rounded font-normal normal-case bg-white" value={filterPurchaseDate} onChange={e => setFilterPurchaseDate(e.target.value)} />
+                                    </div>
+                                </th>
                                 <th className="px-6 py-4">Valor Compra</th>
                                 <th className="px-6 py-4">Valor Contábil</th>
                                 <th className="px-6 py-4">Status</th>
@@ -382,6 +537,8 @@ const Inventory: React.FC = () => {
                                     <td className="px-6 py-4 font-medium text-slate-700">{item.description}</td>
                                     <td className="px-6 py-4 text-slate-500">{item.category}</td>
                                     <td className="px-6 py-4 text-slate-500">{item.branch?.name || '-'}</td>
+                                    <td className="px-6 py-4 text-slate-600 font-mono text-xs bg-slate-50 rounded w-fit">{item.fixed_asset_number || '-'}</td>
+                                    <td className="px-6 py-4 text-slate-500">{item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '-'}</td>
                                     <td className="px-6 py-4 font-medium text-slate-700">
                                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.invoice_value)}
                                     </td>
@@ -453,25 +610,28 @@ const Inventory: React.FC = () => {
                 </div>
 
                 <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-                    <button
-                        onClick={handlePrevPage}
-                        disabled={page === 0}
-                        className="px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
-                    >
-                        Anterior
-                    </button>
-                    <span className="text-sm text-slate-500 font-medium">Página {page + 1}</span>
-                    <button
-                        onClick={handleNextPage}
-                        disabled={!hasMore}
-                        className="px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
-                    >
-                        Próxima
-                    </button>
+                     <span className="text-sm text-slate-500 font-medium">
+                        Exibindo {items.length} itens nesta página (Scroll Infinito não, paginação padrão)
+                     </span>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => { if(page > 0) { const prev = page -1; setPage(prev); fetchItems(globalSearch, prev).then(res => setItems(res?.data || [])) } }}
+                            disabled={page === 0}
+                            className="px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                        >
+                            Anterior
+                        </button>
+                        <span className="text-sm text-slate-500 font-medium px-2 py-2">Página {page + 1}</span>
+                        <button
+                            onClick={() => { if(hasMore) { const next = page + 1; setPage(next); fetchItems(globalSearch, next).then(res => setItems(res?.data || [])) } }}
+                            disabled={!hasMore}
+                            className="px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                        >
+                            Próxima
+                        </button>
+                    </div>
                 </div>
             </div>
-
-            {/* Common Modal Wrapper would be better but keeping inline for logic safety */}
 
             {/* Create/Edit Modal */}
             {isCreateModalOpen && (
@@ -609,7 +769,7 @@ const Inventory: React.FC = () => {
             )}
 
             {/* Other modals (Write-off, Transfer, Details, Supplier Search) follow similar pattern... */}
-            {/* Keeping code concise, assuming similar restyling for brevity, applying basic clean classes to existing logic */}
+            {/* Keeping code concise, assuming similar restyling for brevity, applying generic style) */}
 
             {/* Details Modal */}
             {isDetailsModalOpen && selectedItem && (
