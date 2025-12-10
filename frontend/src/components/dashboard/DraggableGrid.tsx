@@ -35,7 +35,7 @@ import RecentItemsTable from './widgets/RecentItemsTable';
 import RiskMapWidget from './widgets/RiskMapWidget';
 import PurchaseVsAccountingChart from './widgets/PurchaseVsAccountingChart';
 
-import { DollarSign, Package, AlertCircle, FileWarning, TrendingUp, RefreshCw, BarChart2, Activity, Clock } from 'lucide-react';
+import { DollarSign, Package, AlertCircle, FileWarning, Activity, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 // Widget Registry
@@ -96,7 +96,7 @@ const SortableItem = ({ id, children, className, isEditing, onRemove }: Sortable
     };
 
     return (
-        <div ref={setNodeRef} style={style} className={`relative group ${className} ${isEditing ? 'ring-2 ring-blue-500/20 rounded-xl bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
+        <div ref={setNodeRef} style={style} className={`relative group h-full ${className} ${isEditing ? 'ring-2 ring-blue-500/20 rounded-xl bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
              {isEditing && (
                  <>
                     <div

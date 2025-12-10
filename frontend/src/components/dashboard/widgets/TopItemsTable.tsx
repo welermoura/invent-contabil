@@ -9,7 +9,7 @@ const TopItemsTable: React.FC = () => {
     const items = aggregates.topItems;
 
     return (
-        <ChartWidget title="Top 10 Itens por Valor Contábil" height={360}>
+        <ChartWidget title="Top 10 Itens por Valor Contábil">
             <div className="overflow-auto h-full pr-2 custom-scrollbar">
                 <table className="w-full text-left border-collapse">
                     <thead className="sticky top-0 bg-white dark:bg-slate-800 z-10">
