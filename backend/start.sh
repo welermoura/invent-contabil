@@ -4,6 +4,9 @@ set -e
 # Ir para o diretório backend onde está o alembic.ini e o main.py
 cd backend
 
+# Hotfix: Instalar novas dependências em tempo de execução para evitar rebuild completo
+pip install -r requirements.txt
+
 # Esperar o banco de dados estar pronto
 echo "Waiting for database to be ready..."
 while ! python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); s.connect(('db', 5432))" 2>/dev/null; do
