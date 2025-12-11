@@ -513,11 +513,11 @@ const Reports: React.FC = () => {
 
                 if (reportId === 'E.1' || reportId === 'E.2') {
                     data = users.map((u: any) => ({
-                        ID: u.id, Nome: u.name, Email: u.email, Role: u.role, FilialLegacy: u.branch_id
+                        ID: u.id, Nome: u.name, Email: u.email, Role: u.role, "Filial Legacy": u.branch?.name || u.branch_id || 'N/A'
                     }));
                 } else if (reportId === 'E.4') {
                      data = users.map((u: any) => ({
-                        Filial: u.branch_id, Nome: u.name, Email: u.email
+                        Filial: u.branch?.name || u.branch_id || 'N/A', Nome: u.name, Email: u.email
                     })).sort((a: any, b: any) => String(a.Filial).localeCompare(String(b.Filial)));
                 }
             }

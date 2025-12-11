@@ -36,6 +36,7 @@ class UserResponse(UserBase):
     email: Optional[str] = None
     role: Optional[UserRole] = None
     branch_id: Optional[int] = None
+    branch: Optional["BranchResponse"] = None
     branches: List["BranchResponse"] = []
 
     class Config:
