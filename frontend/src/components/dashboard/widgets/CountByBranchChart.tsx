@@ -2,9 +2,11 @@ import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, LabelList } from 'recharts';
 import ChartWidget from './ChartWidget';
 import { useDashboard } from '../DashboardContext';
+import { useDashboardNavigation } from '../../../hooks/useDashboardNavigation';
 
 const CountByBranchChart: React.FC = () => {
     const { aggregates, theme } = useDashboard();
+    const { navigateToMacroView } = useDashboardNavigation();
     const data = Object.entries(aggregates.countByBranch)
         .map(([name, value]) => ({ name, value }))
         .sort((a: any, b: any) => b.value - a.value)
@@ -26,7 +28,17 @@ const CountByBranchChart: React.FC = () => {
 
     return (
         <ChartWidget title="Quantidade de Itens por Filial">
-            <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+            <BarChart
+                data={data}
+                layout="vertical"
+                margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                onClick={(state) => {
+                    if (state && state.activePayload) {
+                        navigateToMacroView('branch', state.activePayload[0].payload.name);
+                    }
+                }}
+                className="cursor-pointer"
+            >
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke={theme === 'dark' ? '#334155' : '#e2e8f0'} />
                 <XAxis type="number" hide />
                 <YAxis

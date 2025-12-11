@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Search, FileText } from 'lucide-react';
+import { X, Search, FileText, Download } from 'lucide-react';
 import api from '../../api';
 
 interface DashboardModalProps {
@@ -27,7 +27,18 @@ const DashboardModal: React.FC<DashboardModalProps> = ({ isOpen, onClose, title,
             const params = new URLSearchParams();
 
             if (filters.status) params.append('status', filters.status);
-            if (filters.limit) params.append('limit', String(filters.limit));
+
+            // Se tiver filtro de data (Evolução), precisamos de todos os itens para filtrar no front,
+            // pois o backend não tem filtro de mês/ano, apenas de data exata ou range se implementado.
+            // Para garantir que funciona, aumentamos o limit.
+            if (filters.date) {
+                params.append('limit', '5000');
+            } else if (filters.limit) {
+                params.append('limit', String(filters.limit));
+            } else {
+                // Default limit se nada for especificado
+                params.append('limit', '1000');
+            }
 
             // Fallback para buscar itens gerais se não houver filtro específico de endpoint
             const response = await api.get(`/items/?${params.toString()}`);
@@ -72,6 +83,30 @@ const DashboardModal: React.FC<DashboardModalProps> = ({ isOpen, onClose, title,
         (item.fixed_asset_number && item.fixed_asset_number.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
+    const handleExport = () => {
+        // Simple CSV Export
+        const headers = ['Ativo', 'Descrição', 'Status', 'Valor', 'Filial'];
+        const csvContent = [
+            headers.join(';'),
+            ...filteredItems.map(item => [
+                `"${item.fixed_asset_number || ''}"`,
+                `"${item.description || ''}"`,
+                `"${item.status || ''}"`,
+                (item.accounting_value || 0).toFixed(2).replace('.', ','),
+                `"${item.branch?.name || ''}"`
+            ].join(';'))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `export_detalhes.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -108,7 +143,13 @@ const DashboardModal: React.FC<DashboardModalProps> = ({ isOpen, onClose, title,
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
-                    {/* Botão de Exportar poderia vir aqui */}
+                    <button
+                        onClick={handleExport}
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-colors shadow-sm"
+                    >
+                        <Download size={18} />
+                        <span className="hidden sm:inline">Exportar</span>
+                    </button>
                 </div>
 
                 {/* Content */}
