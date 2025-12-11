@@ -25,10 +25,11 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
         name=user.name,
         hashed_password=hashed_password,
         role=user.role,
-        branch_id=user.branch_id
+        branch_id=user.branch_id,
+        all_branches=user.all_branches
     )
 
-    if user.branch_ids:
+    if user.branch_ids and not user.all_branches:
         # Fetch branches to associate
         result = await db.execute(select(models.Branch).where(models.Branch.id.in_(user.branch_ids)))
         branches = result.scalars().all()
@@ -64,14 +65,18 @@ async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
         if user.name: db_user.name = user.name
         if user.role: db_user.role = user.role
         if user.branch_id is not None: db_user.branch_id = user.branch_id # Legacy update
+        if user.all_branches is not None: db_user.all_branches = user.all_branches
         if user.password:
             db_user.hashed_password = get_password_hash(user.password)
 
         if user.branch_ids is not None:
-            # Update branches association
-            result = await db.execute(select(models.Branch).where(models.Branch.id.in_(user.branch_ids)))
-            branches = result.scalars().all()
-            db_user.branches = branches
+            # Update branches association only if strictly passed (empty list is valid update to clear)
+            if user.all_branches:
+                db_user.branches = []
+            else:
+                result = await db.execute(select(models.Branch).where(models.Branch.id.in_(user.branch_ids)))
+                branches = result.scalars().all()
+                db_user.branches = branches
 
         await db.commit()
         # Reload user to ensure clean state and avoid async refresh issues

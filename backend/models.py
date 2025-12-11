@@ -51,6 +51,7 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     role = Column(Enum(UserRole), default=UserRole.OPERATOR)
+    all_branches = Column(Boolean, default=False)
     # branch_id mantido para compatibilidade
     branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True)
 
