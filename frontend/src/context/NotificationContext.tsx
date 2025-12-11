@@ -41,7 +41,10 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [permission, setPermission] = useState<NotificationPermission>(Notification.permission);
+  // Safe initialization of permission state
+  const [permission, setPermission] = useState<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -63,16 +66,22 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             fetchNotifications();
         }
     };
-    navigator.serviceWorker.addEventListener('message', handleSWMessage);
+
+    // Safe access to serviceWorker
+    if ('serviceWorker' in navigator && navigator.serviceWorker) {
+        navigator.serviceWorker.addEventListener('message', handleSWMessage);
+    }
 
     return () => {
-        navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+        if ('serviceWorker' in navigator && navigator.serviceWorker) {
+            navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+        }
     };
   }, [fetchNotifications]);
 
   const requestPermission = async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      console.warn('Push messaging is not supported');
+      console.warn('Push messaging is not supported in this browser/environment');
       return;
     }
 
@@ -102,7 +111,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const disableNotifications = async () => {
       try {
-          if ('serviceWorker' in navigator) {
+          if ('serviceWorker' in navigator && navigator.serviceWorker) {
               const registration = await navigator.serviceWorker.ready;
               const subscription = await registration.pushManager.getSubscription();
               if (subscription) {
