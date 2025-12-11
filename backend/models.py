@@ -62,6 +62,9 @@ class User(Base):
     logs = relationship("Log", back_populates="user")
     items_responsible = relationship("Item", back_populates="responsible")
 
+    subscriptions = relationship("PushSubscription", back_populates="user", lazy="selectin")
+    notifications = relationship("Notification", back_populates="user", lazy="selectin")
+
 class Category(Base):
     __tablename__ = "categories"
     __table_args__ = {'extend_existing': True}
@@ -124,3 +127,32 @@ class Log(Base):
 
     item = relationship("Item", back_populates="logs", lazy="selectin")
     user = relationship("User", back_populates="logs", lazy="selectin")
+
+class PushSubscription(Base):
+    __tablename__ = "push_subscriptions"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    endpoint = Column(String, unique=True, index=True)
+    keys_p256dh = Column(String)
+    keys_auth = Column(String)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="subscriptions")
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String)
+    body = Column(String)
+    item_id = Column(Integer, nullable=True)
+    type = Column(String)
+    click_action = Column(String, nullable=True)
+    read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="notifications")

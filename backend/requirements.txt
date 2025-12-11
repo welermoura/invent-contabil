@@ -15,3 +15,4 @@ pandas
 openpyxl
 reportlab
 werkzeug
+pywebpush==1.14.0
