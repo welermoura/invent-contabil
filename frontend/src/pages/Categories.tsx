@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { useForm } from 'react-hook-form';
+import { useError } from '../hooks/useError';
 import { useAuth } from '../AuthContext';
 import {
     Tags,
@@ -16,6 +17,7 @@ import {
 const Categories: React.FC = () => {
     const [categories, setCategories] = useState<any[]>([]);
     const { register, handleSubmit, reset, setValue } = useForm();
+    const { showError, showSuccess } = useError();
     const { user } = useAuth();
     const [showForm, setShowForm] = useState(false);
     const [editingCategory, setEditingCategory] = useState<any>(null);
@@ -51,9 +53,10 @@ const Categories: React.FC = () => {
             setShowForm(false);
             setEditingCategory(null);
             fetchCategories();
+            showSuccess("Categoria salva com sucesso.");
         } catch (error) {
             console.error("Erro ao salvar categoria", error);
-            alert("Erro ao salvar categoria. Verifique suas permissões.");
+            showError(error, "CATEGORY_SAVE_ERROR");
         }
     };
 

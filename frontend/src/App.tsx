@@ -11,6 +11,7 @@ import Reports from './pages/Reports';
 import Suppliers from './pages/Suppliers';
 import MacroViewPage from './pages/dashboard/MacroViewPage';
 import { AuthProvider, useAuth } from './AuthContext';
+import { ErrorProvider } from './context/ErrorContext';
 import Notifications from './components/Notifications';
 import {
     LayoutDashboard,
@@ -172,7 +173,9 @@ function App() {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
-            <AppRoutes />
+            <ErrorProvider>
+                <AppRoutes />
+            </ErrorProvider>
         </AuthProvider>
     </Router>
   )

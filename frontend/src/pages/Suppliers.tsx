@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../AuthContext';
+import { useError } from '../hooks/useError';
 import {
     Truck,
     Search,
@@ -37,6 +38,7 @@ const Suppliers: React.FC = () => {
     const [showForm, setShowForm] = useState(false);
     const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
     const [loading, setLoading] = useState(false);
+    const { showError, showSuccess } = useError();
 
     const cnpjValue = watch("cnpj");
 
@@ -76,10 +78,10 @@ const Suppliers: React.FC = () => {
             // Success feedback
             handleCancel();
             fetchSuppliers();
+            showSuccess("Fornecedor salvo com sucesso.");
         } catch (error: any) {
             console.error("Erro ao salvar fornecedor", error);
-            const msg = error.response?.data?.detail || "Erro ao salvar fornecedor.";
-            alert(msg);
+            showError(error);
         }
     };
 

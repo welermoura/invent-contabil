@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '../AuthContext';
+import { useError } from '../hooks/useError';
 
 const Notifications: React.FC = () => {
     const { user } = useAuth();
+    const { showSuccess } = useError();
 
     useEffect(() => {
         if (!user) return;
@@ -28,8 +30,7 @@ const Notifications: React.FC = () => {
 
         socket.onmessage = (event) => {
             if (user.role === 'admin' || user.role === 'approver') {
-                // Simple alert for now, could be a toast
-                alert(`Notificação: ${event.data}`);
+                showSuccess(event.data, "Nova Notificação");
             }
         };
 

@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import api from '../api';
+import { useError } from '../hooks/useError';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -372,6 +373,7 @@ const Reports: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [reportData, setReportData] = useState<any[] | null>(null);
     const [reportTitle, setReportTitle] = useState("");
+    const { showError } = useError();
 
     const toggleCategory = (category: string) => {
         setExpandedCategory(expandedCategory === category ? null : category);
@@ -545,7 +547,7 @@ const Reports: React.FC = () => {
             setReportData(data);
         } catch (error) {
             console.error(error);
-            alert("Erro ao gerar relatório. Verifique conexões.");
+            showError("REPORT_ERROR");
         } finally {
             setLoading(false);
         }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useDashboard } from '../DashboardContext';
+import { useError } from '../../../hooks/useError';
 import { WIDGETS } from '../DraggableGrid';
 import { Settings, Save, Layout, Check, X, Eye, EyeOff, RotateCcw, Download, Upload } from 'lucide-react';
 
@@ -7,6 +8,7 @@ const DashboardSettings: React.FC = () => {
     const { layout, setLayout, resetLayout } = useDashboard();
     const [isOpen, setIsOpen] = useState(false);
     const [presetName, setPresetName] = useState('');
+    const { showError, showSuccess } = useError();
 
     const toggleWidget = (widgetId: string) => {
         if (layout.includes(widgetId)) {
@@ -25,7 +27,7 @@ const DashboardSettings: React.FC = () => {
         presets[presetName] = layout;
         localStorage.setItem('dashboard_presets', JSON.stringify(presets));
         setPresetName('');
-        alert(`Preset "${presetName}" salvo!`);
+        showSuccess(`Preset "${presetName}" salvo com sucesso.`);
     };
 
     const loadPreset = (name: string) => {
@@ -58,10 +60,10 @@ const DashboardSettings: React.FC = () => {
                         if (Array.isArray(parsed)) {
                             setLayout(parsed);
                             localStorage.setItem('dashboard_layout', JSON.stringify(parsed));
-                            alert("Layout importado com sucesso!");
+                            showSuccess("Layout importado com sucesso!");
                         }
                     } catch (err) {
-                        alert("Erro ao ler arquivo de layout.");
+                        showError("Erro ao ler arquivo de layout.");
                     }
                 }
             };

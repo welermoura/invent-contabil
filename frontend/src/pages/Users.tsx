@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { useForm } from 'react-hook-form';
+import { useError } from '../hooks/useError';
 import {
     Users as UsersIcon,
     Search,
@@ -25,6 +26,7 @@ const Users: React.FC = () => {
     const [showForm, setShowForm] = useState(false);
     const [editingUser, setEditingUser] = useState<any | null>(null);
     const [loading, setLoading] = useState(false);
+    const { showError, showSuccess, showConfirm } = useError();
 
     const fetchUsers = async (search?: string) => {
         setLoading(true);
@@ -35,6 +37,7 @@ const Users: React.FC = () => {
             setUsers(response.data);
         } catch (error) {
             console.error("Erro ao carregar usuários", error);
+            showError("Erro ao carregar lista de usuários.");
         } finally {
             setLoading(false);
         }
@@ -57,15 +60,17 @@ const Users: React.FC = () => {
     const onSubmit = async (data: any) => {
         // Validation: At least one branch or 'all_branches' must be selected
         if (!data.all_branches && (!data.branch_ids || data.branch_ids.length === 0)) {
-            alert("Ao menos uma filial deve ser selecionada (ou a opção 'Todas as filiais').");
+            showError("BRANCH_REQUIRED");
             return;
         }
 
         try {
             if (editingUser) {
                 await api.put(`/users/${editingUser.id}`, data);
+                showSuccess("Usuário atualizado com sucesso.");
             } else {
                 await api.post('/users/', data);
+                showSuccess("Usuário cadastrado com sucesso.");
             }
             reset();
             setShowForm(false);
@@ -73,26 +78,21 @@ const Users: React.FC = () => {
             fetchUsers();
         } catch (error: any) {
             console.error("Erro ao salvar usuário", error);
-            // Handle duplicate user error
-            if (error.response && error.response.status === 400 && error.response.data?.detail === "E-mail já cadastrado") {
-                alert("Usuário já existe.");
-            } else if (error.response && error.response.data?.detail) {
-                alert(`Erro: ${error.response.data.detail}`);
-            } else {
-                alert("Erro ao salvar usuário.");
-            }
+            showError(error, "USER_SAVE_ERROR");
         }
     };
 
     const handleDelete = async (userId: number) => {
-        if (!window.confirm("Tem certeza que deseja remover este usuário?")) return;
-        try {
-            await api.delete(`/users/${userId}`);
-            fetchUsers();
-        } catch (error) {
-            console.error("Erro ao remover usuário", error);
-            alert("Erro ao remover usuário.");
-        }
+        showConfirm("Tem certeza que deseja remover este usuário? Esta ação não pode ser desfeita.", async () => {
+            try {
+                await api.delete(`/users/${userId}`);
+                showSuccess("Usuário removido com sucesso.");
+                fetchUsers();
+            } catch (error) {
+                console.error("Erro ao remover usuário", error);
+                showError(error, "USER_DELETE_ERROR");
+            }
+        }, "Remover Usuário");
     };
 
     const handleEdit = (u: any) => {

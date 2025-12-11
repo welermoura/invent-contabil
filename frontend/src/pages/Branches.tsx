@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { useForm, type SubmitHandler } from 'react-hook-form';
+import { useError } from '../hooks/useError';
 import { useAuth } from '../AuthContext';
 import { Link } from 'react-router-dom';
 import {
@@ -41,6 +42,7 @@ const formatCNPJ = (value: string) => {
 const Branches: React.FC = () => {
     const [branches, setBranches] = useState<Branch[]>([]);
     const { register, handleSubmit, reset, setValue, watch } = useForm<BranchFormData>();
+    const { showError, showSuccess } = useError();
     const { user } = useAuth();
     const [showForm, setShowForm] = useState(false);
     const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
@@ -83,9 +85,10 @@ const Branches: React.FC = () => {
             setShowForm(false);
             setEditingBranch(null);
             fetchBranches();
+            showSuccess("Filial salva com sucesso.");
         } catch (error) {
             console.error("Erro ao salvar filial", error);
-            alert("Erro ao salvar filial. Verifique suas permissões.");
+            showError(error, "BRANCH_SAVE_ERROR");
         }
     };
 
