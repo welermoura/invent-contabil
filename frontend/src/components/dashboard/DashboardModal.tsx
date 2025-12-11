@@ -255,7 +255,7 @@ const DashboardModal: React.FC<DashboardModalProps> = ({ isOpen, onClose, title,
                                                     ${item.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
                                                       item.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
                                                       'bg-slate-100 text-slate-700'}`}>
-                                                    {item.status}
+                                                    {translateStatus(item.status)}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3 text-right font-medium text-slate-700 dark:text-slate-300">
