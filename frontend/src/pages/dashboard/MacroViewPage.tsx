@@ -133,7 +133,7 @@ const MacroViewPage: React.FC = () => {
                  // Caso genérico, ex: status
                  const val = searchParams.get('value');
                  filterName = val || '';
-                 setTitle(`Status: ${val}`);
+                 setTitle(`Status: ${translateStatus(val || '')}`);
             }
 
             // Busca itens (usando paginação alta ou loop similar ao dashboard para pegar tudo desse escopo)
@@ -336,7 +336,7 @@ const MacroViewPage: React.FC = () => {
                                         <td className="px-4 py-3">
                                             <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium
                                                 ${item.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
-                                                {item.status}
+                                                {translateStatus(item.status)}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-right font-medium text-slate-700 dark:text-slate-300">
