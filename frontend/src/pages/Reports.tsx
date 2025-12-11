@@ -511,13 +511,21 @@ const Reports: React.FC = () => {
                 const response = await api.get('/users/');
                 const users = response.data;
 
+                const getBranchList = (u: any) => {
+                    if (u.role === 'ADMIN') return 'Todas (Admin)';
+                    if (u.branches && u.branches.length > 0) {
+                        return u.branches.map((b: any) => b.name).join(', ');
+                    }
+                    return u.branch?.name || 'N/A';
+                };
+
                 if (reportId === 'E.1' || reportId === 'E.2') {
                     data = users.map((u: any) => ({
-                        ID: u.id, Nome: u.name, Email: u.email, Role: u.role, "Filial Legacy": u.branch?.name || u.branch_id || 'N/A'
+                        ID: u.id, Nome: u.name, Email: u.email, Role: u.role, "Filiais Permitidas": getBranchList(u)
                     }));
                 } else if (reportId === 'E.4') {
                      data = users.map((u: any) => ({
-                        Filial: u.branch?.name || u.branch_id || 'N/A', Nome: u.name, Email: u.email
+                        Filial: getBranchList(u), Nome: u.name, Email: u.email
                     })).sort((a: any, b: any) => String(a.Filial).localeCompare(String(b.Filial)));
                 }
             }
