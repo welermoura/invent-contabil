@@ -9,6 +9,7 @@ import Users from './pages/Users';
 import Setup from './pages/Setup';
 import Reports from './pages/Reports';
 import Suppliers from './pages/Suppliers';
+import MacroViewPage from './pages/dashboard/MacroViewPage';
 import { AuthProvider, useAuth } from './AuthContext';
 import Notifications from './components/Notifications';
 import {
@@ -152,6 +153,8 @@ const AppRoutes = () => {
             <Route element={<PrivateRoute />}>
                 <Route element={<Layout />}>
                     <Route path="/" element={<Dashboard />} />
+                    <Route path="/dashboard/:type/:id" element={<MacroViewPage />} />
+                    <Route path="/dashboard/detalhes/:type" element={<MacroViewPage />} />
                     <Route path="/inventory" element={<Inventory />} />
                     <Route path="/branches" element={<Branches />} />
                     <Route path="/categories" element={<Categories />} />

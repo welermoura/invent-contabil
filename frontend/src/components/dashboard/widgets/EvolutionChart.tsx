@@ -4,9 +4,11 @@ import ChartWidget from './ChartWidget';
 import { useDashboard } from '../DashboardContext';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useDashboardNavigation } from '../../../hooks/useDashboardNavigation';
 
 const EvolutionChart: React.FC = () => {
     const { filteredItems, theme } = useDashboard();
+    const { openDetailModal } = useDashboardNavigation();
 
     const itemsWithDate = filteredItems
         .filter((item: any) => item.purchase_date)
@@ -52,7 +54,16 @@ const EvolutionChart: React.FC = () => {
 
     return (
         <ChartWidget title="Evolução Patrimonial (Acumulada)">
-            <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <AreaChart
+                data={data}
+                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                onClick={(data) => {
+                    if (data && data.activePayload) {
+                        openDetailModal('evolution', { date: data.activePayload[0].payload.date });
+                    }
+                }}
+                className="cursor-pointer"
+            >
                 <defs>
                     <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>

@@ -2,9 +2,11 @@ import React from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import ChartWidget from './ChartWidget';
 import { useDashboard } from '../DashboardContext';
+import { useDashboardNavigation } from '../../../hooks/useDashboardNavigation';
 
 const CountByCategoryChart: React.FC = () => {
     const { aggregates, theme } = useDashboard();
+    const { navigateToMacroView } = useDashboardNavigation();
 
     // Convert aggregates.countByCategory to array and sort
     const data = Object.entries(aggregates.countByCategory)
@@ -49,6 +51,12 @@ const CountByCategoryChart: React.FC = () => {
                     dataKey="value"
                     stroke={theme === 'dark' ? '#1e293b' : '#fff'}
                     strokeWidth={2}
+                    onClick={(data) => {
+                         if (data) {
+                             navigateToMacroView('category', data.name);
+                         }
+                    }}
+                    className="cursor-pointer"
                 >
                     {data.map((_entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
