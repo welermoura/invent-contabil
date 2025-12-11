@@ -479,6 +479,10 @@ const Reports: React.FC = () => {
                          const days = Math.floor((now.getTime() - new Date(i.purchase_date).getTime()) / (1000 * 3600 * 24));
                          return { "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, "Dias desde Compra": days, Anos: (days/365).toFixed(1) };
                      });
+                } else if (reportId === 'D.3') {
+                    data = items.filter((i: any) => i.accounting_value === 0).map((i: any) => ({
+                        "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, "Valor Original": formatCurrency(i.invoice_value), "Data Compra": formatDate(i.purchase_date), Status: translateStatus(i.status)
+                    }));
                 } else if (reportId === 'F.4') {
                     data = items.map((i: any) => ({
                         NF: i.invoice_number, Data: formatDate(i.purchase_date), "Valor": formatCurrency(i.invoice_value), Fornecedor: i.supplier?.name, Item: i.description
