@@ -1,11 +1,15 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, Filter, Search } from 'lucide-react';
+import { ArrowLeft, Download, Filter, Search, FileSpreadsheet, Table as TableIcon, FileText, ChevronDown } from 'lucide-react';
 import api from '../../api';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
     PieChart, Pie, Cell
 } from 'recharts';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { translateStatus } from '../../utils/translations';
 
 interface Item {
     id: number;
@@ -30,23 +34,28 @@ const MacroViewPage: React.FC = () => {
 
     // Filtros locais
     const [searchTerm, setSearchTerm] = useState('');
+    const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
-    const handleExport = () => {
-        // Simple CSV Export
+    const exportCSV = () => {
         const headers = ['Ativo', 'Descrição', 'Status', 'Valor', 'Filial', 'Categoria'];
         const csvContent = [
             headers.join(';'),
             ...filteredItems.map(item => [
                 `"${item.fixed_asset_number || ''}"`,
                 `"${item.description || ''}"`,
-                `"${item.status || ''}"`,
+                `"${translateStatus(item.status) || ''}"`,
                 (item.accounting_value || 0).toFixed(2).replace('.', ','),
                 `"${item.branch?.name || ''}"`,
                 `"${item.category_rel?.name || ''}"`
             ].join(';'))
         ].join('\n');
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const latin1Bytes = new Uint8Array(csvContent.length);
+        for (let i = 0; i < csvContent.length; i++) {
+            latin1Bytes[i] = csvContent.charCodeAt(i) & 0xFF;
+        }
+
+        const blob = new Blob([latin1Bytes], { type: 'text/csv;charset=windows-1252' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -54,6 +63,44 @@ const MacroViewPage: React.FC = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    };
+
+    const exportXLSX = () => {
+        const formattedData = filteredItems.map((item: any) => ({
+            'Ativo Fixo': item.fixed_asset_number,
+            'Descrição': item.description,
+            'Status': translateStatus(item.status),
+            'Valor': item.accounting_value || 0,
+            'Filial': item.branch?.name,
+            'Categoria': item.category_rel?.name
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(formattedData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Detalhes");
+        XLSX.writeFile(wb, `export_${type}_${id}.xlsx`);
+    };
+
+    const exportPDF = () => {
+        const doc = new jsPDF('l', 'mm', 'a4');
+        const headers = [['Ativo', 'Descrição', 'Status', 'Valor', 'Filial', 'Categoria']];
+        const rows = filteredItems.map((item: any) => [
+            item.fixed_asset_number || '',
+            item.description,
+            translateStatus(item.status),
+            new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.accounting_value || 0),
+            item.branch?.name || '',
+            item.category_rel?.name || ''
+        ]);
+
+        autoTable(doc, {
+            head: headers,
+            body: rows,
+            startY: 20,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [59, 130, 246] }
+        });
+        doc.save(`export_${type}_${id}.pdf`);
     };
 
     useEffect(() => {
@@ -166,14 +213,31 @@ const MacroViewPage: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="relative">
                     <button
-                        onClick={handleExport}
+                        onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
                         className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-colors shadow-sm"
                     >
                         <Download size={18} />
                         <span className="hidden sm:inline">Exportar</span>
+                        <ChevronDown size={14} />
                     </button>
+                    {isExportMenuOpen && (
+                        <>
+                            <div className="fixed inset-0 z-10" onClick={() => setIsExportMenuOpen(false)}></div>
+                            <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-slate-800 rounded-lg shadow-xl py-1 z-20 border border-slate-100 dark:border-slate-700">
+                                <button onClick={() => { exportXLSX(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 flex items-center gap-2">
+                                    <FileSpreadsheet size={16} className="text-green-600" /> Excel (.xlsx)
+                                </button>
+                                <button onClick={() => { exportCSV(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 flex items-center gap-2">
+                                    <TableIcon size={16} className="text-blue-600" /> CSV (.csv)
+                                </button>
+                                <button onClick={() => { exportPDF(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 flex items-center gap-2">
+                                    <FileText size={16} className="text-red-600" /> PDF (.pdf)
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 
