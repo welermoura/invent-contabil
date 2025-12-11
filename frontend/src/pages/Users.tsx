@@ -55,6 +55,12 @@ const Users: React.FC = () => {
     }, []);
 
     const onSubmit = async (data: any) => {
+        // Validation: At least one branch or 'all_branches' must be selected
+        if (!data.all_branches && (!data.branch_ids || data.branch_ids.length === 0)) {
+            alert("Ao menos uma filial deve ser selecionada (ou a opção 'Todas as filiais').");
+            return;
+        }
+
         try {
             if (editingUser) {
                 await api.put(`/users/${editingUser.id}`, data);
@@ -65,9 +71,16 @@ const Users: React.FC = () => {
             setShowForm(false);
             setEditingUser(null);
             fetchUsers();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Erro ao salvar usuário", error);
-            alert("Erro ao salvar usuário.");
+            // Handle duplicate user error
+            if (error.response && error.response.status === 400 && error.response.data?.detail === "E-mail já cadastrado") {
+                alert("Usuário já existe.");
+            } else if (error.response && error.response.data?.detail) {
+                alert(`Erro: ${error.response.data.detail}`);
+            } else {
+                alert("Erro ao salvar usuário.");
+            }
         }
     };
 
