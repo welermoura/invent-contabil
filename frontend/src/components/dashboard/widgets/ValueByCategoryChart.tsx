@@ -2,11 +2,13 @@ import React from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import ChartWidget from './ChartWidget';
 import { useDashboard } from '../DashboardContext';
+import { useDashboardNavigation } from '../../../hooks/useDashboardNavigation';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6'];
 
 const ValueByCategoryChart: React.FC = () => {
     const { aggregates, theme } = useDashboard();
+    const { navigateToMacroView } = useDashboardNavigation();
 
     const data = Object.entries(aggregates.valueByCategory)
         .map(([name, value]) => ({ name, value }))
@@ -37,7 +39,11 @@ const ValueByCategoryChart: React.FC = () => {
 
     return (
         <ChartWidget title="Valor por Categoria">
-            <PieChart>
+            <PieChart onClick={(data) => {
+                if (data && data.activePayload) {
+                     navigateToMacroView('category', data.activePayload[0].payload.name);
+                }
+            }} className="cursor-pointer">
                 <Pie
                     data={chartData}
                     cx="50%"

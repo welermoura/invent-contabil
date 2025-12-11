@@ -31,6 +31,31 @@ const MacroViewPage: React.FC = () => {
     // Filtros locais
     const [searchTerm, setSearchTerm] = useState('');
 
+    const handleExport = () => {
+        // Simple CSV Export
+        const headers = ['Ativo', 'Descrição', 'Status', 'Valor', 'Filial', 'Categoria'];
+        const csvContent = [
+            headers.join(';'),
+            ...filteredItems.map(item => [
+                `"${item.fixed_asset_number || ''}"`,
+                `"${item.description || ''}"`,
+                `"${item.status || ''}"`,
+                (item.accounting_value || 0).toFixed(2).replace('.', ','),
+                `"${item.branch?.name || ''}"`,
+                `"${item.category_rel?.name || ''}"`
+            ].join(';'))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `export_${type}_${id}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     useEffect(() => {
         loadData();
     }, [type, id]);
@@ -142,7 +167,10 @@ const MacroViewPage: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-colors shadow-sm">
+                    <button
+                        onClick={handleExport}
+                        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-colors shadow-sm"
+                    >
                         <Download size={18} />
                         <span className="hidden sm:inline">Exportar</span>
                     </button>
