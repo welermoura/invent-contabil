@@ -28,8 +28,8 @@ async def read_items(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     # Enforce branch filtering for non-admins (Approvers and Auditors can see all)
-    # Operadores agora podem ter acesso a multiplas filiais.
-    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER, models.UserRole.AUDITOR]:
+    # Operadores agora podem ter acesso a multiplas filiais ou a todas se a flag estiver ativa.
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER, models.UserRole.AUDITOR] and not current_user.all_branches:
         # Se o usuário passou um branch_id, verifica se ele tem acesso.
         # Se não passou, precisamos filtrar por todas as filiais que ele tem acesso.
 
@@ -111,7 +111,7 @@ async def create_item(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Auditores não podem criar itens")
 
     # Validate branch permission for OPERATOR
-    if current_user.role == models.UserRole.OPERATOR:
+    if current_user.role == models.UserRole.OPERATOR and not current_user.all_branches:
         allowed_branches = [b.id for b in current_user.branches]
         if current_user.branch_id and current_user.branch_id not in allowed_branches:
             allowed_branches.append(current_user.branch_id)
@@ -283,12 +283,13 @@ async def update_item(
         # Check if Operator and item is REJECTED
         if current_user.role == models.UserRole.OPERATOR and existing_item.status == models.ItemStatus.REJECTED:
              # Check branch permission
-            allowed_branches = [b.id for b in current_user.branches]
-            if current_user.branch_id and current_user.branch_id not in allowed_branches:
-                allowed_branches.append(current_user.branch_id)
+            if not current_user.all_branches:
+                allowed_branches = [b.id for b in current_user.branches]
+                if current_user.branch_id and current_user.branch_id not in allowed_branches:
+                    allowed_branches.append(current_user.branch_id)
 
-            if existing_item.branch_id not in allowed_branches:
-                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para editar este item")
+                if existing_item.branch_id not in allowed_branches:
+                     raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para editar este item")
 
             # If authorized, FORCE status to PENDING upon edit (resubmit)
             item_update.status = models.ItemStatus.PENDING

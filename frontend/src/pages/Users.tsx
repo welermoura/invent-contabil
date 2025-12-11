@@ -21,7 +21,7 @@ import {
 const Users: React.FC = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
-    const { register, handleSubmit, reset } = useForm();
+    const { register, handleSubmit, reset, watch } = useForm();
     const [showForm, setShowForm] = useState(false);
     const [editingUser, setEditingUser] = useState<any | null>(null);
     const [loading, setLoading] = useState(false);
@@ -89,6 +89,7 @@ const Users: React.FC = () => {
              name: u.name,
              email: u.email,
              role: u.role,
+             all_branches: u.all_branches || false,
              branch_ids: u.branches ? u.branches.map((b: any) => b.id) : (u.branch_id ? [u.branch_id] : [])
         });
     };
@@ -187,18 +188,34 @@ const Users: React.FC = () => {
                             </select>
                         </div>
                         <div className="md:col-span-2 space-y-2">
-                            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                <Building2 className="w-4 h-4 text-gray-400" /> Filiais (Permissão) <span className="text-xs text-gray-400 font-normal ml-auto">Segure Ctrl/Cmd para selecionar múltiplas</span>
+                            <label className="text-sm font-medium text-gray-700 flex items-center gap-2 justify-between">
+                                <div className="flex items-center gap-2"><Building2 className="w-4 h-4 text-gray-400" /> Filiais (Permissão)</div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="all_branches"
+                                        {...register('all_branches')}
+                                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                        // Force re-render of select below when this changes
+                                        onChange={(e) => {
+                                            register('all_branches').onChange(e);
+                                            // Optional: clear selection if all is checked? No, keep it as is.
+                                        }}
+                                    />
+                                    <label htmlFor="all_branches" className="text-sm text-gray-600 cursor-pointer select-none">Todas as filiais (Acesso Total)</label>
+                                </div>
                             </label>
                             <select
                                 {...register('branch_ids')}
                                 multiple
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all h-32 bg-white"
+                                disabled={!!watch('all_branches')}
+                                className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all h-32 bg-white ${watch('all_branches') ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
                             >
                                 {branches.map(b => (
                                     <option key={b.id} value={b.id}>{b.name}</option>
                                 ))}
                             </select>
+                            {watch('all_branches') && <p className="text-xs text-indigo-600 font-medium mt-1">✓ Usuário terá acesso a todas as filiais atuais e futuras.</p>}
                         </div>
                         <div className="md:col-span-2 flex justify-end gap-3 pt-2">
                             <button
