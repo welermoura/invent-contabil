@@ -11,6 +11,7 @@ import Reports from './pages/Reports';
 import Suppliers from './pages/Suppliers';
 import { AuthProvider, useAuth } from './AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import NotificationBell from './components/NotificationBell';
 import Notifications from './components/Notifications';
 import {
@@ -171,9 +172,11 @@ function App() {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
-            <NotificationProvider>
-                <AppRoutes />
-            </NotificationProvider>
+            <ErrorBoundary>
+                <NotificationProvider>
+                    <AppRoutes />
+                </NotificationProvider>
+            </ErrorBoundary>
         </AuthProvider>
     </Router>
   )
