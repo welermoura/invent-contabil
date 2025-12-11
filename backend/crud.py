@@ -11,7 +11,11 @@ async def get_user_by_email(db: AsyncSession, email: str):
     return result.scalars().first()
 
 async def get_user(db: AsyncSession, user_id: int):
-    result = await db.execute(select(models.User).where(models.User.id == user_id))
+    result = await db.execute(
+        select(models.User)
+        .options(selectinload(models.User.branches), selectinload(models.User.branch))
+        .where(models.User.id == user_id)
+    )
     return result.scalars().first()
 
 async def create_user(db: AsyncSession, user: schemas.UserCreate):
@@ -37,7 +41,7 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
 
 async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
     # Eager load branches for UserResponse
-    query = select(models.User).options(selectinload(models.User.branches))
+    query = select(models.User).options(selectinload(models.User.branches), selectinload(models.User.branch))
     if search:
         search_filter = f"%{search}%"
         query = query.where(
@@ -50,7 +54,11 @@ async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100, search: s
     return result.scalars().all()
 
 async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
-    result = await db.execute(select(models.User).options(selectinload(models.User.branches)).where(models.User.id == user_id))
+    result = await db.execute(
+        select(models.User)
+        .options(selectinload(models.User.branches), selectinload(models.User.branch))
+        .where(models.User.id == user_id)
+    )
     db_user = result.scalars().first()
     if db_user:
         if user.name: db_user.name = user.name
@@ -67,7 +75,11 @@ async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
 
         await db.commit()
         # Reload user to ensure clean state and avoid async refresh issues
-        result = await db.execute(select(models.User).options(selectinload(models.User.branches)).where(models.User.id == user_id))
+        result = await db.execute(
+            select(models.User)
+            .options(selectinload(models.User.branches), selectinload(models.User.branch))
+            .where(models.User.id == user_id)
+        )
         db_user = result.scalars().first()
     return db_user
 
