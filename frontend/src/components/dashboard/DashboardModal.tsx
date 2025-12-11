@@ -192,23 +192,26 @@ const DashboardModal: React.FC<DashboardModalProps> = ({ isOpen, onClose, title,
                     <div className="relative">
                         <button
                             onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition-colors shadow-sm"
+                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm flex items-center gap-2 text-sm font-medium"
                         >
-                            <Download size={18} />
+                            <Download size={16} />
                             <span className="hidden sm:inline">Exportar</span>
                             <ChevronDown size={14} />
                         </button>
                         {isExportMenuOpen && (
                             <>
-                                <div className="fixed inset-0 z-10" onClick={() => setIsExportMenuOpen(false)}></div>
-                                <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-slate-800 rounded-lg shadow-xl py-1 z-20 border border-slate-100 dark:border-slate-700">
-                                    <button onClick={() => { exportXLSX(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 flex items-center gap-2">
+                                <div
+                                    className="fixed inset-0 z-10"
+                                    onClick={() => setIsExportMenuOpen(false)}
+                                ></div>
+                                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl py-1 z-20 border border-slate-100 dark:border-slate-700 animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <button onClick={() => { exportXLSX(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-700 hover:text-indigo-700 flex items-center gap-2">
                                         <FileSpreadsheet size={16} className="text-green-600" /> Excel (.xlsx)
                                     </button>
-                                    <button onClick={() => { exportCSV(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 flex items-center gap-2">
+                                    <button onClick={() => { exportCSV(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-700 hover:text-indigo-700 flex items-center gap-2">
                                         <TableIcon size={16} className="text-blue-600" /> CSV (.csv)
                                     </button>
-                                    <button onClick={() => { exportPDF(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 flex items-center gap-2">
+                                    <button onClick={() => { exportPDF(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-slate-700 hover:text-indigo-700 flex items-center gap-2">
                                         <FileText size={16} className="text-red-600" /> PDF (.pdf)
                                     </button>
                                 </div>
