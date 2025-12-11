@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../AuthContext';
+import { useError } from '../hooks/useError';
 import { useSearchParams } from 'react-router-dom';
 import { translateStatus, translateLogAction } from '../utils/translations';
 import { Edit2, Eye, CheckCircle, XCircle, ArrowRightLeft, FileText, Search, Plus, FileWarning, AlertCircle, Download, FileSpreadsheet, Table as TableIcon, ChevronDown } from 'lucide-react';
@@ -73,6 +74,7 @@ const Inventory: React.FC = () => {
     const [filterFixedAsset, setFilterFixedAsset] = useState('');
     const [filterPurchaseDate, setFilterPurchaseDate] = useState('');
     const [globalSearch, setGlobalSearch] = useState('');
+    const { showError, showSuccess, showWarning } = useError();
 
     // Debounce Logic helper
     useEffect(() => {
@@ -274,7 +276,7 @@ const Inventory: React.FC = () => {
                 }
             } catch (error) {
                 console.error("Erro ao verificar ativo fixo", error);
-                alert("Erro ao verificar duplicidade de Ativo Fixo.");
+                showError("ASSET_DUPLICATE_CHECK_ERROR");
                 return;
             }
         }
@@ -308,13 +310,14 @@ const Inventory: React.FC = () => {
                 };
 
                 await api.put(`/items/${editingItem.id}`, updatePayload);
-                alert("Item atualizado com sucesso!");
+                showSuccess("Item atualizado com sucesso!");
             } else {
                 await api.post('/items/', formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data',
                     },
                 });
+                showSuccess("Item criado com sucesso!");
             }
             reset();
             setIsCreateModalOpen(false);
@@ -324,7 +327,7 @@ const Inventory: React.FC = () => {
             fetchItems(globalSearch, 0); // Reload
         } catch (error) {
             console.error("Erro ao salvar item", error);
-            alert("Erro ao salvar item.");
+            showError(error, "ITEM_SAVE_ERROR");
         }
     };
 
@@ -344,9 +347,10 @@ const Inventory: React.FC = () => {
             setIsApproveModalOpen(false);
             setSelectedItem(null);
             setFixedAssetNumber('');
+            showSuccess(`Status atualizado para ${translateStatus(newStatus)}`);
         } catch (error) {
             console.error("Erro ao atualizar status", error);
-            alert("Erro ao atualizar status. Verifique se você tem permissão.");
+            showError(error, "STATUS_UPDATE_ERROR");
         }
     }
 
@@ -409,10 +413,10 @@ const Inventory: React.FC = () => {
             setIsTransferModalOpen(false);
             setSelectedItem(null);
             setTransferTargetBranch('');
-            alert("Solicitação de transferência enviada com sucesso!");
+            showSuccess("Solicitação de transferência enviada com sucesso!");
         } catch (error) {
             console.error("Erro ao solicitar transferência", error);
-            alert("Erro ao solicitar transferência.");
+            showError(error, "TRANSFER_ERROR");
         }
     };
 
@@ -428,10 +432,10 @@ const Inventory: React.FC = () => {
             setIsWriteOffModalOpen(false);
             setSelectedItem(null);
             setWriteOffJustification('');
-            alert("Solicitação de baixa enviada com sucesso!");
+            showSuccess("Solicitação de baixa enviada com sucesso!");
         } catch (error) {
             console.error("Erro ao solicitar baixa", error);
-            alert("Erro ao solicitar baixa.");
+            showError(error, "WRITEOFF_ERROR");
         }
     }
 
@@ -744,7 +748,7 @@ const Inventory: React.FC = () => {
                             <button onClick={() => handleStatusChange(selectedItem.id, 'REJECTED')} className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors">Rejeitar</button>
                             <button onClick={() => setIsApproveModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancelar</button>
                             <button onClick={async () => {
-                                if (!fixedAssetNumber && !selectedItem.fixed_asset_number) { alert("Ativo Fixo obrigatório"); return; }
+                                if (!fixedAssetNumber && !selectedItem.fixed_asset_number) { showWarning("ASSET_REQUIRED"); return; }
 
                                 // Verify uniqueness
                                 try {
@@ -757,7 +761,7 @@ const Inventory: React.FC = () => {
                                     }
                                 } catch (error) {
                                     console.error("Erro ao verificar ativo", error);
-                                    alert("Erro ao validar Ativo Fixo.");
+                                    showError("ASSET_DUPLICATE_CHECK_ERROR");
                                     return;
                                 }
 

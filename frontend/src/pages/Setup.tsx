@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
+import { useError } from '../hooks/useError';
 
 const Setup: React.FC = () => {
     const { register, handleSubmit, formState: { errors } } = useForm();
@@ -21,15 +22,17 @@ const Setup: React.FC = () => {
         checkStatus();
     }, [navigate]);
 
+    const { showError, showSuccess } = useError();
+
     const onSubmit = async (data: any) => {
         try {
             // Create Master Admin
             await api.post('/setup', data);
-            alert("Admin cadastrado com sucesso! Faça login.");
+            showSuccess("Admin cadastrado com sucesso! Faça login.");
             navigate('/login');
         } catch (error) {
             console.error("Setup failed", error);
-            alert("Erro ao cadastrar Admin.");
+            showError("Erro ao cadastrar Admin.");
         }
     };
 
