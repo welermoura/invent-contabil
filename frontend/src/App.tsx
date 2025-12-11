@@ -10,6 +10,8 @@ import Setup from './pages/Setup';
 import Reports from './pages/Reports';
 import Suppliers from './pages/Suppliers';
 import { AuthProvider, useAuth } from './AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
+import NotificationBell from './components/NotificationBell';
 import Notifications from './components/Notifications';
 import {
     LayoutDashboard,
@@ -122,6 +124,7 @@ const Layout = () => {
                     </button>
 
                     <div className="flex items-center ml-auto gap-4">
+                        <NotificationBell />
                         <div className="text-right hidden md:block">
                             <p className="text-sm font-medium text-slate-700">{user?.email || 'Usuário'}</p>
                             <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-medium">
@@ -168,7 +171,9 @@ function App() {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
-            <AppRoutes />
+            <NotificationProvider>
+                <AppRoutes />
+            </NotificationProvider>
         </AuthProvider>
     </Router>
   )

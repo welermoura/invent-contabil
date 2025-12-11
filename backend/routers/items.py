@@ -6,6 +6,7 @@ from backend.database import get_db
 import shutil
 import os
 from datetime import datetime
+from backend.notification_service import notify_approvers, notify_user
 
 router = APIRouter(prefix="/items", tags=["items"])
 
@@ -176,25 +177,63 @@ async def create_item(
             result = await db.execute(query)
             db_item = result.scalars().first()
 
+        # NOTIFICATION: Notify Approvers
+        await notify_approvers(
+            db,
+            title="Novo item aguardando aprovação",
+            body=f"O usuário {current_user.name} cadastrou o item {db_item.description}.",
+            item_id=db_item.id,
+            type="cadastro",
+            click_action=f"/inventory?status=PENDING&item_id={db_item.id}"
+        )
+
         return db_item
     except Exception as e:
         print(f"Error creating item: {e}")
         raise HTTPException(status_code=400, detail=f"Erro ao criar item: {str(e)}")
 
+class ItemStatusUpdate(BaseModel):
+    status: schemas.ItemStatus
+    fixed_asset_number: Optional[str] = None
+    reason: Optional[str] = None
+
 @router.put("/{item_id}/status", response_model=schemas.ItemResponse)
 async def update_item_status(
     item_id: int,
-    status_update: schemas.ItemStatus,
-    fixed_asset_number: Optional[str] = None,
+    update_data: ItemStatusUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
          raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não autorizado a aprovar/rejeitar itens")
 
-    item = await crud.update_item_status(db, item_id, status_update, current_user.id, fixed_asset_number)
+    item = await crud.update_item_status(db, item_id, update_data.status, current_user.id, update_data.fixed_asset_number)
     if not item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
+
+    # Notify Operator
+    if item.responsible_id:
+        if update_data.status == models.ItemStatus.APPROVED:
+            await notify_user(
+                db,
+                item.responsible_id,
+                "Item aprovado",
+                f"O item {item.description} foi aprovado por {current_user.name}.",
+                item.id,
+                "aprovacao",
+                f"/inventory?item_id={item.id}"
+            )
+        elif update_data.status == models.ItemStatus.REJECTED:
+            reason_msg = f" Motivo: {update_data.reason}" if update_data.reason else ""
+            await notify_user(
+                db,
+                item.responsible_id,
+                "Item rejeitado",
+                f"O item {item.description} foi rejeitado por {current_user.name}.{reason_msg}",
+                item.id,
+                "rejeicao",
+                f"/inventory?item_id={item.id}"
+            )
 
     # Trigger WebSocket notification
     from backend.websocket_manager import manager
@@ -225,9 +264,28 @@ async def request_transfer(
         if item.branch_id not in allowed_branches:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para transferir este item")
 
+    source_branch_name = item.branch.name if item.branch else "Desconhecida"
+
     item = await crud.request_transfer(db, item_id, target_branch_id, current_user.id)
     if not item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
+
+    target_branch_name = item.transfer_target_branch.name if item.transfer_target_branch else "Desconhecida"
+
+    # Notify Approvers about transfer
+    # Also ideally notify responsible of target branch?
+    # For now, per rules: "Enviar para responsáveis da filial origem e destino"
+    # This is tricky because we don't track "Branch Manager".
+    # We will notify Approvers as they manage everything, and maybe the operator responsible for item.
+
+    await notify_approvers(
+        db,
+        "Transferência de Item",
+        f"O item {item.description} foi transferido de {source_branch_name} para {target_branch_name}.",
+        item.id,
+        "transferencia",
+        f"/inventory?item_id={item.id}"
+    )
 
     from backend.websocket_manager import manager
     await manager.broadcast(f"Solicitação de transferência para item {item.description}")
@@ -261,6 +319,16 @@ async def request_write_off(
     if not item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
 
+    # Notify Approvers
+    await notify_approvers(
+        db,
+        "Solicitação de baixa",
+        f"O item {item.description} foi enviado para baixa por {current_user.name}.",
+        item.id,
+        "baixa",
+        f"/inventory?status=WRITE_OFF_PENDING&item_id={item.id}"
+    )
+
     from backend.websocket_manager import manager
     await manager.broadcast(f"Solicitação de baixa para item {item.description}")
 
@@ -292,8 +360,21 @@ async def update_item(
 
             # If authorized, FORCE status to PENDING upon edit (resubmit)
             item_update.status = models.ItemStatus.PENDING
+
+            # Notify Approvers about resubmission
+            await notify_approvers(
+                db,
+                "Item Reenviado para Aprovação",
+                f"O item {existing_item.description} foi corrigido e reenviado por {current_user.name}.",
+                existing_item.id,
+                "cadastro",
+                f"/inventory?item_id={existing_item.id}"
+            )
         else:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem editar itens (ou operadores corrigindo rejeições)")
+
+    # If Approver edits, maybe notify someone? Not required by strict rules but good practice.
+    # For now keep as is.
 
     updated_item = await crud.update_item(db, item_id, item_update)
     return updated_item
