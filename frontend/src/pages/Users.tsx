@@ -102,7 +102,6 @@ const Users: React.FC = () => {
              name: u.name,
              email: u.email,
              role: u.role,
-             can_import: u.can_import || false,
              all_branches: u.all_branches || false,
              branch_ids: u.branches ? u.branches.map((b: any) => b.id) : (u.branch_id ? [u.branch_id] : [])
         });
@@ -200,20 +199,6 @@ const Users: React.FC = () => {
                                 <option value="AUDITOR">Auditor (Leitura)</option>
                                 <option value="ADMIN">Administrador (Total)</option>
                             </select>
-
-                            {watch('role') === 'OPERATOR' && (
-                                <div className="flex items-center gap-2 mt-2 pl-1 animate-in fade-in duration-200">
-                                    <input
-                                        type="checkbox"
-                                        id="can_import"
-                                        {...register('can_import')}
-                                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                                    />
-                                    <label htmlFor="can_import" className="text-sm text-gray-600 cursor-pointer select-none">
-                                        Pode Importar Itens
-                                    </label>
-                                </div>
-                            )}
                         </div>
                         <div className="md:col-span-2 space-y-2">
                             <label className="text-sm font-medium text-gray-700 flex items-center gap-2 justify-between">
