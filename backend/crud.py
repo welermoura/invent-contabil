@@ -361,6 +361,26 @@ async def update_item_status(db: AsyncSession, item_id: int, status: models.Item
 
     return db_item
 
+# System Settings
+async def get_system_settings(db: AsyncSession):
+    result = await db.execute(select(models.SystemSetting))
+    return result.scalars().all()
+
+async def get_system_setting(db: AsyncSession, key: str):
+    result = await db.execute(select(models.SystemSetting).where(models.SystemSetting.key == key))
+    return result.scalars().first()
+
+async def update_system_setting(db: AsyncSession, key: str, value: str):
+    setting = await get_system_setting(db, key)
+    if setting:
+        setting.value = value
+    else:
+        setting = models.SystemSetting(key=key, value=value)
+        db.add(setting)
+    await db.commit()
+    await db.refresh(setting)
+    return setting
+
 async def get_all_logs(db: AsyncSession, limit: int = 1000):
     query = select(models.Log).options(
         selectinload(models.Log.user),

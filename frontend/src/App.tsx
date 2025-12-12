@@ -6,6 +6,7 @@ import Inventory from './pages/Inventory';
 import Branches from './pages/Branches';
 import Categories from './pages/Categories';
 import Users from './pages/Users';
+import SystemSettings from './pages/SystemSettings';
 import Setup from './pages/Setup';
 import Reports from './pages/Reports';
 import Suppliers from './pages/Suppliers';
@@ -13,6 +14,7 @@ import MacroViewPage from './pages/dashboard/MacroViewPage';
 import { AuthProvider, useAuth } from './AuthContext';
 import { ErrorProvider } from './context/ErrorContext';
 import Notifications from './components/Notifications';
+import api from './api';
 import {
     LayoutDashboard,
     Package,
@@ -22,9 +24,10 @@ import {
     Tags,
     Users as UsersIcon,
     LogOut,
-    Menu as MenuIcon
+    Menu as MenuIcon,
+    Settings
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const PrivateRoute = () => {
     const { isAuthenticated } = useAuth();
@@ -90,6 +93,9 @@ const Layout = () => {
                     )}
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
                         <NavItem to="/users" icon={UsersIcon} label="Usuários" active={isActive('/users')} />
+                    )}
+                    {(user?.role === 'ADMIN') && (
+                        <NavItem to="/system-settings" icon={Settings} label="Configurações" active={isActive('/system-settings')} />
                     )}
 
                     <div className="mt-8 pt-4 border-t border-slate-100">
@@ -164,6 +170,7 @@ const AppRoutes = () => {
                     <Route path="/suppliers" element={<Suppliers />} />
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/users" element={<Users />} />
+                    <Route path="/system-settings" element={<SystemSettings />} />
                 </Route>
             </Route>
         </Routes>
@@ -171,6 +178,30 @@ const AppRoutes = () => {
 }
 
 function App() {
+  useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                const response = await api.get('/settings/');
+                const settings = response.data;
+                if (settings.app_title) {
+                    document.title = settings.app_title;
+                }
+                if (settings.favicon_url) {
+                    let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+                    if (!link) {
+                        link = document.createElement('link');
+                        link.rel = 'icon';
+                        document.getElementsByTagName('head')[0].appendChild(link);
+                    }
+                    link.href = `${api.defaults.baseURL}/${settings.favicon_url}`;
+                }
+            } catch (error) {
+                // Silent fail
+            }
+        };
+        loadSettings();
+    }, []);
+
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>

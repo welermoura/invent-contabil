@@ -127,3 +127,11 @@ class Log(Base):
 
     item = relationship("Item", back_populates="logs", lazy="selectin")
     user = relationship("User", back_populates="logs", lazy="selectin")
+
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, index=True)
+    value = Column(String)
