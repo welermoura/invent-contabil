@@ -84,7 +84,41 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
     const [globalSearch, setGlobalSearch] = useState('');
     const [isChangeStatusModalOpen, setIsChangeStatusModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [importBranch, setImportBranch] = useState('');
+    const [isUploading, setIsUploading] = useState(false);
+    const [importResult, setImportResult] = useState<any>(null);
     const { showError, showSuccess, showWarning } = useError();
+
+    const handleImport = async () => {
+        if (!importFile || !importBranch) {
+            return;
+        }
+
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append('file', importFile);
+        formData.append('branch_id', importBranch);
+
+        try {
+            const response = await api.post('/import/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setImportResult(response.data);
+            if (response.data.success > 0) {
+                showSuccess(`${response.data.success} itens importados com sucesso!`);
+                fetchItems(globalSearch, 0);
+            }
+            if (response.data.errors && response.data.errors.length > 0) {
+                showWarning("Alguns itens falharam. Verifique o relatório.");
+            }
+        } catch (error) {
+            console.error("Import error", error);
+            showError(error, "IMPORT_ERROR");
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     // Debounce Logic helper
     useEffect(() => {
@@ -730,7 +764,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Ativo Fixo</label>
-                                <input {...register('fixed_asset_number')} onChange={(e) => { e.target.value = e.target.value.replace(/\D/g, ''); register('fixed_asset_number').onChange(e); }} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" placeholder="Opcional" />
+                                <input {...register('fixed_asset_number')} onChange={(e) => { e.target.value = e.target.value.toUpperCase(); register('fixed_asset_number').onChange(e); }} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" placeholder="Opcional" />
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Filial</label>
@@ -784,7 +818,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                 {selectedItem.fixed_asset_number ? (
                                     <div className="px-4 py-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-600 font-mono">{selectedItem.fixed_asset_number}</div>
                                 ) : (
-                                    <input type="text" value={fixedAssetNumber} onChange={(e) => setFixedAssetNumber(e.target.value.replace(/\D/g, ''))} className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono" placeholder="Ex: 12345" />
+                                    <input type="text" value={fixedAssetNumber} onChange={(e) => setFixedAssetNumber(e.target.value.toUpperCase())} className="w-full px-4 py-2 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono" placeholder="Ex: ATV-123" />
                                 )}
                             </div>
                         </div>
@@ -917,7 +951,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                     <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md animate-scale-in">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-lg font-bold text-slate-800">Importar Itens</h3>
-                            <button onClick={() => setIsImportModalOpen(false)}><XCircle size={24} className="text-slate-400 hover:text-slate-600"/></button>
+                            <button onClick={() => { setIsImportModalOpen(false); setImportResult(null); setImportFile(null); setImportBranch(''); }}><XCircle size={24} className="text-slate-400 hover:text-slate-600"/></button>
                         </div>
 
                         <div className="space-y-4">
@@ -944,11 +978,57 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                 </a>
                             </div>
 
-                            <div className="mt-6 pt-6 border-t border-slate-100">
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Carregar Arquivo</label>
-                                <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center hover:bg-slate-50 transition-colors cursor-pointer bg-slate-50/50">
-                                    <Upload size={24} className="mx-auto text-slate-400 mb-2"/>
-                                    <p className="text-xs text-slate-500">Funcionalidade de upload em desenvolvimento...</p>
+                            <div className="mt-6 pt-6 border-t border-slate-100 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Filial de Destino</label>
+                                    <select
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                        value={importBranch}
+                                        onChange={(e) => setImportBranch(e.target.value)}
+                                    >
+                                        <option value="">Selecione...</option>
+                                        {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Arquivo (CSV ou Excel)</label>
+                                    <input
+                                        type="file"
+                                        accept=".csv, .xlsx, .xls"
+                                        className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                        onChange={(e) => {
+                                            if (e.target.files) setImportFile(e.target.files[0]);
+                                        }}
+                                    />
+                                </div>
+
+                                {importResult && (
+                                    <div className="bg-slate-50 p-4 rounded-lg text-xs space-y-2 border border-slate-200 max-h-40 overflow-y-auto">
+                                        <p className="font-semibold text-slate-700">Resultado:</p>
+                                        <p className="text-green-600">Sucesso: {importResult.success} itens</p>
+                                        {importResult.errors?.length > 0 && (
+                                            <div className="text-red-600">
+                                                <p className="font-semibold">Erros ({importResult.errors.length}):</p>
+                                                <ul className="list-disc pl-4 mt-1 space-y-1">
+                                                    {importResult.errors.map((err: string, idx: number) => (
+                                                        <li key={idx}>{err}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="flex justify-end pt-2">
+                                    <button
+                                        onClick={handleImport}
+                                        disabled={isUploading || !importFile || !importBranch}
+                                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        {isUploading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Upload size={16} />}
+                                        Importar
+                                    </button>
                                 </div>
                             </div>
                         </div>

@@ -64,7 +64,7 @@ export const WIDGETS: Record<string, any> = {
 };
 
 const DEFAULT_LAYOUT = [
-    'kpi-total-value', 'kpi-total-items', 'kpi-pending-items-action', 'kpi-pending-value', 'kpi-writeoff',
+    'kpi-pending-items-action', 'kpi-total-value', 'kpi-total-items', 'kpi-pending-value', 'kpi-writeoff',
     'chart-evolution',
     'chart-branch', 'chart-category',
     'table-top-items'
@@ -131,6 +131,11 @@ const DraggableGrid: React.FC = () => {
     React.useEffect(() => {
         if (layout.length === 0) {
             setLayout(DEFAULT_LAYOUT);
+        } else {
+             // Force "Pending Items" to appear if missing (e.g. old layout in localstorage)
+             if (!layout.includes('kpi-pending-items-action')) {
+                setLayout(['kpi-pending-items-action', ...layout]);
+             }
         }
     }, [layout, setLayout]);
 
