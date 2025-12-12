@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Search, FileText, Download, FileSpreadsheet, Table as TableIcon, ChevronDown } from 'lucide-react';
 import api from '../../api';
+import Inventory from '../../pages/Inventory';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -17,12 +18,13 @@ const DashboardModal: React.FC<DashboardModalProps> = ({ isOpen, onClose, title,
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const isInventoryMode = filters?.renderInventory;
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && !isInventoryMode) {
             fetchDetails();
         }
-    }, [isOpen, filters]);
+    }, [isOpen, filters, isInventoryMode]);
 
     const fetchDetails = async () => {
         setLoading(true);
@@ -154,6 +156,32 @@ const DashboardModal: React.FC<DashboardModalProps> = ({ isOpen, onClose, title,
     };
 
     if (!isOpen) return null;
+
+    if (isInventoryMode) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-[95vw] h-[90vh] flex flex-col overflow-hidden relative">
+                    <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+                         <div>
+                            <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <FileText className="text-blue-500" />
+                                {title}
+                            </h2>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-500"
+                        >
+                            <X size={24} />
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-4 bg-slate-50/30 dark:bg-slate-900/10">
+                        <Inventory embedded defaultStatus={filters.status} />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
