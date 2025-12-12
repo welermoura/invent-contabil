@@ -189,18 +189,54 @@ async def update_item_status(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
-         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Não autorizado a aprovar/rejeitar itens")
-
-    item = await crud.update_item_status(db, item_id, status_update, current_user.id, fixed_asset_number)
-    if not item:
+    # Fetch item to check permissions and current status
+    item_obj = await crud.get_item(db, item_id)
+    if not item_obj:
         raise HTTPException(status_code=404, detail="Item não encontrado")
+
+    is_admin_approver = current_user.role in [models.UserRole.ADMIN, models.UserRole.APPROVER]
+    is_operator = current_user.role == models.UserRole.OPERATOR
+
+    if not is_admin_approver and not is_operator:
+         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Role não autorizada")
+
+    # Business Rule: Items must be Approved before moving to Maintenance or Stock
+    # This applies to ALL roles to prevent bypassing the approval workflow
+    target_is_operational = status_update in [models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
+    current_is_operational = item_obj.status in [models.ItemStatus.APPROVED, models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
+
+    if target_is_operational and not current_is_operational:
+         raise HTTPException(status_code=400, detail="O item deve ser aprovado antes de ser movido para Manutenção ou Estoque")
+
+    if is_operator:
+        # Check Branch Permission
+        if not current_user.all_branches:
+            allowed_branches = [b.id for b in current_user.branches]
+            if current_user.branch_id and current_user.branch_id not in allowed_branches:
+                allowed_branches.append(current_user.branch_id)
+
+            if item_obj.branch_id not in allowed_branches:
+                raise HTTPException(status_code=403, detail="Sem permissão nesta filial")
+
+        # Validate Transitions for Operator
+        allowed_targets = [models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK, models.ItemStatus.APPROVED]
+        if status_update not in allowed_targets:
+             raise HTTPException(status_code=403, detail="Operadores só podem alterar para Manutenção, Estoque ou Ativo")
+
+        # Cannot touch PENDING, REJECTED, TRANSFER/WRITEOFF PENDING via this endpoint (except moving FROM active states)
+        # Operators cannot Approve a PENDING item.
+        allowed_sources = [models.ItemStatus.APPROVED, models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
+        if item_obj.status not in allowed_sources:
+             raise HTTPException(status_code=403, detail="Operadores não podem alterar status de itens Pendentes ou em Processo")
+
+    # Proceed with update
+    updated_item = await crud.update_item_status(db, item_id, status_update, current_user.id, fixed_asset_number)
 
     # Trigger WebSocket notification
     from backend.websocket_manager import manager
-    await manager.broadcast(f"Item {item.description} status changed to {status_update}")
+    await manager.broadcast(f"Item {updated_item.description} status changed to {status_update}")
 
-    return item
+    return updated_item
 
 @router.post("/{item_id}/transfer", response_model=schemas.ItemResponse)
 async def request_transfer(

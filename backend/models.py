@@ -26,6 +26,8 @@ class ItemStatus(str, enum.Enum):
     TRANSFER_PENDING = "TRANSFER_PENDING"
     WRITE_OFF_PENDING = "WRITE_OFF_PENDING"
     WRITTEN_OFF = "WRITTEN_OFF"
+    MAINTENANCE = "MAINTENANCE"
+    IN_STOCK = "IN_STOCK"
 
 class Branch(Base):
     __tablename__ = "branches"
