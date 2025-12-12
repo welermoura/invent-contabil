@@ -200,6 +200,14 @@ async def update_item_status(
     if not is_admin_approver and not is_operator:
          raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Role não autorizada")
 
+    # Business Rule: Items must be Approved before moving to Maintenance or Stock
+    # This applies to ALL roles to prevent bypassing the approval workflow
+    target_is_operational = status_update in [models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
+    current_is_operational = item_obj.status in [models.ItemStatus.APPROVED, models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
+
+    if target_is_operational and not current_is_operational:
+         raise HTTPException(status_code=400, detail="O item deve ser aprovado antes de ser movido para Manutenção ou Estoque")
+
     if is_operator:
         # Check Branch Permission
         if not current_user.all_branches:
