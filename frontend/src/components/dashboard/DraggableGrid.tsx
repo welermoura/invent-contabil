@@ -35,12 +35,13 @@ import RecentItemsTable from './widgets/RecentItemsTable';
 import RiskMapWidget from './widgets/RiskMapWidget';
 import PurchaseVsAccountingChart from './widgets/PurchaseVsAccountingChart';
 
-import { DollarSign, Package, AlertCircle, FileWarning, Activity, Clock } from 'lucide-react';
+import { DollarSign, Package, AlertCircle, FileWarning, Activity, Clock, ClipboardList } from 'lucide-react';
 
 // Widget Registry
 export const WIDGETS: Record<string, any> = {
     'kpi-total-value': { label: "KPI Valor Total", component: StatCard, type: 'kpi', props: { title: "Valor Contábil Total", icon: DollarSign, colorClass: "text-emerald-600" } },
     'kpi-total-items': { label: "KPI Total Itens", component: StatCard, type: 'kpi', props: { title: "Itens Totais", icon: Package, colorClass: "text-blue-600" } },
+    'kpi-pending-items-action': { label: "KPI Itens Pendentes", component: StatCard, type: 'kpi', props: { title: "Aprovações Pendentes", icon: ClipboardList, colorClass: "text-orange-600" } },
     'kpi-pending-value': { label: "KPI Valor Pendente", component: StatCard, type: 'kpi', props: { title: "Valor Pendente", icon: AlertCircle, colorClass: "text-amber-500" } },
     'kpi-writeoff': { label: "KPI Baixas", component: StatCard, type: 'kpi', props: { title: "Baixas Pendentes", icon: FileWarning, colorClass: "text-red-500" } },
 
@@ -63,7 +64,7 @@ export const WIDGETS: Record<string, any> = {
 };
 
 const DEFAULT_LAYOUT = [
-    'kpi-total-value', 'kpi-total-items', 'kpi-pending-value', 'kpi-writeoff',
+    'kpi-total-value', 'kpi-total-items', 'kpi-pending-items-action', 'kpi-pending-value', 'kpi-writeoff',
     'chart-evolution',
     'chart-branch', 'chart-category',
     'table-top-items'
@@ -171,6 +172,11 @@ const DraggableGrid: React.FC = () => {
             if (id === 'kpi-total-items') {
                 props.value = aggregates.totalItems;
                 props.onClick = () => openDetailModal('Itens Cadastrados', { limit: 100 });
+            }
+            if (id === 'kpi-pending-items-action') {
+                props.value = aggregates.pendingCount;
+                props.subtext = "Aguardando aprovação";
+                props.onClick = () => openDetailModal('Aprovações Pendentes', { status: 'PENDING', renderInventory: true });
             }
             if (id === 'kpi-pending-value') {
                 props.value = aggregates.pendingValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

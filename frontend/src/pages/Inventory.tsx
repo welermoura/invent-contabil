@@ -28,7 +28,12 @@ const StatusBadge = ({ status }: { status: string }) => {
     );
 };
 
-const Inventory: React.FC = () => {
+interface InventoryProps {
+    embedded?: boolean;
+    defaultStatus?: string;
+}
+
+const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }) => {
     const [items, setItems] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
@@ -86,16 +91,18 @@ const Inventory: React.FC = () => {
 
     // Sync URL params with local state on load
     useEffect(() => {
-        const cat = searchParams.get('category');
-        const br = searchParams.get('branch_id');
+        if (!embedded) {
+            const cat = searchParams.get('category');
+            const br = searchParams.get('branch_id');
 
-        if (cat) setFilterCategory(cat);
-        if (br) setFilterBranch(br);
-    }, []);
+            if (cat) setFilterCategory(cat);
+            if (br) setFilterBranch(br);
+        }
+    }, [embedded, searchParams]);
 
     const fetchItems = async (search?: string, pageNum: number = 0) => {
         try {
-            const statusFilter = searchParams.get('status');
+            const statusFilter = embedded ? defaultStatus : searchParams.get('status');
             // We use local state for other filters now, but respect URL status
 
             const params: any = {
@@ -440,12 +447,14 @@ const Inventory: React.FC = () => {
     }
 
     return (
-        <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+        <div className={`space-y-6 animate-fade-in ${embedded ? 'p-1' : ''}`}>
+            <div className={`flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-100 ${embedded ? 'sticky top-0 z-10 border-none shadow-none p-0 pb-4' : ''}`}>
+                {!embedded && (
                 <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                     <FileText className="text-blue-600" /> Inventário
                 </h1>
-                 <div className="flex gap-2 w-full md:w-auto">
+                )}
+                 <div className={`flex gap-2 w-full md:w-auto ${embedded ? 'w-full' : ''}`}>
                     <div className="relative flex-grow md:w-64">
                         <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
                         <input

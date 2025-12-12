@@ -122,7 +122,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
         // Default Admin/Approver
         return [
-            'kpi-total-value', 'kpi-total-items', 'kpi-pending-value', 'kpi-writeoff',
+            'kpi-total-value', 'kpi-total-items', 'kpi-pending-items-action', 'kpi-pending-value', 'kpi-writeoff',
             'chart-evolution',
             'chart-branch', 'chart-category',
             'table-top-items'
