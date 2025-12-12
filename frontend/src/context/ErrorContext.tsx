@@ -1,5 +1,6 @@
 import React, { createContext, useState, ReactNode } from 'react';
-import StandardModal, { ModalType } from '../components/common/StandardModal';
+import StandardModal from '../components/common/StandardModal';
+import type { ModalType } from '../components/common/StandardModal';
 import { ERROR_MAPPING, getErrorMessage } from '../utils/errorMap';
 
 interface ErrorContextProps {

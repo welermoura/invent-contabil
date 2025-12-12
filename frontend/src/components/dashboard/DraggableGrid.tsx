@@ -24,8 +24,6 @@ import { GripVertical, X } from 'lucide-react';
 
 import { useDashboard } from './DashboardContext';
 import { useDashboardNavigation } from '../../hooks/useDashboardNavigation';
-import DashboardModal from './DashboardModal';
-
 import StatCard from './widgets/StatCard';
 import ValueByBranchChart from './widgets/ValueByBranchChart';
 import CountByBranchChart from './widgets/CountByBranchChart';
@@ -38,7 +36,6 @@ import RiskMapWidget from './widgets/RiskMapWidget';
 import PurchaseVsAccountingChart from './widgets/PurchaseVsAccountingChart';
 
 import { DollarSign, Package, AlertCircle, FileWarning, Activity, Clock } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 // Widget Registry
 export const WIDGETS: Record<string, any> = {
@@ -76,11 +73,10 @@ interface SortableItemProps {
     id: string;
     children: React.ReactNode;
     className?: string;
-    isEditing: boolean;
     onRemove: (id: string) => void;
 }
 
-const SortableItem = ({ id, children, className, onRemove }: Omit<SortableItemProps, 'isEditing'>) => {
+const SortableItem = ({ id, children, className, onRemove }: SortableItemProps) => {
     const {
         attributes,
         listeners,
@@ -88,7 +84,7 @@ const SortableItem = ({ id, children, className, onRemove }: Omit<SortableItemPr
         transform,
         transition,
         isDragging
-    } = useSortable({ id }); // Removed disabled: !isEditing
+    } = useSortable({ id });
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -99,7 +95,7 @@ const SortableItem = ({ id, children, className, onRemove }: Omit<SortableItemPr
 
     return (
         <div ref={setNodeRef} style={style} className={`relative group ${className}`}>
-             {/* Drag handle and close button always present but hidden until hover */}
+             {/* Drag handle and close button */}
              <div className="absolute top-2 right-2 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
                 <div
                     {...attributes}
@@ -110,7 +106,7 @@ const SortableItem = ({ id, children, className, onRemove }: Omit<SortableItemPr
                     <GripVertical size={16} />
                 </div>
                 <button
-                    onClick={() => onRemove(id)}
+                    onClick={(e) => { e.stopPropagation(); onRemove(id); }}
                     className="p-1.5 bg-white dark:bg-slate-700 rounded-md shadow-sm text-slate-400 hover:text-red-500 hover:scale-105 transition-all"
                     title="Remover Widget"
                 >
@@ -127,12 +123,8 @@ const SortableItem = ({ id, children, className, onRemove }: Omit<SortableItemPr
 
 const DraggableGrid: React.FC = () => {
     const { layout, setLayout, aggregates, isLoading, isEditing, removeWidget } = useDashboard();
-    const navigate = useNavigate();
     const { openDetailModal } = useDashboardNavigation();
     const [activeId, setActiveId] = React.useState<string | null>(null);
-    const searchParams = new URLSearchParams(window.location.search);
-    const modalType = searchParams.get('modal');
-    const dateParam = searchParams.get('date');
 
     // Initial load check
     React.useEffect(() => {
@@ -174,27 +166,27 @@ const DraggableGrid: React.FC = () => {
         if (def.type === 'kpi') {
             if (id === 'kpi-total-value') {
                 props.value = aggregates.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                props.onClick = () => openDetailModal('total-value', { limit: 100 });
+                props.onClick = () => openDetailModal('Detalhe Valor Total', { limit: 100 });
             }
             if (id === 'kpi-total-items') {
                 props.value = aggregates.totalItems;
-                props.onClick = () => openDetailModal('total-items', { limit: 100 });
+                props.onClick = () => openDetailModal('Itens Cadastrados', { limit: 100 });
             }
             if (id === 'kpi-pending-value') {
                 props.value = aggregates.pendingValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                 props.subtext = `${aggregates.pendingCount} itens pendentes`;
-                props.onClick = () => openDetailModal('pending', { status: 'PENDING' });
+                props.onClick = () => openDetailModal('Itens Pendentes', { status: 'PENDING' });
             }
             if (id === 'kpi-writeoff') {
                 props.value = aggregates.itemsByStatus['WRITE_OFF_PENDING'] || 0;
-                props.onClick = () => openDetailModal('writeoff', { status: 'WRITE_OFF_PENDING' });
+                props.onClick = () => openDetailModal('Baixas Pendentes', { status: 'WRITE_OFF_PENDING' });
             }
             if (id === 'kpi-age') {
                 props.value = aggregates.averageAssetAgeMonths.toFixed(1);
             }
             if (id === 'kpi-zero-dep') {
                 props.value = aggregates.zeroDepreciationCount;
-                props.onClick = () => openDetailModal('zero-dep', { zeroDepreciation: 'true' });
+                props.onClick = () => openDetailModal('Itens Totalmente Depreciados', { zeroDepreciation: 'true' });
             }
 
             props.isLoading = isLoading;
@@ -210,61 +202,30 @@ const DraggableGrid: React.FC = () => {
     const items = layout.filter((id: string) => WIDGETS[id]); // Safety filter
 
     return (
-        <>
-            <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-            >
-                <SortableContext items={items} strategy={rectSortingStrategy}>
-                    <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-10 ${isEditing ? 'p-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl bg-slate-50/50 dark:bg-slate-900/50 min-h-[500px]' : ''}`} id="dashboard-container">
-                        {items.map((id: string) => {
-                            const def = WIDGETS[id];
-                            // Determine grid span based on widget definition
-                            const colSpan = def?.className || 'col-span-1';
+        <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+        >
+            <SortableContext items={items} strategy={rectSortingStrategy}>
+                <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-10 ${isEditing ? 'p-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl bg-slate-50/50 dark:bg-slate-900/50 min-h-[500px]' : ''}`} id="dashboard-container">
+                    {items.map((id: string) => {
+                        const def = WIDGETS[id];
+                        const colSpan = def?.className || 'col-span-1';
 
-                            return (
-                                <SortableItem key={id} id={id} className={colSpan} onRemove={removeWidget}>
-                                    {renderWidget(id)}
-                                </SortableItem>
-                            );
-                        })}
-                    </div>
-                </SortableContext>
-                <DragOverlay>
-                    {activeId ? renderWidget(activeId, true) : null}
-                </DragOverlay>
-            </DndContext>
-
-            <DashboardModal
-                isOpen={!!modalType}
-                onClose={() => {
-                    const params = new URLSearchParams(window.location.search);
-                    params.delete('modal');
-                    params.delete('limit');
-                    params.delete('status');
-                    params.delete('zeroDepreciation');
-                    params.delete('date');
-                    navigate(`${window.location.pathname}?${params.toString()}`);
-                }}
-                title={
-                    modalType === 'total-value' ? 'Detalhe Valor Total' :
-                    modalType === 'total-items' ? 'Itens Cadastrados' :
-                    modalType === 'pending' ? 'Itens Pendentes' :
-                    modalType === 'writeoff' ? 'Baixas Pendentes' :
-                    modalType === 'zero-dep' ? 'Itens Totalmente Depreciados' :
-                    modalType === 'evolution' ? `Detalhe Evolução: ${dateParam || ''}` :
-                    'Detalhes'
-                }
-                filters={{
-                    status: searchParams.get('status'),
-                    limit: searchParams.get('limit'),
-                    zeroDepreciation: searchParams.get('zeroDepreciation'),
-                    date: dateParam,
-                }}
-            />
-        </>
+                        return (
+                            <SortableItem key={id} id={id} className={colSpan} onRemove={removeWidget}>
+                                {renderWidget(id)}
+                            </SortableItem>
+                        );
+                    })}
+                </div>
+            </SortableContext>
+            <DragOverlay>
+                {activeId ? renderWidget(activeId, true) : null}
+            </DragOverlay>
+        </DndContext>
     );
 };
 

@@ -51,6 +51,15 @@ interface DashboardContextType {
     addWidget: (widgetId: string) => void;
     removeWidget: (widgetId: string) => void;
     resetLayout: () => void;
+
+    // Modal State
+    modalState: {
+        isOpen: boolean;
+        title: string;
+        filters: Record<string, any>;
+    };
+    openDetailModal: (title: string, filters: Record<string, any>) => void;
+    closeModal: () => void;
 }
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -62,6 +71,21 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const [rawItems, setRawItems] = useState<any[]>([]);
     const [availableBranches, setAvailableBranches] = useState<any[]>([]);
     const [availableCategories, setAvailableCategories] = useState<any[]>([]);
+
+    // Modal State
+    const [modalState, setModalState] = useState({
+        isOpen: false,
+        title: '',
+        filters: {} as Record<string, any>
+    });
+
+    const openDetailModal = (title: string, filters: Record<string, any>) => {
+        setModalState({ isOpen: true, title, filters });
+    };
+
+    const closeModal = () => {
+        setModalState(prev => ({ ...prev, isOpen: false }));
+    };
 
     // Filters
     const [filters, setFilters] = useState({
@@ -341,7 +365,10 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             toggleTheme,
             addWidget,
             removeWidget,
-            resetLayout
+            resetLayout,
+            modalState,
+            openDetailModal,
+            closeModal
         }}>
             {children}
         </DashboardContext.Provider>
