@@ -210,7 +210,7 @@ const Users: React.FC = () => {
                                         className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                                     />
                                     <label htmlFor="can_import" className="text-sm text-gray-600 cursor-pointer select-none">
-                                        Permitir importar itens
+                                        Pode Importar Itens
                                     </label>
                                 </div>
                             )}
