@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useAuth } from '../AuthContext';
 import { useError } from '../hooks/useError';
-import { buildWebSocketUrl } from '../utils/websocketUtils';
+import { getWebSocketUrl } from '../utils/getWebSocketUrl';
 
 const Notifications: React.FC = () => {
     const { user } = useAuth();
@@ -29,7 +29,7 @@ const Notifications: React.FC = () => {
         if (!token) return;
 
         // Build robust URL using the centralized utility
-        const wsUrl = buildWebSocketUrl('/ws/notifications', token);
+        const wsUrl = getWebSocketUrl(token);
         console.log(`[WS] Connecting to: ${wsUrl}`);
 
         try {
