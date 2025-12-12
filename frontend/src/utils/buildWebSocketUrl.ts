@@ -14,7 +14,7 @@ export function buildWebSocketUrl(token: string): string {
     // Lógica de Fallback de Porta:
     // 1. Usa VITE_WS_PORT se definido.
     // 2. Se não, verifica se a porta da URL é 5173 (Dev Frontend) ou vazia (80/443 Padrão).
-    //    Nestes casos, assume que o Backend está na porta 8001 (Padrão do Projeto),
+    //    Nestes casos, assume que o Backend está na porta 8000 (Padrão do Projeto),
     //    similar à lógica de detecção de LAN no api.ts.
     // 3. Caso contrário, usa a mesma porta da URL (ex: proxy reverso na mesma porta).
 
@@ -22,7 +22,7 @@ export function buildWebSocketUrl(token: string): string {
 
     if (!port) {
         if (!urlPort || urlPort === '5173') {
-            port = '8001';
+            port = '8000';
         } else {
             port = urlPort;
         }

@@ -533,7 +533,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                         )}
                     </div>
 
-                    {user?.role !== 'AUDITOR' && (
+                    {(user?.role !== 'AUDITOR' && (user?.role !== 'OPERATOR' || user?.can_import)) && (
                         <button
                             onClick={() => setIsImportModalOpen(true)}
                             className="bg-slate-100 text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-200 transition-colors text-sm font-medium flex items-center gap-2"
