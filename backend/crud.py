@@ -26,8 +26,7 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
         hashed_password=hashed_password,
         role=user.role,
         branch_id=user.branch_id,
-        all_branches=user.all_branches,
-        can_import=user.can_import
+        all_branches=user.all_branches
     )
 
     if user.branch_ids and not user.all_branches:
@@ -67,7 +66,6 @@ async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
         if user.role: db_user.role = user.role
         if user.branch_id is not None: db_user.branch_id = user.branch_id # Legacy update
         if user.all_branches is not None: db_user.all_branches = user.all_branches
-        if user.can_import is not None: db_user.can_import = user.can_import
         if user.password:
             db_user.hashed_password = get_password_hash(user.password)
 
