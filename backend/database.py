@@ -26,6 +26,10 @@ SessionLocal = sessionmaker(
     autoflush=False,
 )
 
+# Exporting this factory to be used manually in contexts where Depends() is not available
+# or when we need a one-off session (like WebSockets manual auth)
+async_session_factory = SessionLocal
+
 Base = declarative_base()
 
 async def get_db():
