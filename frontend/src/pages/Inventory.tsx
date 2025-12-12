@@ -6,7 +6,7 @@ import { useAuth } from '../AuthContext';
 import { useError } from '../hooks/useError';
 import { useSearchParams } from 'react-router-dom';
 import { translateStatus, translateLogAction } from '../utils/translations';
-import { Edit2, Eye, CheckCircle, XCircle, ArrowRightLeft, FileText, Search, Plus, FileWarning, AlertCircle, Download, FileSpreadsheet, Table as TableIcon, ChevronDown, Wrench, Archive, RefreshCw } from 'lucide-react';
+import { Edit2, Eye, CheckCircle, XCircle, ArrowRightLeft, FileText, Search, Plus, FileWarning, AlertCircle, Download, FileSpreadsheet, Table as TableIcon, ChevronDown, Wrench, Archive, RefreshCw, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -83,6 +83,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
     const [filterStatus, setFilterStatus] = useState('');
     const [globalSearch, setGlobalSearch] = useState('');
     const [isChangeStatusModalOpen, setIsChangeStatusModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const { showError, showSuccess, showWarning } = useError();
 
     // Debounce Logic helper
@@ -500,6 +501,15 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
 
                     {user?.role !== 'AUDITOR' && (
                         <button
+                            onClick={() => setIsImportModalOpen(true)}
+                            className="bg-slate-100 text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-200 transition-colors text-sm font-medium flex items-center gap-2"
+                        >
+                            <Upload size={16} /> Importar
+                        </button>
+                    )}
+
+                    {user?.role !== 'AUDITOR' && (
+                        <button
                             onClick={() => setIsCreateModalOpen(true)}
                             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2 shadow-sm shadow-blue-500/20"
                         >
@@ -896,6 +906,51 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                         <div className="flex justify-end gap-2">
                             <button onClick={() => { setIsWriteOffModalOpen(false); setIsTransferModalOpen(false); }} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg">Cancelar</button>
                             <button onClick={isWriteOffModalOpen ? handleWriteOffRequest : handleTransferRequest} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Confirmar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Import Modal */}
+            {isImportModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+                    <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md animate-scale-in">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold text-slate-800">Importar Itens</h3>
+                            <button onClick={() => setIsImportModalOpen(false)}><XCircle size={24} className="text-slate-400 hover:text-slate-600"/></button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <p className="text-sm text-slate-600">
+                                Baixe o modelo de importação para preencher os dados corretamente.
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <a
+                                    href={`${api.defaults.baseURL}/import/example-csv`}
+                                    download="exemplo_importacao.csv"
+                                    className="flex flex-col items-center justify-center p-4 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all gap-2 text-slate-600 hover:text-blue-600 group"
+                                >
+                                    <TableIcon size={24} className="text-slate-400 group-hover:text-blue-600"/>
+                                    <span className="text-sm font-medium">Modelo CSV</span>
+                                </a>
+                                <a
+                                    href={`${api.defaults.baseURL}/import/example-xlsx`}
+                                    download="exemplo_importacao.xlsx"
+                                    className="flex flex-col items-center justify-center p-4 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all gap-2 text-slate-600 hover:text-green-600 group"
+                                >
+                                    <FileSpreadsheet size={24} className="text-slate-400 group-hover:text-green-600"/>
+                                    <span className="text-sm font-medium">Modelo Excel</span>
+                                </a>
+                            </div>
+
+                            <div className="mt-6 pt-6 border-t border-slate-100">
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Carregar Arquivo</label>
+                                <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center hover:bg-slate-50 transition-colors cursor-pointer bg-slate-50/50">
+                                    <Upload size={24} className="mx-auto text-slate-400 mb-2"/>
+                                    <p className="text-xs text-slate-500">Funcionalidade de upload em desenvolvimento...</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
