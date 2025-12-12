@@ -1,9 +1,14 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 import asyncio
 import sys
+import logging
+
+# Configuração de Logs
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Hotfix para compatibilidade passlib / bcrypt > 4.0
 # Evita crash se o container não for reconstruído
@@ -19,9 +24,7 @@ if not hasattr(bcrypt, '__about__'):
 from backend.routers import auth, users, items, dashboard, reports, branches, categories, logs, suppliers
 from backend.initial_data import init_db
 from backend.websocket_manager import manager
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from backend.auth import get_current_user_from_token
 
 app = FastAPI(title="Inventory Management API")
 
@@ -75,13 +78,46 @@ if not os.path.exists(UPLOAD_DIR):
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 @app.websocket("/ws/notifications")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
+async def websocket_endpoint(websocket: WebSocket, token: str = Query(None)):
     try:
-        while True:
-            data = await websocket.receive_text()
+        # Autenticação Opcional ou Obrigatória?
+        # Se o token vier, tentamos validar. Se não vier, ou falhar, rejeitamos ou aceitamos como anônimo?
+        # O frontend envia token. Vamos validar.
+        user = None
+        if token:
+            try:
+                # Função auxiliar que precisamos garantir que existe ou adaptar
+                # Normalmente get_current_user depende de oauth2_scheme que extrai do header
+                # Aqui extraímos manualmente do token string
+                user = await get_current_user_from_token(token)
+                logger.info(f"WS Connection: User {user.email} authenticated.")
+            except Exception as e:
+                logger.error(f"WS Authentication Failed: {e}")
+                # Se o token é inválido, fechamos com Policy Violation
+                await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+                return
+
+        # Se não tiver token, mas for obrigatório, fechamos.
+        # Por enquanto vamos aceitar conexão apenas se autenticado para notificações
+        if not user:
+             logger.warning("WS Connection rejected: No token or invalid token.")
+             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+             return
+
+        await manager.connect(websocket)
+        try:
+            while True:
+                data = await websocket.receive_text()
+                # Processar mensagens se necessário (ping/pong)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+        logger.info("WS Disconnected")
+    except Exception as e:
+        logger.error(f"WS Error: {e}")
+        try:
+            await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
+        except:
+            pass
 
 # Routers
 app.include_router(auth.router)
