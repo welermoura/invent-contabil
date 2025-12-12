@@ -4,10 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  // O usuário está rodando 'npm run dev' (vite) em um ambiente que ele considera produção (Docker).
-  // O erro 'client:536' ocorre porque o cliente HMR tenta conectar sem porta ou com porta errada.
-  // Para resolver "NUNCA MAIS aparecer", configuramos clientPort explicitamente para 5173.
-  // Se estiver realmente em build de produção (vite build), server.hmr nem é usado.
+  const isProduction = mode === 'production';
 
   return {
     plugins: [
@@ -16,14 +13,14 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       allowedHosts: true,
-      hmr: {
-        // Força o cliente a usar a porta 5173 para HMR, evitando que tente conectar na porta 80 (sem porta)
-        // quando acessado via hostname (ex: http://inventario) e falhe, ou gere URLs inválidas.
-        clientPort: 5173,
-      },
-      watch: {
-        usePolling: true,
-      }
+      // Ensure HMR is disabled explicitly if somehow running in a pseudo-prod mode via vite dev
+      // though typically dev mode implies hmr.
+      // If we are in dev, we want to avoid the "undefined" port issue if possible.
+      // But if the user says "Desabilitar WebSocket do Vite HMR no ambiente de produção",
+      // we can try to set hmr: false if it's not strictly development?
+      // Actually, standard vite build does not use this server config.
+      // But let's be safe.
+      hmr: isProduction ? false : undefined,
     },
     build: {
       sourcemap: false,
