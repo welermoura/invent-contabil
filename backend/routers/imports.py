@@ -69,10 +69,6 @@ async def upload_import(
         if branch_id not in allowed:
              raise HTTPException(status_code=403, detail="Sem permissão para esta filial")
 
-    # Import Permission for Operator
-    if current_user.role == models.UserRole.OPERATOR and not current_user.can_import:
-        raise HTTPException(status_code=403, detail="Operador não tem permissão para importar itens")
-
     # Read File
     contents = await file.read()
     filename = file.filename.lower()
@@ -198,15 +194,7 @@ async def upload_import(
                 responsible_id=current_user.id
             )
 
-            new_item = await crud.create_item(db, item_in)
-
-            # Auto-Approve Logic
-            # Admins and Approvers always approve.
-            # Operators only if they have can_import permission (checked above).
-            if current_user.role in [models.UserRole.ADMIN, models.UserRole.APPROVER] or \
-               (current_user.role == models.UserRole.OPERATOR and current_user.can_import):
-                await crud.update_item_status(db, new_item.id, models.ItemStatus.APPROVED, current_user.id)
-
+            await crud.create_item(db, item_in)
             success_count += 1
 
         except Exception as e:
