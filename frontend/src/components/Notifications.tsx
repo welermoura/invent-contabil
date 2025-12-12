@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { useError } from '../hooks/useError';
+import api from '../api';
 
 const Notifications: React.FC = () => {
     const { user } = useAuth();
@@ -9,45 +10,57 @@ const Notifications: React.FC = () => {
     useEffect(() => {
         if (!user) return;
 
-        let apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+        // Use the centralized base URL from api.ts which handles LAN/Localhost detection
+        const baseURL = api.defaults.baseURL || 'http://localhost:8001';
 
-        // Smart URL Detection for LAN
-        if (typeof window !== 'undefined') {
-            const hostname = window.location.hostname;
-            if (hostname !== 'localhost' && hostname !== '127.0.0.1' && apiUrl.includes('localhost')) {
-                const protocol = window.location.protocol;
-                apiUrl = `${protocol}//${hostname}:8001`;
-                console.log('[WS] Detected LAN access, overriding localhost WS URL');
-            }
+        // Convert HTTP to WS
+        const wsProtocol = baseURL.startsWith('https') ? 'wss' : 'ws';
+        // Strip protocol to get clean host/path
+        const cleanUrl = baseURL.replace(/^https?:\/\//, '');
+
+        // Retrieve token for authentication
+        const token = localStorage.getItem('token');
+
+        const wsUrl = `${wsProtocol}://${cleanUrl}/ws/notifications?token=${token}`;
+
+        console.log(`[WS] Connecting to: ${wsUrl}`);
+
+        let socket: WebSocket | null = null;
+
+        try {
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = () => {
+                console.log('WebSocket Connected');
+            };
+
+            socket.onmessage = (event) => {
+                // Check permissions (Admin/Approver only)
+                if (user.role === 'ADMIN' || user.role === 'APPROVER') {
+                    showSuccess(event.data, "Nova Notificação");
+                }
+            };
+
+            socket.onclose = () => {
+                console.log('WebSocket Disconnected');
+            };
+
+            socket.onerror = (error) => {
+                 console.error('WebSocket Error:', error);
+            };
+
+        } catch (err) {
+            console.error("Failed to initialize WebSocket:", err);
         }
 
-        const wsUrl = apiUrl.replace(/^http/, 'ws') + '/ws/notifications';
-        const socket = new WebSocket(wsUrl);
-
-        socket.onopen = () => {
-            console.log('WebSocket Connected');
-        };
-
-        socket.onmessage = (event) => {
-            if (user.role === 'admin' || user.role === 'approver') {
-                showSuccess(event.data, "Nova Notificação");
+        return () => {
+            if (socket) {
+                socket.close();
             }
         };
+    }, [user, showSuccess]);
 
-        socket.onclose = () => {
-            console.log('WebSocket Disconnected');
-        };
-
-        socket.onerror = (error) => {
-             console.error('WebSocket Error:', error);
-        };
-
-        return () => {
-            socket.close();
-        };
-    }, [user]);
-
-    return null; // Componente sem UI, apenas lógica
+    return null;
 };
 
 export default Notifications;

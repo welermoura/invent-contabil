@@ -38,6 +38,14 @@ async def on_startup():
         pass
 
     try:
+        from backend.database import engine, Base
+        async with engine.begin() as conn:
+             await conn.run_sync(Base.metadata.create_all)
+        print("DEBUG: Database Tables Created.")
+    except Exception as e:
+        print(f"CRITICAL ERROR: Failed to create tables: {e}")
+
+    try:
         await init_db()
     except Exception as e:
         print(f"Startup Error (init_db): {e}")

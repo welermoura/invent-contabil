@@ -156,6 +156,7 @@ const AppRoutes = () => {
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/dashboard/:type/:id" element={<MacroViewPage />} />
                     <Route path="/dashboard/detalhes/:type" element={<MacroViewPage />} />
+                    <Route path="/dashboard/detalhes/:type/:id" element={<MacroViewPage />} />
                     <Route path="/dashboard/depreciacao" element={<MacroViewPage />} />
                     <Route path="/inventory" element={<Inventory />} />
                     <Route path="/branches" element={<Branches />} />
