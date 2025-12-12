@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useAuth } from '../AuthContext';
 import { useError } from '../hooks/useError';
-import { getWebSocketUrl } from '../utils/getWebSocketUrl';
+import { buildWebSocketUrl } from '../utils/buildWebSocketUrl';
 
 const Notifications: React.FC = () => {
     const { user } = useAuth();
@@ -9,7 +9,7 @@ const Notifications: React.FC = () => {
 
     // Refs to manage connection lifecycle and timeouts
     const socketRef = useRef<WebSocket | null>(null);
-    const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const reconnectAttemptsRef = useRef(0);
     const isMountedRef = useRef(false);
 
@@ -29,7 +29,7 @@ const Notifications: React.FC = () => {
         if (!token) return;
 
         // Build robust URL using the centralized utility
-        const wsUrl = getWebSocketUrl(token);
+        const wsUrl = buildWebSocketUrl(token);
         console.log(`[WS] Connecting to: ${wsUrl}`);
 
         try {
