@@ -1,0 +1,45 @@
+
+export const translateStatus = (status: string) => {
+    if (!status) return '';
+    // Handle potential enum prefix from backend logs if any
+    const cleanStatus = status.replace('ItemStatus.', '');
+
+    const map: Record<string, string> = {
+        'PENDING': 'Pendente',
+        'APPROVED': 'Aprovado',
+        'REJECTED': 'Rejeitado',
+        'TRANSFER_PENDING': 'Transferência Pendente',
+        'WRITE_OFF_PENDING': 'Baixa Pendente',
+        'WRITTEN_OFF': 'Baixado'
+    };
+    return map[cleanStatus] || cleanStatus;
+};
+
+export const translateLogAction = (action: string) => {
+    if (!action) return '';
+    let translated = action;
+
+    // Status changes
+    if (translated.includes('Status changed to')) {
+        const parts = translated.split('Status changed to ');
+        if (parts.length > 1) {
+            const status = parts[1].trim();
+            return `Status alterado para ${translateStatus(status)}`;
+        }
+    }
+
+    // Write-off
+    if (translated.includes('Write-off requested')) {
+        return translated.replace('Write-off requested. Reason:', 'Solicitação de baixa. Motivo:');
+    }
+
+    // Transfer
+    if (translated.includes('Transfer requested to branch')) {
+        return translated.replace('Transfer requested to branch', 'Solicitação de transferência para filial');
+    }
+
+    // Creation (if any specific log exists, generic fallback)
+    if (translated === 'Item created') return 'Item criado';
+
+    return translated;
+};
