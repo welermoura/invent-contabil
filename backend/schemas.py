@@ -209,3 +209,16 @@ class ItemResponse(ItemBase):
         final_value = max(0.0, self.invoice_value * remaining_ratio)
 
         return round(final_value, 2)
+
+# Settings
+class SystemSettingBase(BaseModel):
+    key: str
+    value: str
+
+class SystemSettingCreate(SystemSettingBase):
+    pass
+
+class SystemSettingResponse(SystemSettingBase):
+    id: int
+    class Config:
+        from_attributes = True

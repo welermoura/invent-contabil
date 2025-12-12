@@ -11,15 +11,14 @@ from sqlalchemy.future import select
 import os
 
 # Configurações de segurança
-SECRET_KEY = os.getenv("SECRET_KEY", "fallback_secret_for_dev")
-# Added fallback because verify script might not export it perfectly in all contexts,
-# though verify script does export it.
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY env variable is not set. Cannot start safely.")
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# Using pbkdf2_sha256 to avoid bcrypt version issues in this specific environment
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def verify_password(plain_password, hashed_password):
