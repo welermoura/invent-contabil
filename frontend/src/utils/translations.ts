@@ -10,7 +10,9 @@ export const translateStatus = (status: string) => {
         'REJECTED': 'Rejeitado',
         'TRANSFER_PENDING': 'Transferência Pendente',
         'WRITE_OFF_PENDING': 'Baixa Pendente',
-        'WRITTEN_OFF': 'Baixado'
+        'WRITTEN_OFF': 'Baixado',
+        'MAINTENANCE': 'Em Manutenção',
+        'IN_STOCK': 'Em Estoque'
     };
     return map[cleanStatus] || cleanStatus;
 };

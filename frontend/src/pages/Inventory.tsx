@@ -6,7 +6,7 @@ import { useAuth } from '../AuthContext';
 import { useError } from '../hooks/useError';
 import { useSearchParams } from 'react-router-dom';
 import { translateStatus, translateLogAction } from '../utils/translations';
-import { Edit2, Eye, CheckCircle, XCircle, ArrowRightLeft, FileText, Search, Plus, FileWarning, AlertCircle, Download, FileSpreadsheet, Table as TableIcon, ChevronDown } from 'lucide-react';
+import { Edit2, Eye, CheckCircle, XCircle, ArrowRightLeft, FileText, Search, Plus, FileWarning, AlertCircle, Download, FileSpreadsheet, Table as TableIcon, ChevronDown, Wrench, Archive, RefreshCw } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -19,6 +19,8 @@ const StatusBadge = ({ status }: { status: string }) => {
         TRANSFER_PENDING: { label: 'Transf. Pendente', class: 'bg-blue-50 text-blue-700 border-blue-200 ring-blue-600/20' },
         WRITE_OFF_PENDING: { label: 'Baixa Pendente', class: 'bg-orange-50 text-orange-700 border-orange-200 ring-orange-600/20' },
         WRITTEN_OFF: { label: 'Baixado', class: 'bg-slate-100 text-slate-600 border-slate-200 ring-slate-500/20' },
+        MAINTENANCE: { label: 'Manutenção', class: 'bg-purple-50 text-purple-700 border-purple-200 ring-purple-600/20' },
+        IN_STOCK: { label: 'Estoque', class: 'bg-cyan-50 text-cyan-700 border-cyan-200 ring-cyan-600/20' },
     };
     const config = map[status] || { label: status, class: 'bg-gray-50 text-gray-600 border-gray-200' };
     return (
@@ -78,7 +80,9 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
     const [filterBranch, setFilterBranch] = useState('');
     const [filterFixedAsset, setFilterFixedAsset] = useState('');
     const [filterPurchaseDate, setFilterPurchaseDate] = useState('');
+    const [filterStatus, setFilterStatus] = useState('');
     const [globalSearch, setGlobalSearch] = useState('');
+    const [isChangeStatusModalOpen, setIsChangeStatusModalOpen] = useState(false);
     const { showError, showSuccess, showWarning } = useError();
 
     // Debounce Logic helper
@@ -87,23 +91,24 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
             fetchItems(globalSearch, 0);
         }, 500);
         return () => clearTimeout(timer);
-    }, [filterDescription, filterCategory, filterBranch, filterFixedAsset, filterPurchaseDate, globalSearch]); // Trigger on filter change
+    }, [filterDescription, filterCategory, filterBranch, filterFixedAsset, filterPurchaseDate, filterStatus, globalSearch]); // Trigger on filter change
 
     // Sync URL params with local state on load
     useEffect(() => {
         if (!embedded) {
             const cat = searchParams.get('category');
             const br = searchParams.get('branch_id');
+            const st = searchParams.get('status');
 
             if (cat) setFilterCategory(cat);
             if (br) setFilterBranch(br);
+            if (st) setFilterStatus(st);
         }
     }, [embedded, searchParams]);
 
     const fetchItems = async (search?: string, pageNum: number = 0) => {
         try {
-            const statusFilter = embedded ? defaultStatus : searchParams.get('status');
-            // We use local state for other filters now, but respect URL status
+            const statusFilter = embedded ? defaultStatus : filterStatus;
 
             const params: any = {
                 search: search !== undefined ? search : globalSearch,
@@ -352,6 +357,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
             await api.put(url);
             fetchItems(globalSearch, 0);
             setIsApproveModalOpen(false);
+            setIsChangeStatusModalOpen(false);
             setSelectedItem(null);
             setFixedAssetNumber('');
             showSuccess(`Status atualizado para ${translateStatus(newStatus)}`);
@@ -540,7 +546,25 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                 </th>
                                 <th className="px-6 py-4">Valor Compra</th>
                                 <th className="px-6 py-4">Valor Contábil</th>
-                                <th className="px-6 py-4">Status</th>
+                                <th className="px-6 py-4 min-w-[130px]">
+                                     <div className="flex flex-col gap-2">
+                                        <span>Status</span>
+                                        <select
+                                            className="w-full px-2 py-1 text-xs border border-slate-200 rounded font-normal normal-case bg-white"
+                                            value={filterStatus}
+                                            onChange={e => setFilterStatus(e.target.value)}
+                                            disabled={embedded}
+                                        >
+                                            <option value="">Todos</option>
+                                            <option value="APPROVED">Aprovado</option>
+                                            <option value="PENDING">Pendente</option>
+                                            <option value="REJECTED">Rejeitado</option>
+                                            <option value="MAINTENANCE">Manutenção</option>
+                                            <option value="IN_STOCK">Estoque</option>
+                                            <option value="WRITTEN_OFF">Baixado</option>
+                                        </select>
+                                    </div>
+                                </th>
                                 <th className="px-6 py-4 text-right">Ações</th>
                             </tr>
                         </thead>
@@ -589,9 +613,10 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                             </>
                                         )}
 
-                                        {item.status === 'APPROVED' && user?.role !== 'AUDITOR' && (
+                                        {['APPROVED', 'MAINTENANCE', 'IN_STOCK'].includes(item.status) && user?.role !== 'AUDITOR' && (
                                             <>
                                                 <button onClick={() => openTransferModal(item)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Transferir"><ArrowRightLeft size={18} /></button>
+                                                <button onClick={() => { setSelectedItem(item); setIsChangeStatusModalOpen(true); }} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Alterar Status"><RefreshCw size={18} /></button>
                                                 <button onClick={() => openWriteOffModal(item)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Baixa"><FileWarning size={18} /></button>
                                             </>
                                         )}
@@ -871,6 +896,38 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                         <div className="flex justify-end gap-2">
                             <button onClick={() => { setIsWriteOffModalOpen(false); setIsTransferModalOpen(false); }} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg">Cancelar</button>
                             <button onClick={isWriteOffModalOpen ? handleWriteOffRequest : handleTransferRequest} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Confirmar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Change Status Modal */}
+            {isChangeStatusModalOpen && selectedItem && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+                    <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm animate-scale-in">
+                        <h3 className="text-lg font-bold mb-4 text-slate-800">Alterar Status</h3>
+                        <p className="text-sm text-slate-600 mb-6">Selecione o novo status para o item <strong>{selectedItem.description}</strong>.</p>
+
+                        <div className="grid grid-cols-1 gap-3">
+                            {selectedItem.status !== 'APPROVED' && (
+                                <button onClick={() => handleStatusChange(selectedItem.id, 'APPROVED')} className="flex items-center justify-center gap-2 px-4 py-3 bg-green-50 text-green-700 border border-green-200 rounded-xl hover:bg-green-100 transition-colors font-medium">
+                                    <CheckCircle size={18} /> Ativo / Aprovado
+                                </button>
+                            )}
+                            {selectedItem.status !== 'MAINTENANCE' && (
+                                <button onClick={() => handleStatusChange(selectedItem.id, 'MAINTENANCE')} className="flex items-center justify-center gap-2 px-4 py-3 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors font-medium">
+                                    <Wrench size={18} /> Em Manutenção
+                                </button>
+                            )}
+                            {selectedItem.status !== 'IN_STOCK' && (
+                                <button onClick={() => handleStatusChange(selectedItem.id, 'IN_STOCK')} className="flex items-center justify-center gap-2 px-4 py-3 bg-cyan-50 text-cyan-700 border border-cyan-200 rounded-xl hover:bg-cyan-100 transition-colors font-medium">
+                                    <Archive size={18} /> Em Estoque
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end mt-6 pt-4 border-t border-slate-100">
+                             <button onClick={() => setIsChangeStatusModalOpen(false)} className="px-4 py-2 text-slate-500 hover:text-slate-700 font-medium">Cancelar</button>
                         </div>
                     </div>
                 </div>
