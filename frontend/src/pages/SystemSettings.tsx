@@ -36,20 +36,26 @@ const SystemSettings: React.FC = () => {
     };
 
     const handleTestSmtp = async () => {
+        const formData = getValues();
+        if (!formData.smtp_test_recipient) {
+            showError(new Error("Preencha o campo 'E-mail de Destinatário (Teste)' para realizar o teste."), "VALIDATION_ERROR");
+            return;
+        }
+
         setTestingSmtp(true);
         try {
-            const formData = getValues();
             const config = {
                 host: formData.smtp_host,
                 port: Number(formData.smtp_port),
                 username: formData.smtp_username,
                 password: formData.smtp_password,
                 from_email: formData.smtp_from_email,
+                to_email: formData.smtp_test_recipient,
                 security: formData.smtp_security || 'tls'
             };
 
             await api.post('/settings/smtp/test', config);
-            showSuccess("E-mail de teste enviado com sucesso! Verifique sua caixa de entrada.");
+            showSuccess(`E-mail de teste enviado para ${formData.smtp_test_recipient}!`);
         } catch (error) {
             showError(error, "SMTP_TEST_ERROR");
         } finally {
@@ -247,6 +253,23 @@ const SystemSettings: React.FC = () => {
                                 <option value="ssl">SSL/TLS</option>
                                 <option value="none">Nenhuma</option>
                             </select>
+                        </div>
+
+                        <div className="space-y-2 col-span-1 md:col-span-2 border-t pt-4 mt-2">
+                            <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                                <Send className="w-4 h-4 text-indigo-500" />
+                                E-mail de Destinatário (Teste)
+                            </label>
+                            <div className="flex gap-2">
+                                <input
+                                    {...register('smtp_test_recipient')}
+                                    className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                    placeholder="email@teste.com"
+                                />
+                                <div className="text-xs text-slate-500 flex items-center">
+                                    Use este campo para definir quem receberá o e-mail de teste.
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
