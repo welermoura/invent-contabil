@@ -285,9 +285,29 @@ async def get_item(db: AsyncSession, item_id: int):
     result = await db.execute(query)
     return result.scalars().first()
 
-async def create_item(db: AsyncSession, item: schemas.ItemCreate):
+STATUS_TRANSLATION = {
+    models.ItemStatus.PENDING: "Pendente",
+    models.ItemStatus.APPROVED: "Aprovado",
+    models.ItemStatus.REJECTED: "Rejeitado",
+    models.ItemStatus.TRANSFER_PENDING: "Transf. Pendente",
+    models.ItemStatus.WRITE_OFF_PENDING: "Baixa Pendente",
+    models.ItemStatus.WRITTEN_OFF: "Baixado",
+    models.ItemStatus.MAINTENANCE: "Manutenção",
+    models.ItemStatus.IN_STOCK: "Estoque"
+}
+
+async def create_item(db: AsyncSession, item: schemas.ItemCreate, action_log: str = None):
     db_item = models.Item(**item.dict())
     db.add(db_item)
+    await db.commit()
+    await db.refresh(db_item) # Need ID for logging
+
+    # Log creation
+    status_pt = STATUS_TRANSLATION.get(db_item.status, str(db_item.status))
+    log_message = action_log if action_log else f"Item cadastrado. Status: {status_pt}"
+
+    log = models.Log(item_id=db_item.id, user_id=item.responsible_id, action=log_message)
+    db.add(log)
     await db.commit()
     # Eager load relationships for Pydantic serialization
     query = select(models.Item).where(models.Item.id == db_item.id).options(
@@ -346,9 +366,10 @@ async def update_item_status(db: AsyncSession, item_id: int, status: models.Item
             db_item.fixed_asset_number = fixed_asset_number
 
         # Log the action
-        action_text = f"Status changed to {status}"
+        status_pt = STATUS_TRANSLATION.get(status, str(status))
+        action_text = f"Status alterado para {status_pt}"
         if reason:
-            action_text += f". Reason: {reason}"
+            action_text += f". Motivo: {reason}"
 
         log = models.Log(item_id=item_id, user_id=user_id, action=action_text)
         db.add(log)
@@ -401,7 +422,7 @@ async def request_write_off(db: AsyncSession, item_id: int, justification: str, 
     if db_item:
         db_item.status = models.ItemStatus.WRITE_OFF_PENDING
 
-        log = models.Log(item_id=item_id, user_id=user_id, action=f"Write-off requested. Reason: {justification}")
+        log = models.Log(item_id=item_id, user_id=user_id, action=f"Solicitação de baixa. Motivo: {justification}")
         db.add(log)
         await db.commit()
 
@@ -473,7 +494,7 @@ async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int
         target_branch = branch_result.scalars().first()
         branch_name = target_branch.name if target_branch else str(target_branch_id)
 
-        log = models.Log(item_id=item_id, user_id=user_id, action=f"Transfer requested to branch {branch_name}")
+        log = models.Log(item_id=item_id, user_id=user_id, action=f"Solicitação de transferência para filial {branch_name}")
         db.add(log)
         await db.commit()
 
