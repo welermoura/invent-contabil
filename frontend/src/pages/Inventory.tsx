@@ -73,6 +73,8 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
     const [approvalCategory, setApprovalCategory] = useState('');
 
     const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+    const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
 
     // Filter States
     const [filterDescription, setFilterDescription] = useState('');
@@ -379,7 +381,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
     };
 
 
-    const handleStatusChange = async (itemId: number, newStatus: string, fixedAsset?: string) => {
+    const handleStatusChange = async (itemId: number, newStatus: string, fixedAsset?: string, reason?: string) => {
         try {
             if (newStatus === 'APPROVED' && approvalCategory && selectedItem && approvalCategory !== selectedItem.category) {
                  await api.put(`/items/${itemId}`, { category: approvalCategory });
@@ -389,12 +391,22 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
             if (fixedAsset) {
                 url += `&fixed_asset_number=${fixedAsset}`;
             }
+            if (reason) {
+                // Ensure correct encoding for query parameter or use body if backend supports it.
+                // Assuming query parameter for simplicity as per existing pattern, but careful with length.
+                // Better approach: Check if backend supports body for status update.
+                // Backend expects `reason` query param or body? Let's check crud/routers.
+                // Assuming query param for now based on `fixed_asset_number`.
+                url += `&reason=${encodeURIComponent(reason)}`;
+            }
             await api.put(url);
             fetchItems(globalSearch, 0);
             setIsApproveModalOpen(false);
             setIsChangeStatusModalOpen(false);
+            setIsRejectModalOpen(false);
             setSelectedItem(null);
             setFixedAssetNumber('');
+            setRejectionReason('');
             showSuccess(`Status atualizado para ${translateStatus(newStatus)}`);
         } catch (error) {
             console.error("Erro ao atualizar status", error);
@@ -637,7 +649,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                                 <button onClick={() => openApproveModal(item)} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Aprovar">
                                                     <CheckCircle size={18} />
                                                 </button>
-                                                <button onClick={() => handleStatusChange(item.id, 'REJECTED')} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Rejeitar">
+                                                <button onClick={() => { setSelectedItem(item); setRejectionReason(''); setIsRejectModalOpen(true); }} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Rejeitar">
                                                     <XCircle size={18} />
                                                 </button>
                                             </>
@@ -646,14 +658,14 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                         {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && item.status === 'WRITE_OFF_PENDING' && (
                                             <>
                                                 <button onClick={() => handleStatusChange(item.id, 'WRITTEN_OFF')} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-bold" title="Aprovar Baixa"><CheckCircle size={18} /></button>
-                                                <button onClick={() => handleStatusChange(item.id, 'REJECTED')} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Rejeitar Baixa"><ArrowRightLeft size={18} /></button>
+                                                <button onClick={() => { setSelectedItem(item); setRejectionReason(''); setIsRejectModalOpen(true); }} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Rejeitar Baixa"><ArrowRightLeft size={18} /></button>
                                             </>
                                         )}
 
                                         {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && item.status === 'TRANSFER_PENDING' && (
                                             <>
                                                 <button onClick={() => handleStatusChange(item.id, 'APPROVED')} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Aprovar Transferência"><CheckCircle size={18} /></button>
-                                                <button onClick={() => handleStatusChange(item.id, 'REJECTED')} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Rejeitar"><XCircle size={18} /></button>
+                                                <button onClick={() => { setSelectedItem(item); setRejectionReason(''); setIsRejectModalOpen(true); }} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Rejeitar"><XCircle size={18} /></button>
                                             </>
                                         )}
 
@@ -823,7 +835,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                             </div>
                         </div>
                         <div className="p-6 bg-slate-50 flex justify-end gap-3 border-t border-slate-100">
-                            <button onClick={() => handleStatusChange(selectedItem.id, 'REJECTED')} className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors">Rejeitar</button>
+                            <button onClick={() => { setIsApproveModalOpen(false); setRejectionReason(''); setIsRejectModalOpen(true); }} className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors">Rejeitar</button>
                             <button onClick={() => setIsApproveModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancelar</button>
                             <button onClick={async () => {
                                 if (!fixedAssetNumber && !selectedItem.fixed_asset_number) { showWarning("ASSET_REQUIRED"); return; }
@@ -1063,6 +1075,40 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
 
                         <div className="flex justify-end mt-6 pt-4 border-t border-slate-100">
                              <button onClick={() => setIsChangeStatusModalOpen(false)} className="px-4 py-2 text-slate-500 hover:text-slate-700 font-medium">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Rejection Modal */}
+            {isRejectModalOpen && selectedItem && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-scale-in">
+                        <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                            <h3 className="text-lg font-bold text-slate-800">Rejeitar Item</h3>
+                            <p className="text-sm text-slate-500 mt-1">Informe o motivo da rejeição para o solicitante.</p>
+                        </div>
+                        <div className="p-6">
+                            <textarea
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value)}
+                                className="w-full border border-slate-200 rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all resize-none bg-slate-50"
+                                rows={4}
+                                placeholder="Descreva o motivo da rejeição (ex: valor incorreto, NF ilegível)..."
+                                autoFocus
+                            />
+                        </div>
+                        <div className="p-6 bg-slate-50 flex justify-end gap-3 border-t border-slate-100">
+                            <button onClick={() => setIsRejectModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancelar</button>
+                            <button
+                                onClick={() => {
+                                    if (!rejectionReason.trim()) { showWarning("Informe o motivo."); return; }
+                                    handleStatusChange(selectedItem.id, 'REJECTED', undefined, rejectionReason);
+                                }}
+                                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-lg shadow-red-500/20 transition-all"
+                            >
+                                Confirmar Rejeição
+                            </button>
                         </div>
                     </div>
                 </div>
