@@ -54,6 +54,7 @@ class User(Base):
     hashed_password = Column(String)
     role = Column(Enum(UserRole), default=UserRole.OPERATOR)
     all_branches = Column(Boolean, default=False)
+    can_import = Column(Boolean, default=False)
     # branch_id mantido para compatibilidade
     branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True)
 
