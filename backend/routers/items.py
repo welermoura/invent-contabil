@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from backend import schemas, models, crud, auth, notifications
+from backend import schemas, models, crud, auth
 from backend.database import get_db
 import shutil
 import os
-import json
 from datetime import datetime
 
 router = APIRouter(prefix="/items", tags=["items"])
@@ -13,87 +12,6 @@ router = APIRouter(prefix="/items", tags=["items"])
 UPLOAD_DIR = "/app/uploads"
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
-
-# --- Notification Helpers ---
-
-async def notify_new_item(db: AsyncSession, item: models.Item):
-    """Notify Approvers about new pending item."""
-    try:
-        approvers = await notifications.get_approvers(db)
-        msg = f"Um novo item foi cadastrado e aguarda aprovação.\n\nItem: {item.description}\nFilial: {item.branch.name if item.branch else 'N/A'}\nValor: {item.invoice_value}"
-        html = notifications.generate_html_email("Novo Item Aguardando Aprovação", msg)
-        await notifications.notify_users(db, approvers, "Novo Item Pendente", msg, email_subject="Ação Necessária: Novo Item Cadastrado", email_html=html)
-    except Exception as e:
-        print(f"Failed to send notification for new item {item.id}: {e}")
-
-async def notify_transfer_request(db: AsyncSession, item: models.Item):
-    """Notify Approvers about transfer request."""
-    try:
-        approvers = await notifications.get_approvers(db)
-        target_name = item.transfer_target_branch.name if item.transfer_target_branch else "Desconhecida"
-        msg = f"Solicitação de transferência criada.\n\nItem: {item.description}\nOrigem: {item.branch.name}\nDestino: {target_name}"
-        html = notifications.generate_html_email("Solicitação de Transferência", msg)
-        await notifications.notify_users(db, approvers, "Solicitação de Transferência", msg, email_subject="Ação Necessária: Transferência Solicitada", email_html=html)
-    except Exception as e:
-        print(f"Failed to send notification for transfer request {item.id}: {e}")
-
-async def notify_write_off_request(db: AsyncSession, item: models.Item, justification: str):
-    """Notify Approvers about write-off request."""
-    try:
-        approvers = await notifications.get_approvers(db)
-        msg = f"Solicitação de baixa criada.\n\nItem: {item.description}\nFilial: {item.branch.name}\nJustificativa: {justification}"
-        html = notifications.generate_html_email("Solicitação de Baixa", msg)
-        await notifications.notify_users(db, approvers, "Solicitação de Baixa", msg, email_subject="Ação Necessária: Baixa Solicitada", email_html=html)
-    except Exception as e:
-        print(f"Failed to send notification for write-off request {item.id}: {e}")
-
-async def notify_status_change(db: AsyncSession, item: models.Item, old_status: str, new_status: str, reason: Optional[str]):
-    """
-    Notify Branch Members about Approval/Rejection.
-    If Transfer Approval: Notify Source and Target.
-    """
-    try:
-        # Determine affected branches
-        target_users = []
-
-        # Logic based on transition
-        is_approval = new_status in [models.ItemStatus.APPROVED, models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
-        is_rejection = new_status == models.ItemStatus.REJECTED
-        is_transfer_approval = (old_status == models.ItemStatus.TRANSFER_PENDING and is_approval)
-        is_write_off_approval = (old_status == models.ItemStatus.WRITE_OFF_PENDING and new_status == models.ItemStatus.WRITTEN_OFF)
-
-        if is_transfer_approval:
-            branch_users = await notifications.get_branch_members(db, item.branch_id)
-            target_users.extend(branch_users)
-
-        elif is_write_off_approval:
-            # Notify Branch Members that item is gone
-            branch_users = await notifications.get_branch_members(db, item.branch_id)
-            target_users.extend(branch_users)
-
-        elif is_approval or is_rejection:
-            # Standard Approval/Rejection (Creation or basic status change)
-            branch_users = await notifications.get_branch_members(db, item.branch_id)
-            target_users.extend(branch_users)
-
-        if not target_users:
-            return
-
-        action_label = "Aprovada" if is_approval or new_status == models.ItemStatus.WRITTEN_OFF else "Rejeitada"
-        if new_status == models.ItemStatus.REJECTED: action_label = "Rejeitada"
-
-        title = f"Atualização de Item: {action_label}"
-        msg = f"O item '{item.description}' teve seu status atualizado para {new_status}.\n"
-        if reason:
-            msg += f"Motivo/Observação: {reason}"
-
-        html = notifications.generate_html_email(title, msg)
-        await notifications.notify_users(db, target_users, title, msg, email_subject=f"Aviso de Sistema: Item {action_label}", email_html=html)
-    except Exception as e:
-        print(f"Failed to send notification for status change {item.id}: {e}")
-
-
-# --- Endpoints ---
 
 @router.get("/", response_model=List[schemas.ItemResponse])
 async def read_items(
@@ -110,24 +28,49 @@ async def read_items(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     # Enforce branch filtering for non-admins (Approvers and Auditors can see all)
+    # Operadores agora podem ter acesso a multiplas filiais ou a todas se a flag estiver ativa.
     if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER, models.UserRole.AUDITOR] and not current_user.all_branches:
+        # Se o usuário passou um branch_id, verifica se ele tem acesso.
+        # Se não passou, precisamos filtrar por todas as filiais que ele tem acesso.
+
         allowed_branches = [b.id for b in current_user.branches]
+        # Adicionar branch_id legado se existir e não estiver na lista (segurança)
         if current_user.branch_id and current_user.branch_id not in allowed_branches:
             allowed_branches.append(current_user.branch_id)
 
         if branch_id:
             if branch_id not in allowed_branches:
+                 # Se tentar acessar filial que não tem permissão, retorna vazio ou erro?
+                 # Melhor retornar vazio para não vazar existência, ou tratar como filtro restritivo.
+                 # Vamos forçar um filtro impossível ou levantar erro.
                  raise HTTPException(status_code=403, detail="Acesso negado a esta filial")
         else:
             return await crud.get_items(
-                db, skip=skip, limit=limit, status=status, category=category, branch_id=None,
-                search=search, allowed_branch_ids=allowed_branches, description=description,
-                fixed_asset_number=fixed_asset_number, purchase_date=purchase_date
+                db,
+                skip=skip,
+                limit=limit,
+                status=status,
+                category=category,
+                branch_id=None,
+                search=search,
+                allowed_branch_ids=allowed_branches,
+                description=description,
+                fixed_asset_number=fixed_asset_number,
+                purchase_date=purchase_date
             )
 
+    # If the user IS Admin, Approver or Auditor, and they passed a branch_id, we use it.
     return await crud.get_items(
-        db, skip=skip, limit=limit, status=status, category=category, branch_id=branch_id,
-        search=search, description=description, fixed_asset_number=fixed_asset_number, purchase_date=purchase_date
+        db,
+        skip=skip,
+        limit=limit,
+        status=status,
+        category=category,
+        branch_id=branch_id,
+        search=search,
+        description=description,
+        fixed_asset_number=fixed_asset_number,
+        purchase_date=purchase_date
     )
 
 from pydantic import BaseModel
@@ -167,25 +110,32 @@ async def create_item(
     if current_user.role == models.UserRole.AUDITOR:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Auditores não podem criar itens")
 
+    # Validate branch permission for OPERATOR
     if current_user.role == models.UserRole.OPERATOR and not current_user.all_branches:
         allowed_branches = [b.id for b in current_user.branches]
         if current_user.branch_id and current_user.branch_id not in allowed_branches:
             allowed_branches.append(current_user.branch_id)
+
         if branch_id not in allowed_branches:
             raise HTTPException(status_code=403, detail="Você não tem permissão para criar itens nesta filial")
 
+    # Save file if uploaded
     file_path = None
     if file:
         import os
         import re
+        # secure_filename replacement to avoid extra dependency
         filename = file.filename
         filename = re.sub(r'[^A-Za-z0-9_.-]', '_', filename)
         safe_filename = filename
+
         file_location = os.path.join(UPLOAD_DIR, safe_filename)
         with open(file_location, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+        # Store relative path for serving
         file_path = f"uploads/{safe_filename}"
 
+    # Resolve category_id from name if provided
     category_id = None
     if category:
         cat_obj = await crud.get_category_by_name(db, category)
@@ -207,37 +157,24 @@ async def create_item(
         responsible_id=current_user.id
     )
 
+    # Create item
     try:
         db_item = await crud.create_item(db, item_data, action_log="Item cadastrado manualmente.")
+        # Note: file path setting is missing in crud.create_item, need to handle it or update crud
+        # Better: Update item with file path after creation or pass to crud
         if file_path:
             db_item.invoice_file = file_path
             db.add(db_item)
             await db.commit()
-
-        # Explicitly refresh with relationships to prevent MissingGreenlet in notification logic
-        from sqlalchemy.orm import selectinload
-        from sqlalchemy.future import select
-        query = select(models.Item).where(models.Item.id == db_item.id).options(
-            selectinload(models.Item.branch),
-            selectinload(models.Item.category_rel)
-        )
-        result = await db.execute(query)
-        db_item = result.scalars().first()
-
-        # Notify Approvers
-        if db_item.status == models.ItemStatus.PENDING:
-            # WebSocket Broadcast (JSON Payload)
-            from backend.websocket_manager import manager
-            payload = {
-                "message": f"Novo item cadastrado: {db_item.description}",
-                "actor_id": current_user.id,
-                "target_roles": ["ADMIN", "APPROVER"],
-                "target_branch_id": db_item.branch_id
-            }
-            await manager.broadcast(json.dumps(payload))
-
-            # Persistent Notification & Email
-            await notify_new_item(db, db_item)
+            # Refresh again with relations
+            from sqlalchemy.orm import selectinload
+            from sqlalchemy.future import select
+            query = select(models.Item).where(models.Item.id == db_item.id).options(
+                selectinload(models.Item.branch),
+                selectinload(models.Item.category_rel)
+            )
+            result = await db.execute(query)
+            db_item = result.scalars().first()
 
         return db_item
     except Exception as e:
@@ -253,11 +190,10 @@ async def update_item_status(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    # Fetch item to check permissions and current status
     item_obj = await crud.get_item(db, item_id)
     if not item_obj:
         raise HTTPException(status_code=404, detail="Item não encontrado")
-
-    old_status = item_obj.status # Capture old status before update
 
     is_admin_approver = current_user.role in [models.UserRole.ADMIN, models.UserRole.APPROVER]
     is_operator = current_user.role == models.UserRole.OPERATOR
@@ -265,6 +201,8 @@ async def update_item_status(
     if not is_admin_approver and not is_operator:
          raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Role não autorizada")
 
+    # Business Rule: Items must be Approved before moving to Maintenance or Stock
+    # This applies to ALL roles to prevent bypassing the approval workflow
     target_is_operational = status_update in [models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
     current_is_operational = item_obj.status in [models.ItemStatus.APPROVED, models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
 
@@ -272,35 +210,32 @@ async def update_item_status(
          raise HTTPException(status_code=400, detail="O item deve ser aprovado antes de ser movido para Manutenção ou Estoque")
 
     if is_operator:
+        # Check Branch Permission
         if not current_user.all_branches:
             allowed_branches = [b.id for b in current_user.branches]
             if current_user.branch_id and current_user.branch_id not in allowed_branches:
                 allowed_branches.append(current_user.branch_id)
+
             if item_obj.branch_id not in allowed_branches:
                 raise HTTPException(status_code=403, detail="Sem permissão nesta filial")
 
+        # Validate Transitions for Operator
         allowed_targets = [models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK, models.ItemStatus.APPROVED]
         if status_update not in allowed_targets:
              raise HTTPException(status_code=403, detail="Operadores só podem alterar para Manutenção, Estoque ou Ativo")
 
+        # Cannot touch PENDING, REJECTED, TRANSFER/WRITEOFF PENDING via this endpoint (except moving FROM active states)
+        # Operators cannot Approve a PENDING item.
         allowed_sources = [models.ItemStatus.APPROVED, models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
         if item_obj.status not in allowed_sources:
              raise HTTPException(status_code=403, detail="Operadores não podem alterar status de itens Pendentes ou em Processo")
 
+    # Proceed with update
     updated_item = await crud.update_item_status(db, item_id, status_update, current_user.id, fixed_asset_number, reason)
 
-    # Websocket Broadcast (JSON Payload)
+    # Trigger WebSocket notification
     from backend.websocket_manager import manager
-    payload = {
-        "message": f"Item {updated_item.description} atualizado para {status_update}",
-        "actor_id": current_user.id,
-        "target_roles": ["OPERATOR"], # Target Operators for status updates
-        "target_branch_id": updated_item.branch_id
-    }
-    await manager.broadcast(json.dumps(payload))
-
-    # Notify Branch Members about the outcome (Persistent/Email)
-    await notify_status_change(db, updated_item, old_status, status_update, reason)
+    await manager.broadcast(f"Item {updated_item.description} status changed to {status_update}")
 
     return updated_item
 
@@ -314,6 +249,7 @@ async def request_transfer(
     if current_user.role == models.UserRole.AUDITOR:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Auditores não podem solicitar transferências")
 
+    # Verify item ownership for Operators
     item = await crud.get_item(db, item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
@@ -322,6 +258,7 @@ async def request_transfer(
         allowed_branches = [b.id for b in current_user.branches]
         if current_user.branch_id and current_user.branch_id not in allowed_branches:
             allowed_branches.append(current_user.branch_id)
+
         if item.branch_id not in allowed_branches:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para transferir este item")
 
@@ -330,16 +267,7 @@ async def request_transfer(
         raise HTTPException(status_code=404, detail="Item não encontrado")
 
     from backend.websocket_manager import manager
-    payload = {
-        "message": f"Solicitação de transferência para item {item.description}",
-        "actor_id": current_user.id,
-        "target_roles": ["ADMIN", "APPROVER"],
-        "target_branch_id": item.branch_id # Optional context
-    }
-    await manager.broadcast(json.dumps(payload))
-
-    # Notify Approvers
-    await notify_transfer_request(db, item)
+    await manager.broadcast(f"Solicitação de transferência para item {item.description}")
 
     return item
 
@@ -353,6 +281,7 @@ async def request_write_off(
     if current_user.role == models.UserRole.AUDITOR:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Auditores não podem solicitar baixas")
 
+    # Verify item ownership for Operators
     item = await crud.get_item(db, item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
@@ -361,6 +290,7 @@ async def request_write_off(
         allowed_branches = [b.id for b in current_user.branches]
         if current_user.branch_id and current_user.branch_id not in allowed_branches:
             allowed_branches.append(current_user.branch_id)
+
         if item.branch_id not in allowed_branches:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para solicitar baixa deste item")
 
@@ -369,16 +299,7 @@ async def request_write_off(
         raise HTTPException(status_code=404, detail="Item não encontrado")
 
     from backend.websocket_manager import manager
-    payload = {
-        "message": f"Solicitação de baixa para item {item.description}",
-        "actor_id": current_user.id,
-        "target_roles": ["ADMIN", "APPROVER"],
-        "target_branch_id": item.branch_id
-    }
-    await manager.broadcast(json.dumps(payload))
-
-    # Notify Approvers
-    await notify_write_off_request(db, item, justification)
+    await manager.broadcast(f"Solicitação de baixa para item {item.description}")
 
     return item
 
@@ -389,36 +310,28 @@ async def update_item(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    # Fetch existing item to check existence
     existing_item = await crud.get_item(db, item_id)
     if not existing_item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
 
+    # Permission logic
     if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
+        # Check if Operator and item is REJECTED
         if current_user.role == models.UserRole.OPERATOR and existing_item.status == models.ItemStatus.REJECTED:
+             # Check branch permission
             if not current_user.all_branches:
                 allowed_branches = [b.id for b in current_user.branches]
                 if current_user.branch_id and current_user.branch_id not in allowed_branches:
                     allowed_branches.append(current_user.branch_id)
+
                 if existing_item.branch_id not in allowed_branches:
                      raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para editar este item")
+
+            # If authorized, FORCE status to PENDING upon edit (resubmit)
             item_update.status = models.ItemStatus.PENDING
         else:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem editar itens")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem editar itens (ou operadores corrigindo rejeições)")
 
     updated_item = await crud.update_item(db, item_id, item_update)
-
-    # Notify if re-submitted
-    if existing_item.status == models.ItemStatus.REJECTED and updated_item.status == models.ItemStatus.PENDING:
-         # Manually broadcast here for resubmission too
-         from backend.websocket_manager import manager
-         payload = {
-            "message": f"Item re-enviado para aprovação: {updated_item.description}",
-            "actor_id": current_user.id,
-            "target_roles": ["ADMIN", "APPROVER"],
-            "target_branch_id": updated_item.branch_id
-         }
-         await manager.broadcast(json.dumps(payload))
-
-         await notify_new_item(db, updated_item)
-
     return updated_item
