@@ -55,15 +55,6 @@ async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100, search: s
     result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
-async def get_users_by_role(db: AsyncSession, roles: list[models.UserRole]):
-    """Fetch users by a list of roles."""
-    query = select(models.User).options(
-        selectinload(models.User.branches),
-        selectinload(models.User.branch)
-    ).where(models.User.role.in_(roles))
-    result = await db.execute(query)
-    return result.scalars().all()
-
 async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
     result = await db.execute(
         select(models.User)

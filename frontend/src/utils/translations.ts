@@ -17,17 +17,6 @@ export const translateStatus = (status: string) => {
     return map[cleanStatus] || cleanStatus;
 };
 
-export const translateRole = (role: string | undefined) => {
-    if (!role) return '';
-    const map: Record<string, string> = {
-        'ADMIN': 'Administrador',
-        'APPROVER': 'Aprovador',
-        'OPERATOR': 'Operador',
-        'AUDITOR': 'Auditor'
-    };
-    return map[role] || role;
-};
-
 export const translateLogAction = (action: string) => {
     if (!action) return '';
     let translated = action;

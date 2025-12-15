@@ -18,5 +18,5 @@ echo "Migrations finished."
 
 # Iniciar o servidor
 # Note: Host 0.0.0.0 allows external access. Port 8000 is the internal container port.
-# External mapping is handled by Docker Compose (8000:8000).
+# External mapping is handled by Docker Compose (8001:8000).
 uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
