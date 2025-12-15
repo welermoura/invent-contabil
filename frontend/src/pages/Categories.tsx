@@ -11,13 +11,14 @@ import {
     Edit2,
     X,
     Save,
+    Trash2,
     CalendarClock
 } from 'lucide-react';
 
 const Categories: React.FC = () => {
     const [categories, setCategories] = useState<any[]>([]);
     const { register, handleSubmit, reset, setValue } = useForm();
-    const { showError, showSuccess } = useError();
+    const { showError, showSuccess, showConfirm } = useError();
     const { user } = useAuth();
     const [showForm, setShowForm] = useState(false);
     const [editingCategory, setEditingCategory] = useState<any>(null);
@@ -65,6 +66,19 @@ const Categories: React.FC = () => {
         setValue('name', category.name);
         setValue('depreciation_months', category.depreciation_months);
         setShowForm(true);
+    };
+
+    const handleDelete = async (id: number) => {
+        showConfirm("Tem certeza que deseja remover esta categoria?", async () => {
+            try {
+                await api.delete(`/categories/${id}`);
+                showSuccess("Categoria removida com sucesso.");
+                fetchCategories();
+            } catch (error) {
+                console.error("Erro ao remover categoria", error);
+                showError("Não foi possível remover a categoria. Verifique se existem itens vinculados.");
+            }
+        });
     };
 
     const handleCancel = () => {
@@ -225,13 +239,22 @@ const Categories: React.FC = () => {
                                         </td>
                                         {canEdit && (
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                <button
-                                                    onClick={() => handleEdit(category)}
-                                                    className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 p-2 rounded-lg transition-colors"
-                                                    title="Editar"
-                                                >
-                                                    <Edit2 className="w-4 h-4" />
-                                                </button>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <button
+                                                        onClick={() => handleEdit(category)}
+                                                        className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 p-2 rounded-lg transition-colors"
+                                                        title="Editar"
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(category.id)}
+                                                        className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors"
+                                                        title="Remover"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
                                             </td>
                                         )}
                                     </tr>
