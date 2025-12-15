@@ -73,24 +73,24 @@ async def test_smtp(
         msg["Subject"] = "Teste de Configuração SMTP - Sistema de Inventário"
         msg["From"] = smtp_settings.from_email
 
-        # Determine recipient: use current user's email if valid, otherwise send back to sender
-        to_email = current_user.email if "@" in current_user.email else smtp_settings.from_email
+        # Use provided test recipient
+        to_email = smtp_settings.to_email
         msg["To"] = to_email
 
         if smtp_settings.security == "SSL":
             context = ssl.create_default_context()
             with smtplib.SMTP_SSL(smtp_settings.host, smtp_settings.port, context=context) as server:
-                server.login(smtp_settings.user, smtp_settings.password)
+                server.login(smtp_settings.username, smtp_settings.password)
                 server.send_message(msg)
         elif smtp_settings.security == "TLS":
             context = ssl.create_default_context()
             with smtplib.SMTP(smtp_settings.host, smtp_settings.port) as server:
                 server.starttls(context=context)
-                server.login(smtp_settings.user, smtp_settings.password)
+                server.login(smtp_settings.username, smtp_settings.password)
                 server.send_message(msg)
         else:
             with smtplib.SMTP(smtp_settings.host, smtp_settings.port) as server:
-                server.login(smtp_settings.user, smtp_settings.password)
+                server.login(smtp_settings.username, smtp_settings.password)
                 server.send_message(msg)
 
         return {"message": f"E-mail de teste enviado com sucesso para {to_email}!"}

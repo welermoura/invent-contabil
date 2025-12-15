@@ -227,7 +227,8 @@ class SystemSettingResponse(SystemSettingBase):
 class SmtpTestRequest(BaseModel):
     host: str
     port: int
-    user: str
+    username: str
     password: str
     from_email: str
+    to_email: str
     security: str  # "TLS", "SSL", "None"
