@@ -314,7 +314,7 @@ async def get_item_by_fixed_asset(db: AsyncSession, fixed_asset_number: str, exc
     result = await db.execute(query)
     return result.scalars().first()
 
-async def update_item_status(db: AsyncSession, item_id: int, status: models.ItemStatus, user_id: int, fixed_asset_number: str = None):
+async def update_item_status(db: AsyncSession, item_id: int, status: models.ItemStatus, user_id: int, fixed_asset_number: str = None, reason: str = None):
     result = await db.execute(select(models.Item).where(models.Item.id == item_id))
     db_item = result.scalars().first()
     if db_item:
@@ -346,7 +346,11 @@ async def update_item_status(db: AsyncSession, item_id: int, status: models.Item
             db_item.fixed_asset_number = fixed_asset_number
 
         # Log the action
-        log = models.Log(item_id=item_id, user_id=user_id, action=f"Status changed to {status}")
+        action_text = f"Status changed to {status}"
+        if reason:
+            action_text += f". Reason: {reason}"
+
+        log = models.Log(item_id=item_id, user_id=user_id, action=action_text)
         db.add(log)
         await db.commit()
 

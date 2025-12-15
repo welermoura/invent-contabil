@@ -186,6 +186,7 @@ async def update_item_status(
     item_id: int,
     status_update: schemas.ItemStatus,
     fixed_asset_number: Optional[str] = None,
+    reason: str = None,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -230,7 +231,7 @@ async def update_item_status(
              raise HTTPException(status_code=403, detail="Operadores não podem alterar status de itens Pendentes ou em Processo")
 
     # Proceed with update
-    updated_item = await crud.update_item_status(db, item_id, status_update, current_user.id, fixed_asset_number)
+    updated_item = await crud.update_item_status(db, item_id, status_update, current_user.id, fixed_asset_number, reason)
 
     # Trigger WebSocket notification
     from backend.websocket_manager import manager
