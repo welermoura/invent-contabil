@@ -5,6 +5,7 @@ from backend import schemas, models, crud, auth, notifications
 from backend.database import get_db
 import shutil
 import os
+import json
 from datetime import datetime
 
 router = APIRouter(prefix="/items", tags=["items"])
@@ -225,9 +226,15 @@ async def create_item(
 
         # Notify Approvers
         if db_item.status == models.ItemStatus.PENDING:
-            # WebSocket Broadcast (Legacy but needed for toasts)
+            # WebSocket Broadcast (JSON Payload)
             from backend.websocket_manager import manager
-            await manager.broadcast(f"Novo item cadastrado: {db_item.description}")
+            payload = {
+                "message": f"Novo item cadastrado: {db_item.description}",
+                "actor_id": current_user.id,
+                "target_roles": ["ADMIN", "APPROVER"],
+                "target_branch_id": db_item.branch_id
+            }
+            await manager.broadcast(json.dumps(payload))
 
             # Persistent Notification & Email
             await notify_new_item(db, db_item)
@@ -282,11 +289,17 @@ async def update_item_status(
 
     updated_item = await crud.update_item_status(db, item_id, status_update, current_user.id, fixed_asset_number, reason)
 
-    # Websocket
+    # Websocket Broadcast (JSON Payload)
     from backend.websocket_manager import manager
-    await manager.broadcast(f"Item {updated_item.description} status changed to {status_update}")
+    payload = {
+        "message": f"Item {updated_item.description} atualizado para {status_update}",
+        "actor_id": current_user.id,
+        "target_roles": ["OPERATOR"], # Target Operators for status updates
+        "target_branch_id": updated_item.branch_id
+    }
+    await manager.broadcast(json.dumps(payload))
 
-    # Notify Branch Members about the outcome
+    # Notify Branch Members about the outcome (Persistent/Email)
     await notify_status_change(db, updated_item, old_status, status_update, reason)
 
     return updated_item
@@ -317,7 +330,13 @@ async def request_transfer(
         raise HTTPException(status_code=404, detail="Item não encontrado")
 
     from backend.websocket_manager import manager
-    await manager.broadcast(f"Solicitação de transferência para item {item.description}")
+    payload = {
+        "message": f"Solicitação de transferência para item {item.description}",
+        "actor_id": current_user.id,
+        "target_roles": ["ADMIN", "APPROVER"],
+        "target_branch_id": item.branch_id # Optional context
+    }
+    await manager.broadcast(json.dumps(payload))
 
     # Notify Approvers
     await notify_transfer_request(db, item)
@@ -350,7 +369,13 @@ async def request_write_off(
         raise HTTPException(status_code=404, detail="Item não encontrado")
 
     from backend.websocket_manager import manager
-    await manager.broadcast(f"Solicitação de baixa para item {item.description}")
+    payload = {
+        "message": f"Solicitação de baixa para item {item.description}",
+        "actor_id": current_user.id,
+        "target_roles": ["ADMIN", "APPROVER"],
+        "target_branch_id": item.branch_id
+    }
+    await manager.broadcast(json.dumps(payload))
 
     # Notify Approvers
     await notify_write_off_request(db, item, justification)
@@ -384,6 +409,16 @@ async def update_item(
 
     # Notify if re-submitted
     if existing_item.status == models.ItemStatus.REJECTED and updated_item.status == models.ItemStatus.PENDING:
-         await notify_new_item(db, updated_item) # Reuse new item logic for re-submission
+         # Manually broadcast here for resubmission too
+         from backend.websocket_manager import manager
+         payload = {
+            "message": f"Item re-enviado para aprovação: {updated_item.description}",
+            "actor_id": current_user.id,
+            "target_roles": ["ADMIN", "APPROVER"],
+            "target_branch_id": updated_item.branch_id
+         }
+         await manager.broadcast(json.dumps(payload))
+
+         await notify_new_item(db, updated_item)
 
     return updated_item
