@@ -223,3 +223,11 @@ class SystemSettingResponse(SystemSettingBase):
     id: int
     class Config:
         from_attributes = True
+
+class SmtpTestRequest(BaseModel):
+    host: str
+    port: int
+    user: str
+    password: str
+    from_email: str
+    security: str  # "TLS", "SSL", "None"
