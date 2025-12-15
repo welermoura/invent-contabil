@@ -80,17 +80,20 @@ async def test_smtp(
         if smtp_settings.security == "SSL":
             context = ssl.create_default_context()
             with smtplib.SMTP_SSL(smtp_settings.host, smtp_settings.port, context=context) as server:
-                server.login(smtp_settings.username, smtp_settings.password)
+                if smtp_settings.username:
+                    server.login(smtp_settings.username, smtp_settings.password)
                 server.send_message(msg)
         elif smtp_settings.security == "TLS":
             context = ssl.create_default_context()
             with smtplib.SMTP(smtp_settings.host, smtp_settings.port) as server:
                 server.starttls(context=context)
-                server.login(smtp_settings.username, smtp_settings.password)
+                if smtp_settings.username:
+                    server.login(smtp_settings.username, smtp_settings.password)
                 server.send_message(msg)
         else:
             with smtplib.SMTP(smtp_settings.host, smtp_settings.port) as server:
-                server.login(smtp_settings.username, smtp_settings.password)
+                if smtp_settings.username:
+                    server.login(smtp_settings.username, smtp_settings.password)
                 server.send_message(msg)
 
         return {"message": f"E-mail de teste enviado com sucesso para {to_email}!"}
