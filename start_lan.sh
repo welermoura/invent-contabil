@@ -29,7 +29,7 @@ echo "Detected LAN IP: $HOST_IP"
 
 # Create/Update .env file logic
 # We export vars so docker-compose picks them up overriding .env file if needed for THIS session
-export VITE_API_URL="http://$HOST_IP:8001"
+export VITE_API_URL="http://$HOST_IP:8000"
 
 echo "Setting VITE_API_URL to $VITE_API_URL"
 
