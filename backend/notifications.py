@@ -88,13 +88,30 @@ async def notify_users(
 ):
     """
     Sends in-app notifications and attempts to send emails to a list of users.
+    Optimized to commit once.
     """
     if not users:
         return
 
     # 1. In-App Notifications
-    for user in users:
-        await create_notification(db, user.id, title, message)
+    try:
+        for user in users:
+            notification = models.Notification(
+                user_id=user.id,
+                title=title,
+                message=message
+            )
+            db.add(notification)
+
+        # Commit all notifications in one go
+        await db.commit()
+    except Exception as e:
+        print(f"Error saving in-app notifications: {e}")
+        # Try to rollback but proceed to email
+        try:
+            await db.rollback()
+        except:
+            pass
 
     # 2. Email Notifications
     try:
@@ -134,6 +151,10 @@ async def notify_users(
         print(f"Notification Logic Error (Email skipped): {e}")
 
 async def create_notification(db: AsyncSession, user_id: int, title: str, message: str):
+    """
+    Creates a notification for a single user.
+    Note: This commits immediately. Use notify_users for bulk.
+    """
     notification = models.Notification(
         user_id=user_id,
         title=title,

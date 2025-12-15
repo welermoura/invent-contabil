@@ -14,8 +14,9 @@ import MacroViewPage from './pages/dashboard/MacroViewPage';
 import { AuthProvider, useAuth } from './AuthContext';
 import { ErrorProvider } from './context/ErrorContext';
 import Notifications from './components/Notifications';
-import { NotificationCenter } from './components/NotificationCenter'; // Added Import
+import { NotificationCenter } from './components/NotificationCenter';
 import api from './api';
+import { translateRole } from './utils/translations';
 import {
     LayoutDashboard,
     Package,
@@ -136,7 +137,7 @@ const Layout = () => {
                         <div className="text-right hidden md:block">
                             <p className="text-sm font-medium text-slate-700">{user?.email || 'Usuário'}</p>
                             <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-medium">
-                                {user?.role}
+                                {translateRole(user?.role)}
                             </span>
                         </div>
                         <div className="h-9 w-9 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold border border-blue-200">
