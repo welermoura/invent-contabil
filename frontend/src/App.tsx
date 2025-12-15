@@ -14,6 +14,7 @@ import MacroViewPage from './pages/dashboard/MacroViewPage';
 import { AuthProvider, useAuth } from './AuthContext';
 import { ErrorProvider } from './context/ErrorContext';
 import Notifications from './components/Notifications';
+import { NotificationCenter } from './components/NotificationCenter'; // Added Import
 import api from './api';
 import {
     LayoutDashboard,
@@ -130,6 +131,8 @@ const Layout = () => {
                     </button>
 
                     <div className="flex items-center ml-auto gap-4">
+                        <NotificationCenter />
+
                         <div className="text-right hidden md:block">
                             <p className="text-sm font-medium text-slate-700">{user?.email || 'Usuário'}</p>
                             <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-medium">
