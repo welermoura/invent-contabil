@@ -17,75 +17,79 @@ if not os.path.exists(UPLOAD_DIR):
 
 async def notify_new_item(db: AsyncSession, item: models.Item):
     """Notify Approvers about new pending item."""
-    approvers = await notifications.get_approvers(db)
-    msg = f"Um novo item foi cadastrado e aguarda aprovação.\n\nItem: {item.description}\nFilial: {item.branch.name if item.branch else 'N/A'}\nValor: {item.invoice_value}"
-    html = notifications.generate_html_email("Novo Item Aguardando Aprovação", msg)
-    await notifications.notify_users(db, approvers, "Novo Item Pendente", msg, email_subject="Ação Necessária: Novo Item Cadastrado", email_html=html)
+    try:
+        approvers = await notifications.get_approvers(db)
+        msg = f"Um novo item foi cadastrado e aguarda aprovação.\n\nItem: {item.description}\nFilial: {item.branch.name if item.branch else 'N/A'}\nValor: {item.invoice_value}"
+        html = notifications.generate_html_email("Novo Item Aguardando Aprovação", msg)
+        await notifications.notify_users(db, approvers, "Novo Item Pendente", msg, email_subject="Ação Necessária: Novo Item Cadastrado", email_html=html)
+    except Exception as e:
+        print(f"Failed to send notification for new item {item.id}: {e}")
 
 async def notify_transfer_request(db: AsyncSession, item: models.Item):
     """Notify Approvers about transfer request."""
-    approvers = await notifications.get_approvers(db)
-    target_name = item.transfer_target_branch.name if item.transfer_target_branch else "Desconhecida"
-    msg = f"Solicitação de transferência criada.\n\nItem: {item.description}\nOrigem: {item.branch.name}\nDestino: {target_name}"
-    html = notifications.generate_html_email("Solicitação de Transferência", msg)
-    await notifications.notify_users(db, approvers, "Solicitação de Transferência", msg, email_subject="Ação Necessária: Transferência Solicitada", email_html=html)
+    try:
+        approvers = await notifications.get_approvers(db)
+        target_name = item.transfer_target_branch.name if item.transfer_target_branch else "Desconhecida"
+        msg = f"Solicitação de transferência criada.\n\nItem: {item.description}\nOrigem: {item.branch.name}\nDestino: {target_name}"
+        html = notifications.generate_html_email("Solicitação de Transferência", msg)
+        await notifications.notify_users(db, approvers, "Solicitação de Transferência", msg, email_subject="Ação Necessária: Transferência Solicitada", email_html=html)
+    except Exception as e:
+        print(f"Failed to send notification for transfer request {item.id}: {e}")
 
 async def notify_write_off_request(db: AsyncSession, item: models.Item, justification: str):
     """Notify Approvers about write-off request."""
-    approvers = await notifications.get_approvers(db)
-    msg = f"Solicitação de baixa criada.\n\nItem: {item.description}\nFilial: {item.branch.name}\nJustificativa: {justification}"
-    html = notifications.generate_html_email("Solicitação de Baixa", msg)
-    await notifications.notify_users(db, approvers, "Solicitação de Baixa", msg, email_subject="Ação Necessária: Baixa Solicitada", email_html=html)
+    try:
+        approvers = await notifications.get_approvers(db)
+        msg = f"Solicitação de baixa criada.\n\nItem: {item.description}\nFilial: {item.branch.name}\nJustificativa: {justification}"
+        html = notifications.generate_html_email("Solicitação de Baixa", msg)
+        await notifications.notify_users(db, approvers, "Solicitação de Baixa", msg, email_subject="Ação Necessária: Baixa Solicitada", email_html=html)
+    except Exception as e:
+        print(f"Failed to send notification for write-off request {item.id}: {e}")
 
 async def notify_status_change(db: AsyncSession, item: models.Item, old_status: str, new_status: str, reason: Optional[str]):
     """
     Notify Branch Members about Approval/Rejection.
     If Transfer Approval: Notify Source and Target.
     """
-    # Determine affected branches
-    target_users = []
+    try:
+        # Determine affected branches
+        target_users = []
 
-    # Logic based on transition
-    is_approval = new_status in [models.ItemStatus.APPROVED, models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
-    is_rejection = new_status == models.ItemStatus.REJECTED
-    is_transfer_approval = (old_status == models.ItemStatus.TRANSFER_PENDING and is_approval)
-    is_write_off_approval = (old_status == models.ItemStatus.WRITE_OFF_PENDING and new_status == models.ItemStatus.WRITTEN_OFF)
+        # Logic based on transition
+        is_approval = new_status in [models.ItemStatus.APPROVED, models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
+        is_rejection = new_status == models.ItemStatus.REJECTED
+        is_transfer_approval = (old_status == models.ItemStatus.TRANSFER_PENDING and is_approval)
+        is_write_off_approval = (old_status == models.ItemStatus.WRITE_OFF_PENDING and new_status == models.ItemStatus.WRITTEN_OFF)
 
-    if is_transfer_approval:
-        # Notify Source (Old Branch) and Target (New Branch is already set on item if approved,
-        # but logic in crud.update_item_status swaps them.
-        # Crucially, we need to know who to notify.
-        # Ideally notify both previous and current branch members.
-        # Since update_item_status is already called, item.branch_id is the NEW branch.
-        # We might miss the old branch ID here without fetching history, but let's notify the current branch (Destination)
-        # and maybe we can't easily get the source users effectively without more complex logic.
-        # Let's notify the current branch members (Destination) which is most important so they know they received it.
-        branch_users = await notifications.get_branch_members(db, item.branch_id)
-        target_users.extend(branch_users)
+        if is_transfer_approval:
+            branch_users = await notifications.get_branch_members(db, item.branch_id)
+            target_users.extend(branch_users)
 
-    elif is_write_off_approval:
-        # Notify Branch Members that item is gone
-        branch_users = await notifications.get_branch_members(db, item.branch_id)
-        target_users.extend(branch_users)
+        elif is_write_off_approval:
+            # Notify Branch Members that item is gone
+            branch_users = await notifications.get_branch_members(db, item.branch_id)
+            target_users.extend(branch_users)
 
-    elif is_approval or is_rejection:
-        # Standard Approval/Rejection (Creation or basic status change)
-        branch_users = await notifications.get_branch_members(db, item.branch_id)
-        target_users.extend(branch_users)
+        elif is_approval or is_rejection:
+            # Standard Approval/Rejection (Creation or basic status change)
+            branch_users = await notifications.get_branch_members(db, item.branch_id)
+            target_users.extend(branch_users)
 
-    if not target_users:
-        return
+        if not target_users:
+            return
 
-    action_label = "Aprovada" if is_approval or new_status == models.ItemStatus.WRITTEN_OFF else "Rejeitada"
-    if new_status == models.ItemStatus.REJECTED: action_label = "Rejeitada"
+        action_label = "Aprovada" if is_approval or new_status == models.ItemStatus.WRITTEN_OFF else "Rejeitada"
+        if new_status == models.ItemStatus.REJECTED: action_label = "Rejeitada"
 
-    title = f"Atualização de Item: {action_label}"
-    msg = f"O item '{item.description}' teve seu status atualizado para {new_status}.\n"
-    if reason:
-        msg += f"Motivo/Observação: {reason}"
+        title = f"Atualização de Item: {action_label}"
+        msg = f"O item '{item.description}' teve seu status atualizado para {new_status}.\n"
+        if reason:
+            msg += f"Motivo/Observação: {reason}"
 
-    html = notifications.generate_html_email(title, msg)
-    await notifications.notify_users(db, target_users, title, msg, email_subject=f"Aviso de Sistema: Item {action_label}", email_html=html)
+        html = notifications.generate_html_email(title, msg)
+        await notifications.notify_users(db, target_users, title, msg, email_subject=f"Aviso de Sistema: Item {action_label}", email_html=html)
+    except Exception as e:
+        print(f"Failed to send notification for status change {item.id}: {e}")
 
 
 # --- Endpoints ---
@@ -208,15 +212,16 @@ async def create_item(
             db_item.invoice_file = file_path
             db.add(db_item)
             await db.commit()
-            # Reload with relationships for email context
-            from sqlalchemy.orm import selectinload
-            from sqlalchemy.future import select
-            query = select(models.Item).where(models.Item.id == db_item.id).options(
-                selectinload(models.Item.branch),
-                selectinload(models.Item.category_rel)
-            )
-            result = await db.execute(query)
-            db_item = result.scalars().first()
+
+        # Explicitly refresh with relationships to prevent MissingGreenlet in notification logic
+        from sqlalchemy.orm import selectinload
+        from sqlalchemy.future import select
+        query = select(models.Item).where(models.Item.id == db_item.id).options(
+            selectinload(models.Item.branch),
+            selectinload(models.Item.category_rel)
+        )
+        result = await db.execute(query)
+        db_item = result.scalars().first()
 
         # Notify Approvers
         if db_item.status == models.ItemStatus.PENDING:
