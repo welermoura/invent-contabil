@@ -77,23 +77,34 @@ async def test_smtp(
         to_email = smtp_settings.to_email
         msg["To"] = to_email
 
-        if smtp_settings.security == "SSL":
+        security_mode = smtp_settings.security.upper() if smtp_settings.security else "NONE"
+
+        if security_mode == "SSL":
             context = ssl.create_default_context()
             with smtplib.SMTP_SSL(smtp_settings.host, smtp_settings.port, context=context) as server:
                 if smtp_settings.username:
-                    server.login(smtp_settings.username, smtp_settings.password)
+                    try:
+                        server.login(smtp_settings.username, smtp_settings.password)
+                    except smtplib.SMTPNotSupportedError:
+                        print("SMTP AUTH not supported, proceeding without authentication")
                 server.send_message(msg)
-        elif smtp_settings.security == "TLS":
+        elif security_mode == "TLS":
             context = ssl.create_default_context()
             with smtplib.SMTP(smtp_settings.host, smtp_settings.port) as server:
                 server.starttls(context=context)
                 if smtp_settings.username:
-                    server.login(smtp_settings.username, smtp_settings.password)
+                    try:
+                        server.login(smtp_settings.username, smtp_settings.password)
+                    except smtplib.SMTPNotSupportedError:
+                        print("SMTP AUTH not supported, proceeding without authentication")
                 server.send_message(msg)
         else:
             with smtplib.SMTP(smtp_settings.host, smtp_settings.port) as server:
                 if smtp_settings.username:
-                    server.login(smtp_settings.username, smtp_settings.password)
+                    try:
+                        server.login(smtp_settings.username, smtp_settings.password)
+                    except smtplib.SMTPNotSupportedError:
+                        print("SMTP AUTH not supported, proceeding without authentication")
                 server.send_message(msg)
 
         return {"message": f"E-mail de teste enviado com sucesso para {to_email}!"}
