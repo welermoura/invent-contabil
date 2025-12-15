@@ -225,6 +225,11 @@ async def create_item(
 
         # Notify Approvers
         if db_item.status == models.ItemStatus.PENDING:
+            # WebSocket Broadcast (Legacy but needed for toasts)
+            from backend.websocket_manager import manager
+            await manager.broadcast(f"Novo item cadastrado: {db_item.description}")
+
+            # Persistent Notification & Email
             await notify_new_item(db, db_item)
 
         return db_item
