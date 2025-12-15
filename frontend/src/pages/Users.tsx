@@ -98,13 +98,17 @@ const Users: React.FC = () => {
     const handleEdit = (u: any) => {
         setEditingUser(u);
         setShowForm(true);
-        reset({
-             name: u.name,
-             email: u.email,
-             role: u.role,
-             all_branches: u.all_branches || false,
-             branch_ids: u.branches ? u.branches.map((b: any) => b.id) : (u.branch_id ? [u.branch_id] : [])
-        });
+        // Ensure reset happens in the next tick to guarantee form is mounted
+        setTimeout(() => {
+            reset({
+                 name: u.name,
+                 email: u.email,
+                 role: u.role,
+                 all_branches: u.all_branches || false,
+                 can_import: u.can_import || false,
+                 branch_ids: u.branches ? u.branches.map((b: any) => b.id) : (u.branch_id ? [u.branch_id] : [])
+            });
+        }, 0);
     };
 
     const handleCancel = () => {
