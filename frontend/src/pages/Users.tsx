@@ -193,12 +193,23 @@ const Users: React.FC = () => {
                             <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                 <Shield className="w-4 h-4 text-gray-400" /> Função
                             </label>
-                            <select {...register('role')} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white">
-                                <option value="OPERATOR">Operador (Básico)</option>
-                                <option value="APPROVER">Aprovador (Gestor)</option>
-                                <option value="AUDITOR">Auditor (Leitura)</option>
-                                <option value="ADMIN">Administrador (Total)</option>
-                            </select>
+                            <div className="space-y-2">
+                                <select {...register('role')} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white">
+                                    <option value="OPERATOR">Operador (Básico)</option>
+                                    <option value="APPROVER">Aprovador (Gestor)</option>
+                                    <option value="AUDITOR">Auditor (Leitura)</option>
+                                    <option value="ADMIN">Administrador (Total)</option>
+                                </select>
+                                <div className="flex items-center gap-2 pl-1">
+                                    <input
+                                        type="checkbox"
+                                        id="can_import"
+                                        {...register('can_import')}
+                                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                    />
+                                    <label htmlFor="can_import" className="text-sm text-gray-600 cursor-pointer select-none">Pode Importar Itens</label>
+                                </div>
+                            </div>
                         </div>
                         <div className="md:col-span-2 space-y-2">
                             <label className="text-sm font-medium text-gray-700 flex items-center gap-2 justify-between">

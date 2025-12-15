@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 
-interface User {
+export interface User {
     email: string;
     role: string;
+    can_import?: boolean;
 }
 
 interface AuthContextType {
@@ -25,7 +26,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (storedToken) {
             try {
                 const decoded: any = jwtDecode(storedToken);
-                return { email: decoded.sub, role: decoded.role };
+                return { email: decoded.sub, role: decoded.role, can_import: decoded.can_import };
             } catch (error) {
                 return null;
             }
@@ -39,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const decoded: any = jwtDecode(token);
                 // Validação de expiração removida para evitar logouts por dessincronia de relógio.
                 // O backend retornará 401 se expirado.
-                setUser({ email: decoded.sub, role: decoded.role });
+                setUser({ email: decoded.sub, role: decoded.role, can_import: decoded.can_import });
             } catch (error) {
                 // Se o token for inválido (malformado), logout
                 logout();

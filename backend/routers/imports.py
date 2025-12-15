@@ -191,7 +191,8 @@ async def upload_import(
                 serial_number=str(row.get("NUMERO_SERIE", "")),
                 fixed_asset_number=str(row.get("ATIVO_FIXO", "")),
                 observations=str(row.get("OBSERVACOES", "")),
-                responsible_id=current_user.id
+                responsible_id=current_user.id,
+                status=models.ItemStatus.APPROVED if current_user.can_import else models.ItemStatus.PENDING
             )
 
             await crud.create_item(db, item_in)
