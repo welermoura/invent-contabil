@@ -21,7 +21,7 @@ export const translateLogAction = (action: string) => {
     if (!action) return '';
     let translated = action;
 
-    // Status changes
+    // Status changes (Legacy support)
     if (translated.includes('Status changed to')) {
         const parts = translated.split('Status changed to ');
         if (parts.length > 1) {
@@ -30,18 +30,19 @@ export const translateLogAction = (action: string) => {
         }
     }
 
-    // Write-off
+    // Write-off (Legacy support)
     if (translated.includes('Write-off requested')) {
         return translated.replace('Write-off requested. Reason:', 'Solicitação de baixa. Motivo:');
     }
 
-    // Transfer
+    // Transfer (Legacy support)
     if (translated.includes('Transfer requested to branch')) {
         return translated.replace('Transfer requested to branch', 'Solicitação de transferência para filial');
     }
 
-    // Creation (if any specific log exists, generic fallback)
+    // Creation (Legacy support)
     if (translated === 'Item created') return 'Item criado';
 
+    // The backend now sends translated strings, so we can just return the action if no legacy pattern is found.
     return translated;
 };

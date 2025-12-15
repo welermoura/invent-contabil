@@ -195,7 +195,8 @@ async def upload_import(
                 status=models.ItemStatus.APPROVED if current_user.can_import else models.ItemStatus.PENDING
             )
 
-            await crud.create_item(db, item_in)
+            log_msg = "Item importado via arquivo. Auto-aprovado por permissão." if current_user.can_import else "Item importado via arquivo. Aguardando aprovação."
+            await crud.create_item(db, item_in, action_log=log_msg)
             success_count += 1
 
         except Exception as e:

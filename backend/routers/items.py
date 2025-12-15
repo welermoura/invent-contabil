@@ -159,7 +159,7 @@ async def create_item(
 
     # Create item
     try:
-        db_item = await crud.create_item(db, item_data)
+        db_item = await crud.create_item(db, item_data, action_log="Item cadastrado manualmente.")
         # Note: file path setting is missing in crud.create_item, need to handle it or update crud
         # Better: Update item with file path after creation or pass to crud
         if file_path:
