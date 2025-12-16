@@ -482,19 +482,45 @@ async def update_item(db: AsyncSession, item_id: int, item: schemas.ItemUpdate):
 
     return db_item
 
-async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int, user_id: int):
+async def request_transfer(
+    db: AsyncSession,
+    item_id: int,
+    target_branch_id: int,
+    user_id: int,
+    transfer_invoice_number: str = None,
+    transfer_invoice_series: str = None,
+    transfer_invoice_date: str = None
+):
     result = await db.execute(select(models.Item).where(models.Item.id == item_id))
     db_item = result.scalars().first()
     if db_item:
         db_item.status = models.ItemStatus.TRANSFER_PENDING
         db_item.transfer_target_branch_id = target_branch_id
 
+        # Store transfer invoice data
+        if transfer_invoice_number:
+            db_item.transfer_invoice_number = transfer_invoice_number
+        if transfer_invoice_series:
+            db_item.transfer_invoice_series = transfer_invoice_series
+        if transfer_invoice_date:
+            from datetime import datetime
+            # Handle date string conversion if needed
+            try:
+                db_item.transfer_invoice_date = datetime.strptime(transfer_invoice_date, '%Y-%m-%d')
+            except (ValueError, TypeError):
+                # Fallback or keep None if invalid
+                pass
+
         # Fetch branch name for logging
         branch_result = await db.execute(select(models.Branch).where(models.Branch.id == target_branch_id))
         target_branch = branch_result.scalars().first()
         branch_name = target_branch.name if target_branch else str(target_branch_id)
 
-        log = models.Log(item_id=item_id, user_id=user_id, action=f"Solicitação de transferência para filial {branch_name}")
+        log_msg = f"Solicitação de transferência para filial {branch_name}"
+        if transfer_invoice_number:
+             log_msg += f" (NF: {transfer_invoice_number})"
+
+        log = models.Log(item_id=item_id, user_id=user_id, action=log_msg)
         db.add(log)
         await db.commit()
 

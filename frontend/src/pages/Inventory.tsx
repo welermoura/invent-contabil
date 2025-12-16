@@ -38,6 +38,7 @@ interface InventoryProps {
 const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }) => {
     const [items, setItems] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
+    const [allBranches, setAllBranches] = useState<any[]>([]); // For transfer target
     const [categories, setCategories] = useState<any[]>([]);
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
@@ -63,6 +64,9 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
 
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [transferTargetBranch, setTransferTargetBranch] = useState<string>('');
+    const [transferInvoiceNumber, setTransferInvoiceNumber] = useState('');
+    const [transferInvoiceSeries, setTransferInvoiceSeries] = useState('');
+    const [transferInvoiceDate, setTransferInvoiceDate] = useState('');
 
     const [isWriteOffModalOpen, setIsWriteOffModalOpen] = useState(false);
     const [writeOffJustification, setWriteOffJustification] = useState('');
@@ -182,10 +186,16 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
         }
     };
 
-    const fetchBranches = async () => {
+    const fetchBranches = async (scope?: string) => {
         try {
-            const response = await api.get('/branches/');
-            setBranches(response.data);
+            const params: any = {};
+            if (scope) params.scope = scope;
+            const response = await api.get('/branches/', { params });
+            if (scope === 'all') {
+                setAllBranches(response.data);
+            } else {
+                setBranches(response.data);
+            }
         } catch (error) {
              console.error("Erro ao carregar filiais", error);
         }
@@ -424,6 +434,13 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
     const openTransferModal = (item: any) => {
         setSelectedItem(item);
         setTransferTargetBranch('');
+        setTransferInvoiceNumber('');
+        setTransferInvoiceSeries('');
+        setTransferInvoiceDate('');
+
+        // Fetch ALL branches for transfer (bypass operator restriction)
+        fetchBranches('all');
+
         setIsTransferModalOpen(true);
     };
 
@@ -467,12 +484,27 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
 
     const handleTransferRequest = async () => {
         if (!selectedItem || !transferTargetBranch) return;
+
+        if (!transferInvoiceNumber || !transferInvoiceSeries || !transferInvoiceDate) {
+            showError("Preencha os dados da Nota Fiscal de Transferência.");
+            return;
+        }
+
         try {
-            await api.post(`/items/${selectedItem.id}/transfer?target_branch_id=${transferTargetBranch}`);
+            const formData = new FormData();
+            formData.append('target_branch_id', transferTargetBranch);
+            formData.append('transfer_invoice_number', transferInvoiceNumber);
+            formData.append('transfer_invoice_series', transferInvoiceSeries);
+            formData.append('transfer_invoice_date', transferInvoiceDate);
+
+            await api.post(`/items/${selectedItem.id}/transfer`, formData);
             fetchItems(globalSearch, 0);
             setIsTransferModalOpen(false);
             setSelectedItem(null);
             setTransferTargetBranch('');
+            setTransferInvoiceNumber('');
+            setTransferInvoiceSeries('');
+            setTransferInvoiceDate('');
             showSuccess("Solicitação de transferência enviada com sucesso!");
         } catch (error) {
             console.error("Erro ao solicitar transferência", error);
@@ -944,12 +976,33 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                             <textarea value={writeOffJustification} onChange={e => setWriteOffJustification(e.target.value)} className="w-full border rounded-lg p-3 text-sm mb-4" rows={3} placeholder="Justificativa..." />
                         )}
                         {isTransferModalOpen && (
-                            <select value={transferTargetBranch} onChange={e => setTransferTargetBranch(e.target.value)} className="w-full border rounded-lg p-2 mb-4">
-                                <option value="">Selecione filial...</option>
-                                {branches.filter(b => b.id !== selectedItem.branch_id).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                            </select>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 uppercase">Filial de Destino</label>
+                                    <select value={transferTargetBranch} onChange={e => setTransferTargetBranch(e.target.value)} className="w-full border rounded-lg p-2 mt-1">
+                                        <option value="">Selecione filial...</option>
+                                        {(allBranches.length > 0 ? allBranches : branches).filter(b => b.id !== selectedItem.branch_id).map(b => (
+                                            <option key={b.id} value={b.id}>
+                                                {b.name} {b.cnpj ? ` - CNPJ: ${b.cnpj}` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 uppercase">Número Nota Fiscal</label>
+                                    <input type="text" value={transferInvoiceNumber} onChange={e => setTransferInvoiceNumber(e.target.value)} className="w-full border rounded-lg p-2 mt-1" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 uppercase">Série Nota Fiscal</label>
+                                    <input type="text" value={transferInvoiceSeries} onChange={e => setTransferInvoiceSeries(e.target.value)} className="w-full border rounded-lg p-2 mt-1" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 uppercase">Data Emissão</label>
+                                    <input type="date" value={transferInvoiceDate} onChange={e => setTransferInvoiceDate(e.target.value)} className="w-full border rounded-lg p-2 mt-1" />
+                                </div>
+                            </div>
                         )}
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-2 mt-6">
                             <button onClick={() => { setIsWriteOffModalOpen(false); setIsTransferModalOpen(false); }} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg">Cancelar</button>
                             <button onClick={isWriteOffModalOpen ? handleWriteOffRequest : handleTransferRequest} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Confirmar</button>
                         </div>

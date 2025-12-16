@@ -11,13 +11,14 @@ async def read_branches(
     skip: int = 0,
     limit: int = 100,
     search: str = None,
+    scope: str = 'default',
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     branches = await crud.get_branches(db, skip=skip, limit=limit, search=search)
 
-    # Filter for Operators: only return assigned branches
-    if current_user.role == models.UserRole.OPERATOR:
+    # Filter for Operators: only return assigned branches UNLESS scope is 'all' (used for transfer targets)
+    if current_user.role == models.UserRole.OPERATOR and scope != 'all':
         allowed_branch_ids = {b.id for b in current_user.branches}
         if current_user.branch_id:
             allowed_branch_ids.add(current_user.branch_id)
