@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, s
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend import schemas, models, crud, auth
+from backend.notifications import notify_users
 from backend.database import get_db
 import shutil
 import os
+import re
 from datetime import datetime
 
 router = APIRouter(prefix="/items", tags=["items"])
@@ -12,6 +14,20 @@ router = APIRouter(prefix="/items", tags=["items"])
 UPLOAD_DIR = "/app/uploads"
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
+
+# Helper function to localize status for notifications
+def translate_status(status_val: str) -> str:
+    # Handle Enum or string
+    s = str(status_val)
+    if s == "PENDING" or s == "ItemStatus.PENDING": return "Pendente"
+    if s == "APPROVED" or s == "ItemStatus.APPROVED": return "Aprovado"
+    if s == "REJECTED" or s == "ItemStatus.REJECTED": return "Rejeitado"
+    if s == "TRANSFER_PENDING" or s == "ItemStatus.TRANSFER_PENDING": return "Transferência Pendente"
+    if s == "WRITE_OFF_PENDING" or s == "ItemStatus.WRITE_OFF_PENDING": return "Baixa Pendente"
+    if s == "WRITTEN_OFF" or s == "ItemStatus.WRITTEN_OFF": return "Baixado"
+    if s == "MAINTENANCE" or s == "ItemStatus.MAINTENANCE": return "Em Manutenção"
+    if s == "IN_STOCK" or s == "ItemStatus.IN_STOCK": return "Em Estoque"
+    return s
 
 @router.get("/", response_model=List[schemas.ItemResponse])
 async def read_items(
@@ -122,8 +138,6 @@ async def create_item(
     # Save file if uploaded
     file_path = None
     if file:
-        import os
-        import re
         # secure_filename replacement to avoid extra dependency
         filename = file.filename
         filename = re.sub(r'[^A-Za-z0-9_.-]', '_', filename)
@@ -175,6 +189,20 @@ async def create_item(
             )
             result = await db.execute(query)
             db_item = result.scalars().first()
+
+        # Notify Approvers about new PENDING item
+        # But only if created by Operator? Or always?
+        # Usually Approvers need to know.
+        try:
+             await notify_users(
+                db,
+                title="Novo Item Pendente",
+                message=f"Item '{description}' criado em '{db_item.branch.name if db_item.branch else 'Filial'}' aguarda aprovação.",
+                target_roles=[models.UserRole.APPROVER, models.UserRole.ADMIN],
+                exclude_user_id=current_user.id
+             )
+        except Exception as e:
+            print(f"Error sending notification: {e}")
 
         return db_item
     except Exception as e:
@@ -233,9 +261,31 @@ async def update_item_status(
     # Proceed with update
     updated_item = await crud.update_item_status(db, item_id, status_update, current_user.id, fixed_asset_number, reason)
 
-    # Trigger WebSocket notification
-    from backend.websocket_manager import manager
-    await manager.broadcast(f"Item {updated_item.description} status changed to {status_update}")
+    # Notify Responsible User and Branch Members
+    try:
+        translated_status = translate_status(status_update)
+        msg = f"Item '{updated_item.description}' teve status alterado para {translated_status}."
+        if reason:
+            msg += f" Motivo: {reason}"
+
+        # Notify responsible
+        targets = []
+        if updated_item.responsible_id:
+            targets.append(updated_item.responsible_id)
+
+        # Also notify operators of that branch (Broadcasting to branch members)
+        # Using helper
+        await notify_users(
+            db,
+            title="Atualização de Status",
+            message=msg,
+            target_users=targets,
+            target_roles=[models.UserRole.OPERATOR],
+            target_branch_id=updated_item.branch_id,
+            exclude_user_id=current_user.id
+        )
+    except Exception as e:
+        print(f"Error notifying status change: {e}")
 
     return updated_item
 
@@ -277,8 +327,18 @@ async def request_transfer(
     if not item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
 
-    from backend.websocket_manager import manager
-    await manager.broadcast(f"Solicitação de transferência para item {item.description}")
+    # Notify Approvers
+    try:
+         target_branch = item.transfer_target_branch.name if item.transfer_target_branch else "Outra Filial"
+         await notify_users(
+            db,
+            title="Solicitação de Transferência",
+            message=f"Solicitada transferência do item '{item.description}' para '{target_branch}'.",
+            target_roles=[models.UserRole.APPROVER, models.UserRole.ADMIN],
+            exclude_user_id=current_user.id
+         )
+    except Exception as e:
+        print(f"Error notifying transfer: {e}")
 
     return item
 
@@ -309,8 +369,17 @@ async def request_write_off(
     if not item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
 
-    from backend.websocket_manager import manager
-    await manager.broadcast(f"Solicitação de baixa para item {item.description}")
+    # Notify Approvers
+    try:
+         await notify_users(
+            db,
+            title="Solicitação de Baixa",
+            message=f"Solicitada baixa do item '{item.description}'. Motivo: {justification}",
+            target_roles=[models.UserRole.APPROVER, models.UserRole.ADMIN],
+            exclude_user_id=current_user.id
+         )
+    except Exception as e:
+        print(f"Error notifying write-off: {e}")
 
     return item
 

@@ -1,4 +1,4 @@
-import React, { createContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 import StandardModal from '../components/common/StandardModal';
 import type { ModalType } from '../components/common/StandardModal';
 import { ERROR_MAPPING, getErrorMessage } from '../utils/errorMap';
@@ -16,6 +16,8 @@ export const ErrorContext = createContext<ErrorContextProps>({
     showWarning: () => {},
     showConfirm: () => {},
 });
+
+export const useError = () => useContext(ErrorContext);
 
 export const ErrorProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [isOpen, setIsOpen] = useState(false);
