@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { useAuth } from '../AuthContext';
-import { useError } from '../hooks/useError';
+import { useToast } from '../context/ToastContext';
 import { buildWebSocketUrl } from '../utils/buildWebSocketUrl';
 
 const Notifications: React.FC = () => {
     const { user } = useAuth();
-    const { showSuccess } = useError();
+    const { addToast } = useToast();
 
     // Refs to manage connection lifecycle and timeouts
     const socketRef = useRef<WebSocket | null>(null);
@@ -43,10 +43,22 @@ const Notifications: React.FC = () => {
 
             socket.onmessage = (event) => {
                 try {
-                    // Only show notifications for specific roles
-                    if (user?.role === 'ADMIN' || user?.role === 'APPROVER') {
-                        showSuccess(event.data, "Nova Notificação");
+                    const message = event.data;
+                    let displayMessage = message;
+
+                    // Parse if format is NOTIFICATION:Title:Message
+                    if (message.startsWith('NOTIFICATION:')) {
+                        const parts = message.split(':');
+                        if (parts.length >= 3) {
+                            displayMessage = parts.slice(2).join(':'); // Rejoin message parts
+                        }
                     }
+
+                    // Show toast instead of modal
+                    // Filter logic handled in backend broadcasting or can be re-applied here if needed.
+                    // Assuming server sends relevant notifications.
+                    addToast('info', displayMessage, 5000);
+
                 } catch (e) {
                     console.error('[WS] Error processing message:', e);
                 }

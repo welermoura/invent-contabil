@@ -65,6 +65,7 @@ class User(Base):
 
     logs = relationship("Log", back_populates="user")
     items_responsible = relationship("Item", back_populates="responsible")
+    notifications = relationship("Notification", back_populates="user", lazy="select")
 
 class Category(Base):
     __tablename__ = "categories"
@@ -131,6 +132,19 @@ class Log(Base):
 
     item = relationship("Item", back_populates="logs", lazy="selectin")
     user = relationship("User", back_populates="logs", lazy="selectin")
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String)
+    message = Column(String)
+    read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="notifications")
 
 class SystemSetting(Base):
     __tablename__ = "system_settings"
