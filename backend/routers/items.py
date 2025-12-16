@@ -242,7 +242,10 @@ async def update_item_status(
 @router.post("/{item_id}/transfer", response_model=schemas.ItemResponse)
 async def request_transfer(
     item_id: int,
-    target_branch_id: int,
+    target_branch_id: int = Form(...),
+    transfer_invoice_number: str = Form(None),
+    transfer_invoice_series: str = Form(None),
+    transfer_invoice_date: str = Form(None),
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -262,7 +265,15 @@ async def request_transfer(
         if item.branch_id not in allowed_branches:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para transferir este item")
 
-    item = await crud.request_transfer(db, item_id, target_branch_id, current_user.id)
+    item = await crud.request_transfer(
+        db,
+        item_id,
+        target_branch_id,
+        current_user.id,
+        transfer_invoice_number=transfer_invoice_number,
+        transfer_invoice_series=transfer_invoice_series,
+        transfer_invoice_date=transfer_invoice_date
+    )
     if not item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
 
