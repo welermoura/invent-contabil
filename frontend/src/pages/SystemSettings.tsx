@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import api from '../api';
 import { useError } from '../hooks/useError';
-import { Settings, Save, Image as ImageIcon, Type, Mail, Server, Shield, User, Key, Send } from 'lucide-react';
+import { Settings, Save, Image as ImageIcon, Type, Mail, Server, Shield, User, Key, Send, Bell } from 'lucide-react';
 
 const SystemSettings: React.FC = () => {
     const { register, handleSubmit, setValue, getValues, watch } = useForm();
@@ -29,6 +29,10 @@ const SystemSettings: React.FC = () => {
             if (settings.smtp_password) setValue('smtp_password', settings.smtp_password);
             if (settings.smtp_from_email) setValue('smtp_from_email', settings.smtp_from_email);
             if (settings.smtp_security) setValue('smtp_security', settings.smtp_security);
+
+            // Notification Settings
+            // Checkbox value needs to be boolean for react-hook-form
+            setValue('notifications_email_enabled', settings.notifications_email_enabled === 'true');
 
         } catch (error) {
             console.error("Erro ao carregar configurações", error);
@@ -73,7 +77,8 @@ const SystemSettings: React.FC = () => {
                 smtp_username: data.smtp_username,
                 smtp_password: data.smtp_password,
                 smtp_from_email: data.smtp_from_email,
-                smtp_security: data.smtp_security
+                smtp_security: data.smtp_security,
+                notifications_email_enabled: String(data.notifications_email_enabled) // Convert boolean to string for backend
             };
 
             await api.put('/settings/', settingsPayload);
@@ -161,19 +166,36 @@ const SystemSettings: React.FC = () => {
 
                 {/* SMTP Config */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-6">
                         <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
                             <Mail className="text-blue-600" size={20} />
                             Configuração de E-mail (SMTP)
                         </h2>
-                        <button
-                            type="button"
-                            onClick={handleTestSmtp}
-                            disabled={testingSmtp}
-                            className="text-sm px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
-                        >
-                            {testingSmtp ? 'Enviando...' : <><Send size={16} /> Testar Conexão</>}
-                        </button>
+
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2 mr-4 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        {...register('notifications_email_enabled')}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    <span className="ml-3 text-sm font-medium text-slate-700 flex items-center gap-2">
+                                        <Bell size={16} /> Ativar notificações por e-mail
+                                    </span>
+                                </label>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={handleTestSmtp}
+                                disabled={testingSmtp}
+                                className="text-sm px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {testingSmtp ? 'Enviando...' : <><Send size={16} /> Testar Conexão</>}
+                            </button>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

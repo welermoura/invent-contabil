@@ -13,6 +13,7 @@ import Suppliers from './pages/Suppliers';
 import MacroViewPage from './pages/dashboard/MacroViewPage';
 import { AuthProvider, useAuth } from './AuthContext';
 import { ErrorProvider } from './context/ErrorContext';
+import { ToastProvider } from './context/ToastContext';
 import Notifications from './components/Notifications';
 import NotificationCenter from './components/NotificationCenter';
 import api from './api';
@@ -208,7 +209,9 @@ function App() {
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
             <ErrorProvider>
-                <AppRoutes />
+                <ToastProvider>
+                    <AppRoutes />
+                </ToastProvider>
             </ErrorProvider>
         </AuthProvider>
     </Router>

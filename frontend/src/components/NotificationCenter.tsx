@@ -27,11 +27,15 @@ const NotificationCenter: React.FC = () => {
 
     const fetchNotifications = async () => {
         try {
+            // Fetch ONLY unread notifications as per requirement "sumir do painel"
             const response = await api.get('/notifications/', {
-                params: { limit: 20 }
+                params: {
+                    limit: 50,
+                    unread_only: true
+                }
             });
             setNotifications(response.data);
-            setUnreadCount(response.data.filter((n: Notification) => !n.read).length);
+            setUnreadCount(response.data.length);
         } catch (err) {
             console.error("Failed to fetch notifications", err);
         }
@@ -40,7 +44,8 @@ const NotificationCenter: React.FC = () => {
     const markAsRead = async (id: number) => {
         try {
             await api.put(`/notifications/${id}/read`);
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+            // Remove from list immediately
+            setNotifications(prev => prev.filter(n => n.id !== id));
             setUnreadCount(prev => Math.max(0, prev - 1));
         } catch (err) {
             showError("Erro ao marcar como lida");
@@ -51,7 +56,7 @@ const NotificationCenter: React.FC = () => {
         try {
             setLoading(true);
             await api.put('/notifications/read-all');
-            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+            setNotifications([]);
             setUnreadCount(0);
         } catch (err) {
             showError("Erro ao marcar todas como lidas");
@@ -78,8 +83,6 @@ const NotificationCenter: React.FC = () => {
 
             socket.onmessage = (event) => {
                 // When we receive ANY message, we refresh notifications
-                // The backend broadcasts generic messages or specific formats
-                // We treat it as a signal to sync.
                 console.log("[NotificationCenter] WS Message received, refreshing...");
                 fetchNotifications();
             };
@@ -158,20 +161,21 @@ const NotificationCenter: React.FC = () => {
                         {notifications.length === 0 ? (
                             <div className="p-8 text-center text-slate-400">
                                 <Bell size={32} className="mx-auto mb-2 opacity-50" />
-                                <p className="text-sm">Nenhuma notificação</p>
+                                <p className="text-sm">Nenhuma notificação não lida</p>
                             </div>
                         ) : (
                             <ul className="divide-y divide-slate-50">
                                 {notifications.map(notification => (
                                     <li
                                         key={notification.id}
-                                        className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer ${!notification.read ? 'bg-blue-50/50' : ''}`}
-                                        onClick={() => !notification.read && markAsRead(notification.id)}
+                                        className="p-4 hover:bg-slate-50 transition-colors cursor-pointer bg-blue-50/50"
+                                        onClick={() => markAsRead(notification.id)}
+                                        title="Clique para marcar como lida"
                                     >
                                         <div className="flex gap-3">
-                                            <div className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${!notification.read ? 'bg-blue-500' : 'bg-transparent'}`} />
+                                            <div className="mt-1 h-2 w-2 rounded-full flex-shrink-0 bg-blue-500" />
                                             <div className="flex-1 space-y-1">
-                                                <p className={`text-sm ${!notification.read ? 'font-semibold text-slate-800' : 'font-medium text-slate-600'}`}>
+                                                <p className="text-sm font-semibold text-slate-800">
                                                     {notification.title}
                                                 </p>
                                                 <p className="text-xs text-slate-500 leading-relaxed">
