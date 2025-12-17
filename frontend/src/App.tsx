@@ -7,6 +7,7 @@ import Branches from './pages/Branches';
 import Categories from './pages/Categories';
 import Users from './pages/Users';
 import SystemSettings from './pages/SystemSettings';
+import SafeguardSettings from './pages/settings/SafeguardSettings';
 import Setup from './pages/Setup';
 import Reports from './pages/Reports';
 import Suppliers from './pages/Suppliers';
@@ -27,7 +28,8 @@ import {
     Users as UsersIcon,
     LogOut,
     Menu as MenuIcon,
-    Settings
+    Settings,
+    Shield
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -95,6 +97,9 @@ const Layout = () => {
                     )}
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
                         <NavItem to="/users" icon={UsersIcon} label="Usuários" active={isActive('/users')} />
+                    )}
+                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
+                        <NavItem to="/safeguard-settings" icon={Shield} label="Salva Guarda" active={isActive('/safeguard-settings')} />
                     )}
                     {(user?.role === 'ADMIN') && (
                         <NavItem to="/system-settings" icon={Settings} label="Configurações" active={isActive('/system-settings')} />
@@ -175,6 +180,7 @@ const AppRoutes = () => {
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/users" element={<Users />} />
                     <Route path="/system-settings" element={<SystemSettings />} />
+                    <Route path="/safeguard-settings" element={<SafeguardSettings />} />
                 </Route>
             </Route>
         </Routes>

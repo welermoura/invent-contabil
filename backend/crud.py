@@ -387,10 +387,31 @@ async def update_item_status(db: AsyncSession, item_id: int, status: models.Item
         elif db_item.status == models.ItemStatus.IN_TRANSIT and status == models.ItemStatus.IN_STOCK:
             # Execute Transfer Finalization
             if db_item.transfer_target_branch_id:
+                old_branch_name = db_item.branch.name if db_item.branch else "N/A"
+                # Eager load target branch name before clearing ID if not loaded, but it should be loaded from previous ops
+                # Assuming transfer_target_branch relationship is loaded or we can fetch it.
+                # Since db_item might not have it loaded if session is fresh in this context without specific options in select above:
+                target_branch_name = "Destino"
+                if db_item.transfer_target_branch:
+                     target_branch_name = db_item.transfer_target_branch.name
+                else:
+                     # Fetch it if missing
+                     tb_res = await db.execute(select(models.Branch).where(models.Branch.id == db_item.transfer_target_branch_id))
+                     tb = tb_res.scalars().first()
+                     if tb: target_branch_name = tb.name
+
+                # Update Branch ID
                 db_item.branch_id = db_item.transfer_target_branch_id
                 db_item.transfer_target_branch_id = None
                 db_item.status = models.ItemStatus.IN_STOCK
-                # Also clear transfer invoice fields? Maybe keep for history? Keep them.
+
+                # Special Log for History Requirements: "Filial X transferiu para Filial Y"
+                # The action is triggered by the RECEIVER confirming receipt, but the narrative is "Transfer Completed"
+                # The user request: "history it has to show 'Branch X transferred to Branch Y'"
+                # We can append a specific log entry for this completion event.
+
+                transfer_log = models.Log(item_id=item_id, user_id=user_id, action=f"Transferência concluída: {old_branch_name} para {target_branch_name}")
+                db.add(transfer_log)
 
         # Write-off Logic
         elif db_item.status == models.ItemStatus.WRITE_OFF_PENDING:
