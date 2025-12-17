@@ -634,6 +634,8 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                             <option value="IN_STOCK">Estoque</option>
                                             <option value="WRITTEN_OFF">Baixado</option>
                                             <option value="IN_TRANSIT">Em Trânsito</option>
+                                            <option value="TRANSFER_PENDING">Transf. Pendente</option>
+                                            <option value="WRITE_OFF_PENDING">Baixa Pendente</option>
                                         </select>
                                     </div>
                                 </th>
