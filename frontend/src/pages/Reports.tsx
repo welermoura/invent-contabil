@@ -30,9 +30,9 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
 
     if (!data || data.length === 0) {
         return (
-            <div className="p-8 bg-white/90 backdrop-blur-md rounded-xl shadow-sm border border-gray-100/50 flex flex-col items-center justify-center text-center">
-                <div className="bg-gray-50 p-4 rounded-full mb-4">
-                    <FileText className="w-8 h-8 text-gray-400" />
+            <div className="p-8 bg-white/80 backdrop-blur-md rounded-xl shadow-sm border border-slate-100/50 flex flex-col items-center justify-center text-center">
+                <div className="bg-white/50 p-4 rounded-full mb-4">
+                    <FileText className="w-8 h-8 text-slate-400" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-800 mb-2">{title}</h2>
                 <p className="text-gray-500 mb-6">Nenhum dado encontrado para este relatório com os filtros atuais.</p>
@@ -143,13 +143,13 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
     };
 
     return (
-        <div className="bg-white/90 backdrop-blur-md rounded-xl shadow-sm border border-gray-200/50 flex flex-col h-[calc(100vh-6rem)]">
+        <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-sm border border-slate-200/50 flex flex-col h-[calc(100vh-6rem)]">
             {/* Header */}
-            <div className="p-4 border-b border-gray-200/50 flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-50/30 rounded-t-xl">
+            <div className="p-4 border-b border-slate-200/50 flex flex-col md:flex-row justify-between items-center gap-4 bg-white/40 rounded-t-xl">
                 <div className="flex items-center gap-4 w-full md:w-auto">
                     <button
                         onClick={onBack}
-                        className="p-2 hover:bg-white hover:shadow-sm rounded-lg text-gray-600 transition-all border border-transparent hover:border-gray-200"
+                        className="p-2 hover:bg-white hover:shadow-sm rounded-lg text-slate-600 transition-all border border-transparent hover:border-slate-200"
                         title="Voltar"
                     >
                         <ArrowLeft className="w-5 h-5" />
@@ -606,34 +606,34 @@ const Reports: React.FC = () => {
             {/* Reports Grid */}
             <div className="grid grid-cols-1 gap-6">
                 {filteredMenu.map((section, index) => (
-                    <div key={index} className="bg-white/90 backdrop-blur-md rounded-xl shadow-sm border border-gray-200/50 overflow-hidden transition-all hover:shadow-md">
+                    <div key={index} className="bg-white/80 backdrop-blur-md rounded-xl shadow-sm border border-slate-200/50 overflow-hidden transition-all hover:shadow-md">
                         <button
                             onClick={() => toggleCategory(section.category)}
-                            className="w-full px-6 py-4 flex justify-between items-center bg-transparent hover:bg-white/50 transition-colors group"
+                            className="w-full px-6 py-4 flex justify-between items-center bg-transparent hover:bg-white/40 transition-colors group"
                         >
                             <div className="flex items-center gap-4">
-                                <div className={`p-2 rounded-lg ${expandedCategory === section.category || searchTerm ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'} group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors`}>
+                                <div className={`p-2 rounded-lg ${expandedCategory === section.category || searchTerm ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'} group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors`}>
                                     {section.icon}
                                 </div>
                                 <div className="text-left">
-                                    <h2 className="text-lg font-semibold text-gray-800 group-hover:text-indigo-700 transition-colors">
+                                    <h2 className="text-lg font-semibold text-slate-800 group-hover:text-indigo-700 transition-colors">
                                         {section.category}
                                     </h2>
-                                    <p className="text-sm text-gray-500">{section.description}</p>
+                                    <p className="text-sm text-slate-500">{section.description}</p>
                                 </div>
                             </div>
-                            <span className={`transform transition-transform duration-200 text-gray-400 ${expandedCategory === section.category || searchTerm ? 'rotate-180 text-indigo-600' : ''}`}>
+                            <span className={`transform transition-transform duration-200 text-slate-400 ${expandedCategory === section.category || searchTerm ? 'rotate-180 text-indigo-600' : ''}`}>
                                 <ChevronDown className="w-5 h-5" />
                             </span>
                         </button>
 
                         {(expandedCategory === section.category || searchTerm) && (
-                            <div className="border-t border-gray-100/50 bg-gray-50/30 p-6 animate-in slide-in-from-top-2 duration-200">
+                            <div className="border-t border-slate-100/50 bg-white/30 p-6 animate-in slide-in-from-top-2 duration-200">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                     {section.items.map((report) => (
                                         <button
                                             key={report.id}
-                                            className="bg-white/50 p-3 rounded-lg border border-gray-200/50 hover:border-indigo-300 hover:shadow-md hover:translate-y-[-2px] transition-all text-left flex items-center gap-3 group relative overflow-hidden"
+                                            className="bg-white/60 p-3 rounded-lg border border-slate-200/50 hover:border-indigo-300 hover:shadow-md hover:translate-y-[-2px] transition-all text-left flex items-center gap-3 group relative overflow-hidden"
                                             onClick={() => handleGenerateReport(report.id, report.title)}
                                         >
                                             <div className="absolute inset-0 bg-indigo-50 opacity-0 group-hover:opacity-10 transition-opacity"></div>

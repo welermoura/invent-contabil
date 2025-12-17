@@ -670,7 +670,11 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                             item.branch?.name || '-'
                                         )}
                                     </td>
-                                    <td className="px-6 py-4 text-slate-600 font-mono text-xs bg-slate-50 rounded w-fit">{item.fixed_asset_number || '-'}</td>
+                                    <td className="px-6 py-4 text-slate-600 font-mono text-xs">
+                                        {item.fixed_asset_number ? (
+                                            <span className="bg-slate-50 px-2 py-1 rounded border border-slate-100">{item.fixed_asset_number}</span>
+                                        ) : '-'}
+                                    </td>
                                     <td className="px-6 py-4 text-slate-500">{item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '-'}</td>
                                     <td className="px-6 py-4 font-medium text-slate-700">
                                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.invoice_value)}

@@ -2,10 +2,8 @@
 > frontend@0.0.0 dev
 > vite --port 5173
 
-Port 5173 is in use, trying another one...
-Port 5174 is in use, trying another one...
 
-  VITE v5.4.21  ready in 430 ms
+  VITE v5.4.21  ready in 591 ms
 
-  ➜  Local:   http://localhost:5175/
+  ➜  Local:   http://localhost:5173/
   ➜  Network: use --host to expose

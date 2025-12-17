@@ -43,7 +43,7 @@ const SafeguardSettings: React.FC = () => {
 
     return (
         <div className="space-y-6 animate-fade-in pb-10">
-            <div className="flex flex-col">
+            <div className="flex flex-col bg-white/80 backdrop-blur-md p-4 rounded-xl shadow-sm border border-slate-100/50">
                 <h1 className="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-2">
                     <Shield className="text-slate-600" />
                     Salva Guarda
@@ -52,7 +52,7 @@ const SafeguardSettings: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl">
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-sm border border-slate-200/50 p-6">
                     <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
                         <DollarSign className="text-blue-600" size={20} />
                         Limite de Valor
@@ -69,7 +69,7 @@ const SafeguardSettings: React.FC = () => {
                                 {...register('safeguard_threshold')}
                                 type="number"
                                 step="0.01"
-                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white/50"
                                 placeholder="0.00"
                             />
                         </div>
