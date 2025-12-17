@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../AuthContext';
 import api from '../api';
-import { Bell, Check, Trash2, X } from 'lucide-react';
+import { Bell, Check } from 'lucide-react';
 
 interface Notification {
     id: number;

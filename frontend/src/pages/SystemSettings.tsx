@@ -5,11 +5,12 @@ import { useError } from '../hooks/useError';
 import { Settings, Save, Image as ImageIcon, Type, Mail, Server, Shield, User, Key, Send } from 'lucide-react';
 
 const SystemSettings: React.FC = () => {
-    const { register, handleSubmit, setValue, getValues, watch } = useForm();
+    const { register, handleSubmit, setValue, getValues } = useForm();
     const { showSuccess, showError } = useError();
     const [loading, setLoading] = useState(false);
     const [testingSmtp, setTestingSmtp] = useState(false);
     const [currentFavicon, setCurrentFavicon] = useState<string | null>(null);
+    const [currentLogo, setCurrentLogo] = useState<string | null>(null);
     const [currentBackground, setCurrentBackground] = useState<string | null>(null);
 
     useEffect(() => {
@@ -22,6 +23,7 @@ const SystemSettings: React.FC = () => {
             const settings = response.data;
             if (settings.app_title) setValue('app_title', settings.app_title);
             if (settings.favicon_url) setCurrentFavicon(settings.favicon_url);
+            if (settings.logo_url) setCurrentLogo(settings.logo_url);
             if (settings.background_url) setCurrentBackground(settings.background_url);
 
             // SMTP Settings
@@ -84,6 +86,14 @@ const SystemSettings: React.FC = () => {
                 const formData = new FormData();
                 formData.append('file', data.favicon_file[0]);
                 await api.post('/settings/favicon', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            }
+
+            if (data.logo_file && data.logo_file[0]) {
+                const formData = new FormData();
+                formData.append('file', data.logo_file[0]);
+                await api.post('/settings/logo', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
             }
@@ -161,6 +171,33 @@ const SystemSettings: React.FC = () => {
                                         type="file"
                                         {...register('favicon_file')}
                                         accept=".ico,.png,.svg,.jpg"
+                                        className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                                <ImageIcon className="w-4 h-4 text-slate-400" />
+                                Logo da Empresa
+                            </label>
+
+                            <div className="flex items-center gap-4">
+                                {currentLogo && (
+                                    <div className="p-2 border border-slate-200 rounded-lg bg-slate-50">
+                                        <img
+                                            src={`${api.defaults.baseURL}/${currentLogo}`}
+                                            alt="Logo Atual"
+                                            className="w-8 h-8 object-contain"
+                                        />
+                                    </div>
+                                )}
+                                <div className="flex-1">
+                                    <input
+                                        type="file"
+                                        {...register('logo_file')}
+                                        accept=".png,.svg,.jpg,.jpeg,.webp"
                                         className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all"
                                     />
                                 </div>
