@@ -60,12 +60,12 @@ const Layout = () => {
     const isActive = (path: string) => location.pathname === path;
 
     return (
-        <div className="flex h-screen bg-slate-50 font-sans text-slate-800">
+        <div className="flex h-screen font-sans text-slate-800 bg-transparent">
             <Notifications />
 
             {/* Sidebar */}
             <aside
-                className={`fixed inset-y-0 left-0 z-50 bg-white border-r border-slate-200 w-64 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto
+                className={`fixed inset-y-0 left-0 z-50 bg-white/90 backdrop-blur-md border-r border-slate-200/50 w-64 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
             >
                 <div className="flex items-center justify-between h-16 px-6 border-b border-slate-100">
@@ -128,7 +128,7 @@ const Layout = () => {
             {/* Main Content */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Top Header */}
-                <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 lg:px-8">
+                <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/50 flex items-center justify-between px-6 lg:px-8">
                     <button
                         onClick={() => setSidebarOpen(true)}
                         className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg lg:hidden"
@@ -230,7 +230,7 @@ function App() {
     }, []);
 
   return (
-    <div style={backgroundUrl ? {
+    <div className={!backgroundUrl ? "bg-slate-50" : ""} style={backgroundUrl ? {
         backgroundImage: `url(${backgroundUrl})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
