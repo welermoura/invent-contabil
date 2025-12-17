@@ -190,31 +190,43 @@ const AppRoutes = () => {
 function App() {
   const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
 
+  const loadSettings = async () => {
+      try {
+          const response = await api.get('/settings/');
+          const settings = response.data;
+          if (settings.app_title) {
+              document.title = settings.app_title;
+          }
+          if (settings.favicon_url) {
+              let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+              if (!link) {
+                  link = document.createElement('link');
+                  link.rel = 'icon';
+                  document.getElementsByTagName('head')[0].appendChild(link);
+              }
+              link.href = `${api.defaults.baseURL}/${settings.favicon_url}`;
+          }
+          if (settings.background_url) {
+              // Append timestamp to force reload if URL is same but content changed (though filename changes usually)
+              setBackgroundUrl(`${api.defaults.baseURL}/${settings.background_url}?t=${new Date().getTime()}`);
+          }
+      } catch (error) {
+          // Silent fail
+      }
+  };
+
   useEffect(() => {
-        const loadSettings = async () => {
-            try {
-                const response = await api.get('/settings/');
-                const settings = response.data;
-                if (settings.app_title) {
-                    document.title = settings.app_title;
-                }
-                if (settings.favicon_url) {
-                    let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
-                    if (!link) {
-                        link = document.createElement('link');
-                        link.rel = 'icon';
-                        document.getElementsByTagName('head')[0].appendChild(link);
-                    }
-                    link.href = `${api.defaults.baseURL}/${settings.favicon_url}`;
-                }
-                if (settings.background_url) {
-                    setBackgroundUrl(`${api.defaults.baseURL}/${settings.background_url}`);
-                }
-            } catch (error) {
-                // Silent fail
-            }
-        };
         loadSettings();
+
+        const handleSettingsUpdate = () => {
+             loadSettings();
+        };
+
+        window.addEventListener('settings_updated', handleSettingsUpdate);
+
+        return () => {
+            window.removeEventListener('settings_updated', handleSettingsUpdate);
+        };
     }, []);
 
   return (
