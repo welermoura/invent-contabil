@@ -59,12 +59,23 @@ async def notify_status_change(db: AsyncSession, item: models.Item, old_status: 
         # Logic based on transition
         is_approval = new_status in [models.ItemStatus.APPROVED, models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
         is_rejection = new_status == models.ItemStatus.REJECTED
-        is_transfer_approval = (old_status == models.ItemStatus.TRANSFER_PENDING and is_approval)
+        is_transfer_approval = (old_status == models.ItemStatus.TRANSFER_PENDING and new_status == models.ItemStatus.IN_TRANSIT)
+        is_transfer_receipt = (old_status == models.ItemStatus.IN_TRANSIT and new_status == models.ItemStatus.IN_STOCK)
         is_write_off_approval = (old_status == models.ItemStatus.WRITE_OFF_PENDING and new_status == models.ItemStatus.WRITTEN_OFF)
 
         if is_transfer_approval:
+            # Notify Source branch
             branch_users = await notifications.get_branch_members(db, item.branch_id)
             target_users.extend(branch_users)
+            # Notify Destination branch (members who can receive)
+            if item.transfer_target_branch_id:
+                dest_users = await notifications.get_branch_members(db, item.transfer_target_branch_id)
+                target_users.extend(dest_users)
+
+        elif is_transfer_receipt:
+            # Notify previous branch (optional, but good) and current branch
+             branch_users = await notifications.get_branch_members(db, item.branch_id)
+             target_users.extend(branch_users)
 
         elif is_write_off_approval:
             # Notify Branch Members that item is gone
@@ -79,13 +90,26 @@ async def notify_status_change(db: AsyncSession, item: models.Item, old_status: 
         if not target_users:
             return
 
-        action_label = "Aprovada" if is_approval or new_status == models.ItemStatus.WRITTEN_OFF else "Rejeitada"
-        if new_status == models.ItemStatus.REJECTED: action_label = "Rejeitada"
+        def translate_status(s):
+            m = {
+                "APPROVED": "Aprovado", "REJECTED": "Rejeitado", "IN_STOCK": "Estoque",
+                "MAINTENANCE": "Manutenção", "WRITTEN_OFF": "Baixado", "IN_TRANSIT": "Em Trânsito"
+            }
+            return m.get(s, s)
+
+        new_status_pt = translate_status(new_status)
+        action_label = "Atualizado"
+        if new_status == models.ItemStatus.REJECTED: action_label = "Rejeitado"
+        if is_transfer_approval: action_label = "Transferência Aprovada - Em Trânsito"
+        if is_transfer_receipt: action_label = "Transferência Recebida"
 
         title = f"Atualização de Item: {action_label}"
-        msg = f"O item '{item.description}' teve seu status atualizado para {new_status}.\n"
+        msg = f"O item '{item.description}' teve seu status atualizado para {new_status_pt}.\n"
         if reason:
             msg += f"Motivo/Observação: {reason}"
+
+        if is_transfer_approval:
+            msg += "\nO item está em trânsito e aguarda confirmação de recebimento na filial de destino."
 
         html = notifications.generate_html_email(title, msg)
         await notifications.notify_users(db, target_users, title, msg, email_subject=f"Aviso de Sistema: Item {action_label}", email_html=html)
@@ -118,12 +142,14 @@ async def read_items(
         if branch_id:
             if branch_id not in allowed_branches:
                  raise HTTPException(status_code=403, detail="Acesso negado a esta filial")
-        else:
-            return await crud.get_items(
-                db, skip=skip, limit=limit, status=status, category=category, branch_id=None,
-                search=search, allowed_branch_ids=allowed_branches, description=description,
-                fixed_asset_number=fixed_asset_number, purchase_date=purchase_date
-            )
+
+        # Modified Logic: If no specific branch filter is requested,
+        # return items in allowed branches OR items in transit TO allowed branches.
+        return await crud.get_items(
+            db, skip=skip, limit=limit, status=status, category=category, branch_id=None,
+            search=search, allowed_branch_ids=allowed_branches, description=description,
+            fixed_asset_number=fixed_asset_number, purchase_date=purchase_date
+        )
 
     return await crud.get_items(
         db, skip=skip, limit=limit, status=status, category=category, branch_id=branch_id,
@@ -262,30 +288,46 @@ async def update_item_status(
     is_admin_approver = current_user.role in [models.UserRole.ADMIN, models.UserRole.APPROVER]
     is_operator = current_user.role == models.UserRole.OPERATOR
 
+    # Allow Operators to confirm receipt (status IN_TRANSIT -> IN_STOCK)
+    is_receipt_confirmation = (old_status == models.ItemStatus.IN_TRANSIT and status_update == models.ItemStatus.IN_STOCK)
+
     if not is_admin_approver and not is_operator:
          raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Role não autorizada")
 
-    target_is_operational = status_update in [models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
-    current_is_operational = item_obj.status in [models.ItemStatus.APPROVED, models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
-
-    if target_is_operational and not current_is_operational:
-         raise HTTPException(status_code=400, detail="O item deve ser aprovado antes de ser movido para Manutenção ou Estoque")
-
+    # Permission Logic for Operators
     if is_operator:
-        if not current_user.all_branches:
+        if is_receipt_confirmation:
+            # Check if operator belongs to target branch
             allowed_branches = [b.id for b in current_user.branches]
             if current_user.branch_id and current_user.branch_id not in allowed_branches:
                 allowed_branches.append(current_user.branch_id)
-            if item_obj.branch_id not in allowed_branches:
-                raise HTTPException(status_code=403, detail="Sem permissão nesta filial")
 
-        allowed_targets = [models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK, models.ItemStatus.APPROVED]
-        if status_update not in allowed_targets:
-             raise HTTPException(status_code=403, detail="Operadores só podem alterar para Manutenção, Estoque ou Ativo")
+            # Use transfer_target_branch_id because the item is technically still in the old branch until received
+            if item_obj.transfer_target_branch_id not in allowed_branches:
+                raise HTTPException(status_code=403, detail="Você não tem permissão para receber itens nesta filial")
+        else:
+            # Standard Operator Permissions
+            if not current_user.all_branches:
+                allowed_branches = [b.id for b in current_user.branches]
+                if current_user.branch_id and current_user.branch_id not in allowed_branches:
+                    allowed_branches.append(current_user.branch_id)
+                if item_obj.branch_id not in allowed_branches:
+                    raise HTTPException(status_code=403, detail="Sem permissão nesta filial")
 
-        allowed_sources = [models.ItemStatus.APPROVED, models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
-        if item_obj.status not in allowed_sources:
-             raise HTTPException(status_code=403, detail="Operadores não podem alterar status de itens Pendentes ou em Processo")
+            allowed_targets = [models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK, models.ItemStatus.APPROVED]
+            if status_update not in allowed_targets:
+                 raise HTTPException(status_code=403, detail="Operadores só podem alterar para Manutenção, Estoque ou Ativo")
+
+            allowed_sources = [models.ItemStatus.APPROVED, models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
+            if item_obj.status not in allowed_sources:
+                 raise HTTPException(status_code=403, detail="Operadores não podem alterar status de itens Pendentes ou em Processo")
+
+    # Backend Rule: Moving to Operational status requires prior approval
+    target_is_operational = status_update in [models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK]
+    current_is_operational = item_obj.status in [models.ItemStatus.APPROVED, models.ItemStatus.MAINTENANCE, models.ItemStatus.IN_STOCK, models.ItemStatus.IN_TRANSIT] # IN_TRANSIT is quasi-operational
+
+    if target_is_operational and not current_is_operational and not is_receipt_confirmation:
+         raise HTTPException(status_code=400, detail="O item deve ser aprovado antes de ser movido para Manutenção ou Estoque")
 
     updated_item = await crud.update_item_status(db, item_id, status_update, current_user.id, fixed_asset_number, reason)
 
@@ -294,13 +336,13 @@ async def update_item_status(
     payload = {
         "message": f"Item {updated_item.description} atualizado para {status_update}",
         "actor_id": current_user.id,
-        "target_roles": ["OPERATOR"], # Target Operators for status updates
+        "target_roles": ["OPERATOR", "ADMIN", "APPROVER"], # Notify all relevant roles
         "target_branch_id": updated_item.branch_id
     }
     await manager.broadcast(json.dumps(payload))
 
     # Notify Branch Members about the outcome (Persistent/Email)
-    await notify_status_change(db, updated_item, old_status, status_update, reason)
+    await notify_status_change(db, updated_item, old_status, updated_item.status, reason)
 
     return updated_item
 
@@ -308,6 +350,9 @@ async def update_item_status(
 async def request_transfer(
     item_id: int,
     target_branch_id: int,
+    transfer_invoice_number: Optional[str] = None,
+    transfer_invoice_series: Optional[str] = None,
+    transfer_invoice_date: Optional[datetime] = None,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -325,7 +370,8 @@ async def request_transfer(
         if item.branch_id not in allowed_branches:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para transferir este item")
 
-    item = await crud.request_transfer(db, item_id, target_branch_id, current_user.id)
+    item = await crud.request_transfer(db, item_id, target_branch_id, current_user.id,
+                                       transfer_invoice_number, transfer_invoice_series, transfer_invoice_date)
     if not item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
 

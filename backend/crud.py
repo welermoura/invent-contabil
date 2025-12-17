@@ -4,6 +4,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy import or_, cast, String
 from backend import models, schemas
 from backend.auth import get_password_hash
+from datetime import datetime
 
 # Users
 async def get_user_by_email(db: AsyncSession, email: str):
@@ -260,8 +261,31 @@ async def get_items(
         query = query.where(models.Item.category == category)
     if branch_id:
         query = query.where(models.Item.branch_id == branch_id)
+
+    # Filter by Allowed Branches AND Incoming Transfers for those branches
     if allowed_branch_ids is not None:
-        query = query.where(models.Item.branch_id.in_(allowed_branch_ids))
+        # User sees:
+        # 1. Items physically in their branches (branch_id in allowed)
+        # 2. Items IN TRANSIT *towards* their branches (transfer_target_branch_id in allowed AND status == IN_TRANSIT)
+
+        # If specific branch_id filter was already applied above, this OR condition logic might need adjustment if users filter specifically for "incoming".
+        # However, the `branch_id` argument is typically for strict filtering (e.g. looking at a specific branch inventory).
+        # If `branch_id` is None, we show everything the user is allowed to see.
+
+        if branch_id:
+            # If strictly filtering by a branch, we assume we only want items currently there.
+            # But what if we want to see incoming items FOR that branch?
+            # Usually users select "All Branches" view to see everything.
+            # Let's keep strict branch_id filter if provided.
+            pass
+        else:
+            # No specific branch selected, show all accessible items + incoming
+            query = query.where(
+                or_(
+                    models.Item.branch_id.in_(allowed_branch_ids),
+                    (models.Item.transfer_target_branch_id.in_(allowed_branch_ids)) & (models.Item.status == models.ItemStatus.IN_TRANSIT)
+                )
+            )
 
     # Specific column filters
     if description:
@@ -302,7 +326,8 @@ STATUS_TRANSLATION = {
     models.ItemStatus.WRITE_OFF_PENDING: "Baixa Pendente",
     models.ItemStatus.WRITTEN_OFF: "Baixado",
     models.ItemStatus.MAINTENANCE: "Manutenção",
-    models.ItemStatus.IN_STOCK: "Estoque"
+    models.ItemStatus.IN_STOCK: "Estoque",
+    models.ItemStatus.IN_TRANSIT: "Em Trânsito"
 }
 
 async def create_item(db: AsyncSession, item: schemas.ItemCreate, action_log: str = None):
@@ -350,15 +375,22 @@ async def update_item_status(db: AsyncSession, item_id: int, status: models.Item
         # Transfer Logic
         if db_item.status == models.ItemStatus.TRANSFER_PENDING:
             if status == models.ItemStatus.APPROVED:
-                # Execute Transfer
-                if db_item.transfer_target_branch_id:
-                    db_item.branch_id = db_item.transfer_target_branch_id
-                    db_item.transfer_target_branch_id = None
-                    db_item.status = models.ItemStatus.APPROVED
+                # NEW LOGIC: Move to IN_TRANSIT, do NOT change branch_id yet.
+                db_item.status = models.ItemStatus.IN_TRANSIT
+                status = models.ItemStatus.IN_TRANSIT # For logging below
             elif status == models.ItemStatus.REJECTED:
                 # Cancel Transfer
                 db_item.transfer_target_branch_id = None
                 db_item.status = models.ItemStatus.APPROVED # Revert to Approved state
+
+        # Receipt Logic (In Transit -> Stock/Approved)
+        elif db_item.status == models.ItemStatus.IN_TRANSIT and status == models.ItemStatus.IN_STOCK:
+            # Execute Transfer Finalization
+            if db_item.transfer_target_branch_id:
+                db_item.branch_id = db_item.transfer_target_branch_id
+                db_item.transfer_target_branch_id = None
+                db_item.status = models.ItemStatus.IN_STOCK
+                # Also clear transfer invoice fields? Maybe keep for history? Keep them.
 
         # Write-off Logic
         elif db_item.status == models.ItemStatus.WRITE_OFF_PENDING:
@@ -491,12 +523,18 @@ async def update_item(db: AsyncSession, item_id: int, item: schemas.ItemUpdate):
 
     return db_item
 
-async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int, user_id: int):
+async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int, user_id: int,
+                           transfer_invoice_number: str = None, transfer_invoice_series: str = None,
+                           transfer_invoice_date: datetime = None):
     result = await db.execute(select(models.Item).where(models.Item.id == item_id))
     db_item = result.scalars().first()
     if db_item:
         db_item.status = models.ItemStatus.TRANSFER_PENDING
         db_item.transfer_target_branch_id = target_branch_id
+
+        if transfer_invoice_number: db_item.transfer_invoice_number = transfer_invoice_number
+        if transfer_invoice_series: db_item.transfer_invoice_series = transfer_invoice_series
+        if transfer_invoice_date: db_item.transfer_invoice_date = transfer_invoice_date
 
         # Fetch branch name for logging
         branch_result = await db.execute(select(models.Branch).where(models.Branch.id == target_branch_id))

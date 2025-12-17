@@ -156,6 +156,9 @@ class ItemResponse(ItemBase):
     branch: Optional[BranchResponse] = None
     transfer_target_branch_id: Optional[int] = None
     transfer_target_branch: Optional[BranchResponse] = None
+    transfer_invoice_number: Optional[str] = None
+    transfer_invoice_series: Optional[str] = None
+    transfer_invoice_date: Optional[datetime] = None
     category_rel: Optional[CategoryResponse] = None
     supplier: Optional[SupplierResponse] = None
     responsible: Optional[UserResponse] = None
