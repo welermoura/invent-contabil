@@ -11,13 +11,17 @@ async def read_branches(
     skip: int = 0,
     limit: int = 100,
     search: str = None,
+    scope: str = None,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
     branches = await crud.get_branches(db, skip=skip, limit=limit, search=search)
 
-    # Filter for Operators: only return assigned branches
-    if current_user.role == models.UserRole.OPERATOR:
+    # Filter for Operators: only return assigned branches UNLESS scope='all' is requested
+    # We allow scope='all' for operators primarily for Transfer Target selection.
+    # In a stricter system, we might want a separate endpoint or permission check,
+    # but for this requirement "Operator sees all branches for transfer", we allow it.
+    if current_user.role == models.UserRole.OPERATOR and scope != 'all':
         allowed_branch_ids = {b.id for b in current_user.branches}
         if current_user.branch_id:
             allowed_branch_ids.add(current_user.branch_id)

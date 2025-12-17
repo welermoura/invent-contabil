@@ -6,7 +6,7 @@ import { useAuth } from '../AuthContext';
 import { useError } from '../hooks/useError';
 import { useSearchParams } from 'react-router-dom';
 import { translateStatus, translateLogAction } from '../utils/translations';
-import { Edit2, Eye, CheckCircle, XCircle, ArrowRightLeft, FileText, Search, Plus, FileWarning, AlertCircle, Download, FileSpreadsheet, Table as TableIcon, ChevronDown, Wrench, Archive, RefreshCw, Upload } from 'lucide-react';
+import { Edit2, Eye, CheckCircle, XCircle, ArrowRightLeft, FileText, Search, Plus, FileWarning, AlertCircle, Download, FileSpreadsheet, Table as TableIcon, ChevronDown, Wrench, Archive, RefreshCw, Upload, Truck, PackageCheck } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -21,6 +21,7 @@ const StatusBadge = ({ status }: { status: string }) => {
         WRITTEN_OFF: { label: 'Baixado', class: 'bg-slate-100 text-slate-600 border-slate-200 ring-slate-500/20' },
         MAINTENANCE: { label: 'Manutenção', class: 'bg-purple-50 text-purple-700 border-purple-200 ring-purple-600/20' },
         IN_STOCK: { label: 'Estoque', class: 'bg-cyan-50 text-cyan-700 border-cyan-200 ring-cyan-600/20' },
+        IN_TRANSIT: { label: 'Em Trânsito', class: 'bg-indigo-50 text-indigo-700 border-indigo-200 ring-indigo-600/20' },
     };
     const config = map[status] || { label: status, class: 'bg-gray-50 text-gray-600 border-gray-200' };
     return (
@@ -63,6 +64,12 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
 
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [transferTargetBranch, setTransferTargetBranch] = useState<string>('');
+    const [allBranches, setAllBranches] = useState<any[]>([]);
+
+    // New Transfer Fields
+    const [transferInvoiceNumber, setTransferInvoiceNumber] = useState('');
+    const [transferInvoiceSeries, setTransferInvoiceSeries] = useState('');
+    const [transferInvoiceDate, setTransferInvoiceDate] = useState('');
 
     const [isWriteOffModalOpen, setIsWriteOffModalOpen] = useState(false);
     const [writeOffJustification, setWriteOffJustification] = useState('');
@@ -191,6 +198,15 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
         }
     }
 
+    const fetchAllBranches = async () => {
+        try {
+            const response = await api.get('/branches/', { params: { scope: 'all' } });
+            setAllBranches(response.data);
+        } catch (error) {
+            console.error("Erro ao carregar todas as filiais", error);
+        }
+    }
+
     const fetchCategories = async () => {
         try {
             const response = await api.get('/categories/');
@@ -211,15 +227,9 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
 
     useEffect(() => {
         // Initial load
-        // fetchItems is triggered by the debounce effect on filters initially too,
-        // but we need to load auxiliary data
         fetchBranches();
         fetchCategories();
     }, []);
-
-    // Pagination logic uses fetchItems directly in the JSX buttons, but we can clean this up.
-    // The previous handleNextPage was unused because I inlined the logic in the buttons
-    // to handle the "dirty manual fetch". I will remove this unused function.
 
     // Export Logic
     const getAllFilteredItems = async () => {
@@ -392,11 +402,6 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                 url += `&fixed_asset_number=${fixedAsset}`;
             }
             if (reason) {
-                // Ensure correct encoding for query parameter or use body if backend supports it.
-                // Assuming query parameter for simplicity as per existing pattern, but careful with length.
-                // Better approach: Check if backend supports body for status update.
-                // Backend expects `reason` query param or body? Let's check crud/routers.
-                // Assuming query param for now based on `fixed_asset_number`.
                 url += `&reason=${encodeURIComponent(reason)}`;
             }
             await api.put(url);
@@ -424,7 +429,12 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
     const openTransferModal = (item: any) => {
         setSelectedItem(item);
         setTransferTargetBranch('');
+        setTransferInvoiceNumber('');
+        setTransferInvoiceSeries('');
+        setTransferInvoiceDate('');
         setIsTransferModalOpen(true);
+        // Fetch ALL branches for transfer target
+        fetchAllBranches();
     };
 
     const openWriteOffModal = (item: any) => {
@@ -467,8 +477,13 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
 
     const handleTransferRequest = async () => {
         if (!selectedItem || !transferTargetBranch) return;
+        if (!transferInvoiceNumber || !transferInvoiceSeries || !transferInvoiceDate) {
+            showWarning("Informe os dados da Nota Fiscal de Transferência");
+            return;
+        }
+
         try {
-            await api.post(`/items/${selectedItem.id}/transfer?target_branch_id=${transferTargetBranch}`);
+            await api.post(`/items/${selectedItem.id}/transfer?target_branch_id=${transferTargetBranch}&transfer_invoice_number=${transferInvoiceNumber}&transfer_invoice_series=${transferInvoiceSeries}&transfer_invoice_date=${transferInvoiceDate}`);
             fetchItems(globalSearch, 0);
             setIsTransferModalOpen(false);
             setSelectedItem(null);
@@ -618,6 +633,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                             <option value="MAINTENANCE">Manutenção</option>
                                             <option value="IN_STOCK">Estoque</option>
                                             <option value="WRITTEN_OFF">Baixado</option>
+                                            <option value="IN_TRANSIT">Em Trânsito</option>
                                         </select>
                                     </div>
                                 </th>
@@ -629,7 +645,16 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                 <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
                                     <td className="px-6 py-4 font-medium text-slate-700">{item.description}</td>
                                     <td className="px-6 py-4 text-slate-500">{item.category}</td>
-                                    <td className="px-6 py-4 text-slate-500">{item.branch?.name || '-'}</td>
+                                    <td className="px-6 py-4 text-slate-500">
+                                        {item.status === 'IN_TRANSIT' ? (
+                                           <div className='flex flex-col'>
+                                                <span className='line-through text-xs'>{item.branch?.name}</span>
+                                                <span className='text-blue-600 font-semibold text-xs flex items-center gap-1'><ArrowRightLeft size={10}/> {item.transfer_target_branch?.name}</span>
+                                           </div>
+                                        ) : (
+                                            item.branch?.name || '-'
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4 text-slate-600 font-mono text-xs bg-slate-50 rounded w-fit">{item.fixed_asset_number || '-'}</td>
                                     <td className="px-6 py-4 text-slate-500">{item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '-'}</td>
                                     <td className="px-6 py-4 font-medium text-slate-700">
@@ -669,9 +694,17 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                             </>
                                         )}
 
+                                        {/* Receipt Button */}
+                                        {item.status === 'IN_TRANSIT' && user?.role !== 'AUDITOR' && (
+                                            // TODO: Add extra check if user is in target branch (frontend logic optimization)
+                                            <button onClick={() => handleStatusChange(item.id, 'IN_STOCK')} className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Confirmar Recebimento">
+                                                <PackageCheck size={18} />
+                                            </button>
+                                        )}
+
                                         {['APPROVED', 'MAINTENANCE', 'IN_STOCK'].includes(item.status) && user?.role !== 'AUDITOR' && (
                                             <>
-                                                <button onClick={() => openTransferModal(item)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Transferir"><ArrowRightLeft size={18} /></button>
+                                                <button onClick={() => openTransferModal(item)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Transferir"><Truck size={18} /></button>
                                                 <button onClick={() => { setSelectedItem(item); setIsChangeStatusModalOpen(true); }} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Alterar Status"><RefreshCw size={18} /></button>
                                                 <button onClick={() => openWriteOffModal(item)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Baixa"><FileWarning size={18} /></button>
                                             </>
@@ -882,6 +915,12 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                 <div><span className="block text-xs font-bold text-slate-400 uppercase">Categoria</span><p className="text-slate-700">{selectedItem.category}</p></div>
                                 <div><span className="block text-xs font-bold text-slate-400 uppercase">Fornecedor</span><p className="text-slate-700">{selectedItem.supplier?.name || '-'}</p></div>
                                 <div><span className="block text-xs font-bold text-slate-400 uppercase">Filial</span><p className="text-slate-700">{selectedItem.branch?.name}</p></div>
+                                {selectedItem.transfer_target_branch && (
+                                    <div className='bg-blue-50 p-2 rounded border border-blue-100'>
+                                        <span className="block text-xs font-bold text-blue-600 uppercase">Transferência para</span>
+                                        <p className="text-blue-800 font-medium">{selectedItem.transfer_target_branch.name}</p>
+                                    </div>
+                                )}
                             </div>
                             <div className="space-y-4">
                                 <div><span className="block text-xs font-bold text-slate-400 uppercase">Valor de Compra</span><p className="text-slate-700 font-medium">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedItem.invoice_value)}</p></div>
@@ -938,20 +977,43 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
             {(isWriteOffModalOpen || isTransferModalOpen) && selectedItem && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
                     <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md animate-scale-in">
-                        <h3 className="text-lg font-bold mb-4">{isWriteOffModalOpen ? 'Solicitar Baixa' : 'Solicitar Transferência'}</h3>
+                        <h3 className="text-lg font-bold mb-4 text-slate-800">{isWriteOffModalOpen ? 'Solicitar Baixa' : 'Solicitar Transferência'}</h3>
                         {/* Content for these modals using state variables */}
                         {isWriteOffModalOpen && (
-                            <textarea value={writeOffJustification} onChange={e => setWriteOffJustification(e.target.value)} className="w-full border rounded-lg p-3 text-sm mb-4" rows={3} placeholder="Justificativa..." />
+                             <div className='space-y-4'>
+                                <p className="text-sm text-slate-600">Informe o motivo da baixa para aprovação.</p>
+                                <textarea value={writeOffJustification} onChange={e => setWriteOffJustification(e.target.value)} className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" rows={3} placeholder="Justificativa..." />
+                            </div>
                         )}
                         {isTransferModalOpen && (
-                            <select value={transferTargetBranch} onChange={e => setTransferTargetBranch(e.target.value)} className="w-full border rounded-lg p-2 mb-4">
-                                <option value="">Selecione filial...</option>
-                                {branches.filter(b => b.id !== selectedItem.branch_id).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                            </select>
+                            <div className='space-y-4'>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Filial de Destino</label>
+                                    <select value={transferTargetBranch} onChange={e => setTransferTargetBranch(e.target.value)} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none">
+                                        <option value="">Selecione filial...</option>
+                                        {/* Use allBranches if available (fetched with scope=all), otherwise branches */}
+                                        {(allBranches.length > 0 ? allBranches : branches).filter(b => b.id !== selectedItem.branch_id).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Nota Fiscal de Transf.</label>
+                                    <input type="text" value={transferInvoiceNumber} onChange={e => setTransferInvoiceNumber(e.target.value)} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" placeholder="Número da NF" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Série</label>
+                                        <input type="text" value={transferInvoiceSeries} onChange={e => setTransferInvoiceSeries(e.target.value)} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" placeholder="Série" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Data Emissão</label>
+                                        <input type="date" value={transferInvoiceDate} onChange={e => setTransferInvoiceDate(e.target.value)} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" />
+                                    </div>
+                                </div>
+                            </div>
                         )}
-                        <div className="flex justify-end gap-2">
-                            <button onClick={() => { setIsWriteOffModalOpen(false); setIsTransferModalOpen(false); }} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg">Cancelar</button>
-                            <button onClick={isWriteOffModalOpen ? handleWriteOffRequest : handleTransferRequest} className="px-4 py-2 bg-blue-600 text-white rounded-lg">Confirmar</button>
+                        <div className="flex justify-end gap-2 mt-6 border-t border-slate-100 pt-4">
+                            <button onClick={() => { setIsWriteOffModalOpen(false); setIsTransferModalOpen(false); }} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors font-medium">Cancelar</button>
+                            <button onClick={isWriteOffModalOpen ? handleWriteOffRequest : handleTransferRequest} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-lg shadow-blue-500/30">Confirmar</button>
                         </div>
                     </div>
                 </div>

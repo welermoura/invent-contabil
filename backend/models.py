@@ -28,6 +28,7 @@ class ItemStatus(str, enum.Enum):
     WRITTEN_OFF = "WRITTEN_OFF"
     MAINTENANCE = "MAINTENANCE"
     IN_STOCK = "IN_STOCK"
+    IN_TRANSIT = "IN_TRANSIT"
 
 class Branch(Base):
     __tablename__ = "branches"
@@ -105,6 +106,9 @@ class Item(Base):
     supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
     branch_id = Column(Integer, ForeignKey("branches.id"))
     transfer_target_branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True)
+    transfer_invoice_number = Column(String, nullable=True)
+    transfer_invoice_series = Column(String, nullable=True)
+    transfer_invoice_date = Column(DateTime, nullable=True)
     responsible_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     status = Column(Enum(ItemStatus), default=ItemStatus.PENDING)
     observations = Column(Text, nullable=True)
