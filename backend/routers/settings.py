@@ -9,6 +9,9 @@ import time
 import smtplib
 import ssl
 from email.message import EmailMessage
+from PIL import Image
+import io
+import asyncio
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -62,6 +65,55 @@ async def upload_favicon(
     # Relative path for frontend serving
     url = f"uploads/settings/{filename}"
     await crud.update_system_setting(db, "favicon_url", url)
+
+    return {"url": url}
+
+def process_background_image(file_content: bytes, output_path: str):
+    try:
+        with Image.open(io.BytesIO(file_content)) as img:
+            # Convert to RGB (in case of RGBA/PNG)
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+
+            # Resize logic: Max width 1920 or Max height 1080, preserve aspect ratio
+            max_size = (1920, 1080)
+            img.thumbnail(max_size, Image.Resampling.LANCZOS)
+
+            # Optimize and save as WEBP
+            img.save(output_path, 'WEBP', quality=80, optimize=True)
+            return True
+    except Exception as e:
+        print(f"Error processing image: {e}")
+        return False
+
+@router.post("/background")
+async def upload_background(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.role != models.UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem alterar o fundo de tela")
+
+    UPLOAD_DIR = "/app/uploads/settings"
+    if not os.path.exists(UPLOAD_DIR):
+        os.makedirs(UPLOAD_DIR)
+
+    filename = f"background_{int(time.time())}.webp"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+
+    # Read file content
+    content = await file.read()
+
+    # Process image in thread pool to prevent blocking async loop
+    success = await asyncio.to_thread(process_background_image, content, filepath)
+
+    if not success:
+        raise HTTPException(status_code=400, detail="Erro ao processar imagem. Certifique-se de que é um arquivo de imagem válido.")
+
+    # Relative path for frontend serving
+    url = f"uploads/settings/{filename}"
+    await crud.update_system_setting(db, "background_url", url)
 
     return {"url": url}
 

@@ -10,6 +10,7 @@ const SystemSettings: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [testingSmtp, setTestingSmtp] = useState(false);
     const [currentFavicon, setCurrentFavicon] = useState<string | null>(null);
+    const [currentBackground, setCurrentBackground] = useState<string | null>(null);
 
     useEffect(() => {
         loadSettings();
@@ -21,6 +22,7 @@ const SystemSettings: React.FC = () => {
             const settings = response.data;
             if (settings.app_title) setValue('app_title', settings.app_title);
             if (settings.favicon_url) setCurrentFavicon(settings.favicon_url);
+            if (settings.background_url) setCurrentBackground(settings.background_url);
 
             // SMTP Settings
             if (settings.smtp_host) setValue('smtp_host', settings.smtp_host);
@@ -82,6 +84,14 @@ const SystemSettings: React.FC = () => {
                 const formData = new FormData();
                 formData.append('file', data.favicon_file[0]);
                 await api.post('/settings/favicon', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            }
+
+            if (data.background_file && data.background_file[0]) {
+                const formData = new FormData();
+                formData.append('file', data.background_file[0]);
+                await api.post('/settings/background', formData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
             }
@@ -153,6 +163,34 @@ const SystemSettings: React.FC = () => {
                                         accept=".ico,.png,.svg,.jpg"
                                         className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all"
                                     />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                                <ImageIcon className="w-4 h-4 text-slate-400" />
+                                Imagem de Fundo (Login e Dashboard)
+                            </label>
+
+                            <div className="flex items-center gap-4">
+                                {currentBackground && (
+                                    <div className="p-2 border border-slate-200 rounded-lg bg-slate-50">
+                                        <img
+                                            src={`${api.defaults.baseURL}/${currentBackground}`}
+                                            alt="Fundo Atual"
+                                            className="w-16 h-9 object-cover rounded"
+                                        />
+                                    </div>
+                                )}
+                                <div className="flex-1">
+                                    <input
+                                        type="file"
+                                        {...register('background_file')}
+                                        accept=".jpg,.jpeg,.png,.webp"
+                                        className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all"
+                                    />
+                                    <p className="text-xs text-slate-500 mt-1">A imagem será otimizada automaticamente para carregamento rápido.</p>
                                 </div>
                             </div>
                         </div>

@@ -188,6 +188,8 @@ const AppRoutes = () => {
 }
 
 function App() {
+  const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
+
   useEffect(() => {
         const loadSettings = async () => {
             try {
@@ -205,6 +207,9 @@ function App() {
                     }
                     link.href = `${api.defaults.baseURL}/${settings.favicon_url}`;
                 }
+                if (settings.background_url) {
+                    setBackgroundUrl(`${api.defaults.baseURL}/${settings.background_url}`);
+                }
             } catch (error) {
                 // Silent fail
             }
@@ -213,6 +218,13 @@ function App() {
     }, []);
 
   return (
+    <div style={backgroundUrl ? {
+        backgroundImage: `url(${backgroundUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed',
+        minHeight: '100vh'
+    } : {}}>
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
             <ErrorProvider>
@@ -220,6 +232,7 @@ function App() {
             </ErrorProvider>
         </AuthProvider>
     </Router>
+    </div>
   )
 }
 
