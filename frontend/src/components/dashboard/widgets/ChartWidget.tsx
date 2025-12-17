@@ -14,7 +14,7 @@ const ChartWidget: React.FC<ChartWidgetProps> = ({ title, children, height = 300
     return (
         <div
             className={`
-                bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col h-full transition-all duration-200
+                bg-white/80 backdrop-blur-md dark:bg-slate-800/80 p-5 rounded-xl shadow-sm border border-slate-100/50 dark:border-slate-700/50 flex flex-col h-full transition-all duration-200
                 ${onClick ? 'cursor-pointer hover:shadow-md hover:border-blue-200 dark:hover:border-blue-700 group' : ''}
             `}
             onClick={onClick}
