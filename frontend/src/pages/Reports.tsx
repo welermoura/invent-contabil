@@ -30,7 +30,7 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
 
     if (!data || data.length === 0) {
         return (
-            <div className="p-8 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+            <div className="p-8 bg-white/90 backdrop-blur-md rounded-xl shadow-sm border border-gray-100/50 flex flex-col items-center justify-center text-center">
                 <div className="bg-gray-50 p-4 rounded-full mb-4">
                     <FileText className="w-8 h-8 text-gray-400" />
                 </div>
@@ -143,9 +143,9 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col h-[calc(100vh-6rem)]">
+        <div className="bg-white/90 backdrop-blur-md rounded-xl shadow-sm border border-gray-200/50 flex flex-col h-[calc(100vh-6rem)]">
             {/* Header */}
-            <div className="p-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-50/50 rounded-t-xl">
+            <div className="p-4 border-b border-gray-200/50 flex flex-col md:flex-row justify-between items-center gap-4 bg-gray-50/30 rounded-t-xl">
                 <div className="flex items-center gap-4 w-full md:w-auto">
                     <button
                         onClick={onBack}
@@ -212,10 +212,10 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
             {/* Table Area */}
             <div className="flex-grow overflow-auto">
                 <table className="min-w-full text-sm text-left text-gray-600 relative border-collapse">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0 z-10 shadow-sm">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-50/80 sticky top-0 z-10 shadow-sm backdrop-blur-sm">
                         <tr>
                             {headers.map(header => (
-                                <th key={header} className="px-6 py-3 bg-gray-50 border-b border-gray-200 min-w-[150px]">
+                                <th key={header} className="px-6 py-3 bg-gray-50/80 border-b border-gray-200/50 min-w-[150px]">
                                     <div className="flex flex-col gap-2">
                                         <div
                                             className="flex items-center justify-between cursor-pointer hover:text-indigo-600 select-none group"
@@ -232,7 +232,7 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
                                             <input
                                                 type="text"
                                                 placeholder="Filtrar..."
-                                                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-normal normal-case bg-white"
+                                                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 font-normal normal-case bg-white/50"
                                                 value={columnFilters[header] || ''}
                                                 onChange={(e) => handleColumnFilterChange(header, e.target.value)}
                                                 onClick={(e) => e.stopPropagation()}
@@ -243,10 +243,10 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-100/50">
                         {paginatedData.length > 0 ? (
                             paginatedData.map((row, idx) => (
-                                <tr key={idx} className="bg-white hover:bg-gray-50 transition-colors">
+                                <tr key={idx} className="bg-white/30 hover:bg-white/60 transition-colors">
                                     {headers.map(header => (
                                         <td key={header} className="px-6 py-3 whitespace-nowrap text-gray-700" title={String(row[header])}>
                                             {String(row[header])}
@@ -269,7 +269,7 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
             </div>
 
             {/* Pagination Footer */}
-            <div className="border-t border-gray-200 p-4 bg-gray-50 rounded-b-xl flex justify-between items-center text-sm">
+            <div className="border-t border-gray-200/50 p-4 bg-gray-50/50 rounded-b-xl flex justify-between items-center text-sm">
                 <span className="text-gray-600 font-medium">
                     {page * LIMIT + 1}-{Math.min((page + 1) * LIMIT, sortedData.length)} de {sortedData.length}
                 </span>
@@ -277,14 +277,14 @@ const DataTable: React.FC<{ data: any[], title: string, onBack: () => void }> = 
                     <button
                         disabled={page === 0}
                         onClick={() => setPage(p => p - 1)}
-                        className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
+                        className="px-3 py-1.5 bg-white/50 border border-gray-300 rounded-lg text-gray-700 hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
                     >
                         Anterior
                     </button>
                     <button
                         disabled={page >= totalPages - 1}
                         onClick={() => setPage(p => p + 1)}
-                        className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
+                        className="px-3 py-1.5 bg-white/50 border border-gray-300 rounded-lg text-gray-700 hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
                     >
                         Próxima
                     </button>
@@ -572,7 +572,7 @@ const Reports: React.FC = () => {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/80 backdrop-blur-md p-4 rounded-xl shadow-sm border border-slate-100/50">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                         <FileText className="w-8 h-8 text-indigo-600" />
@@ -587,7 +587,7 @@ const Reports: React.FC = () => {
                     <input
                         type="text"
                         placeholder="Buscar relatório (ex: Depreciação)..."
-                        className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                        className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all bg-white/50"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -606,10 +606,10 @@ const Reports: React.FC = () => {
             {/* Reports Grid */}
             <div className="grid grid-cols-1 gap-6">
                 {filteredMenu.map((section, index) => (
-                    <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all hover:shadow-md">
+                    <div key={index} className="bg-white/90 backdrop-blur-md rounded-xl shadow-sm border border-gray-200/50 overflow-hidden transition-all hover:shadow-md">
                         <button
                             onClick={() => toggleCategory(section.category)}
-                            className="w-full px-6 py-4 flex justify-between items-center bg-white hover:bg-gray-50 transition-colors group"
+                            className="w-full px-6 py-4 flex justify-between items-center bg-transparent hover:bg-white/50 transition-colors group"
                         >
                             <div className="flex items-center gap-4">
                                 <div className={`p-2 rounded-lg ${expandedCategory === section.category || searchTerm ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'} group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors`}>
@@ -628,12 +628,12 @@ const Reports: React.FC = () => {
                         </button>
 
                         {(expandedCategory === section.category || searchTerm) && (
-                            <div className="border-t border-gray-100 bg-gray-50/50 p-6 animate-in slide-in-from-top-2 duration-200">
+                            <div className="border-t border-gray-100/50 bg-gray-50/30 p-6 animate-in slide-in-from-top-2 duration-200">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                     {section.items.map((report) => (
                                         <button
                                             key={report.id}
-                                            className="bg-white p-3 rounded-lg border border-gray-200 hover:border-indigo-300 hover:shadow-md hover:translate-y-[-2px] transition-all text-left flex items-center gap-3 group relative overflow-hidden"
+                                            className="bg-white/50 p-3 rounded-lg border border-gray-200/50 hover:border-indigo-300 hover:shadow-md hover:translate-y-[-2px] transition-all text-left flex items-center gap-3 group relative overflow-hidden"
                                             onClick={() => handleGenerateReport(report.id, report.title)}
                                         >
                                             <div className="absolute inset-0 bg-indigo-50 opacity-0 group-hover:opacity-10 transition-opacity"></div>

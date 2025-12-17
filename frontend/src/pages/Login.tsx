@@ -52,13 +52,11 @@ const Login: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 relative overflow-hidden font-sans">
-            {/* Background Blobs */}
-            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-slate-50 to-blue-50 z-0"></div>
-            <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-pulse"></div>
-            <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-400/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-pulse delay-1000"></div>
+        <div className="min-h-screen flex items-center justify-center bg-transparent relative overflow-hidden font-sans">
+            {/* Background Blobs (Optional - can be removed if interfering with background image, or kept as overlay) */}
+            <div className="absolute top-0 left-0 w-full h-full bg-slate-50/50 -z-10"></div>
 
-            <div className="bg-white/80 backdrop-blur-lg p-10 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] w-full max-w-md z-10 border border-white/60">
+            <div className="bg-white/80 backdrop-blur-md p-10 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] w-full max-w-md z-10 border border-white/40">
                 <div className="text-center mb-8">
                     <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30">
                         <Package className="text-white" size={24} />

@@ -529,7 +529,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
 
     return (
         <div className={`space-y-6 animate-fade-in ${embedded ? 'p-1' : ''}`}>
-            <div className={`flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-100 ${embedded ? 'sticky top-0 z-10 border-none shadow-none p-0 pb-4' : ''}`}>
+            <div className={`flex flex-col md:flex-row justify-between items-center gap-4 bg-white/80 backdrop-blur-md p-4 rounded-xl shadow-sm border border-slate-100/50 ${embedded ? 'sticky top-0 z-10 border-none shadow-none p-0 pb-4' : ''}`}>
                 {!embedded && (
                 <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                     <FileText className="text-blue-600" /> Inventário
@@ -593,15 +593,15 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-sm border border-slate-100/50 overflow-hidden">
                 <div className="overflow-x-auto min-h-[500px]">
                     <table className="min-w-full text-sm text-left relative">
-                        <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-semibold uppercase tracking-wider text-xs">
+                        <thead className="bg-slate-50/80 border-b border-slate-100/50 text-slate-500 font-semibold uppercase tracking-wider text-xs">
                             <tr>
                                 <th className="px-6 py-4 min-w-[200px]">
                                     <div className="flex flex-col gap-2">
                                         <span>Descrição</span>
-                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 rounded font-normal normal-case bg-white" value={filterDescription} onChange={e => setFilterDescription(e.target.value)} />
+                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 rounded font-normal normal-case bg-white/50" value={filterDescription} onChange={e => setFilterDescription(e.target.value)} />
                                     </div>
                                 </th>
                                 <th className="px-6 py-4 min-w-[150px]">
@@ -751,7 +751,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                     </table>
                 </div>
 
-                <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+                <div className="px-6 py-4 border-t border-slate-100/50 bg-slate-50/50 flex items-center justify-between">
                      <span className="text-sm text-slate-500 font-medium">
                         Exibindo {items.length} itens nesta página (Scroll Infinito não, paginação padrão)
                      </span>
