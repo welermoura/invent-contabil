@@ -111,7 +111,7 @@ const SystemSettings: React.FC = () => {
 
     return (
         <div className="space-y-6 animate-fade-in pb-10">
-            <div className="flex flex-col">
+            <div className="flex flex-col bg-white/80 backdrop-blur-md p-4 rounded-xl shadow-sm border border-slate-100/50">
                 <h1 className="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-2">
                     <Settings className="text-slate-600" />
                     Configurações do Sistema
@@ -122,7 +122,7 @@ const SystemSettings: React.FC = () => {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-4xl">
 
                 {/* Aparência */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-sm border border-slate-200/50 p-6">
                     <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
                         <ImageIcon className="text-blue-600" size={20} />
                         Aparência
@@ -135,7 +135,7 @@ const SystemSettings: React.FC = () => {
                             </label>
                             <input
                                 {...register('app_title')}
-                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white/50"
                                 placeholder="Ex: Sistema de Inventário"
                             />
                         </div>
@@ -198,7 +198,7 @@ const SystemSettings: React.FC = () => {
                 </div>
 
                 {/* SMTP Config */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-sm border border-slate-200/50 p-6">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
                             <Mail className="text-blue-600" size={20} />
@@ -222,7 +222,7 @@ const SystemSettings: React.FC = () => {
                             </label>
                             <input
                                 {...register('smtp_host')}
-                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white/50"
                                 placeholder="Ex: smtp.gmail.com"
                             />
                         </div>
@@ -235,7 +235,7 @@ const SystemSettings: React.FC = () => {
                             <input
                                 {...register('smtp_port')}
                                 type="number"
-                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white/50"
                                 placeholder="Ex: 587"
                             />
                         </div>
@@ -247,7 +247,7 @@ const SystemSettings: React.FC = () => {
                             </label>
                             <input
                                 {...register('smtp_username')}
-                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white/50"
                                 placeholder="email@empresa.com"
                             />
                         </div>
@@ -260,7 +260,7 @@ const SystemSettings: React.FC = () => {
                             <input
                                 {...register('smtp_password')}
                                 type="password"
-                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white/50"
                                 placeholder="••••••••"
                             />
                         </div>
@@ -272,7 +272,7 @@ const SystemSettings: React.FC = () => {
                             </label>
                             <input
                                 {...register('smtp_from_email')}
-                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white/50"
                                 placeholder="noreply@empresa.com"
                             />
                         </div>
@@ -284,7 +284,7 @@ const SystemSettings: React.FC = () => {
                             </label>
                             <select
                                 {...register('smtp_security')}
-                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white/50"
                                 defaultValue="tls"
                             >
                                 <option value="tls">STARTTLS (Recomendado)</option>
@@ -301,7 +301,7 @@ const SystemSettings: React.FC = () => {
                             <div className="flex gap-2">
                                 <input
                                     {...register('smtp_test_recipient')}
-                                    className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                    className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white/50"
                                     placeholder="email@teste.com"
                                 />
                                 <div className="text-xs text-slate-500 flex items-center">

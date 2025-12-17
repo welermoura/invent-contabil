@@ -37,8 +37,9 @@ const Setup: React.FC = () => {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100">
-            <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
+        <div className="flex items-center justify-center min-h-screen bg-transparent relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-full bg-slate-50/50 -z-10"></div>
+            <div className="bg-white/80 backdrop-blur-md p-8 rounded shadow-md w-full max-w-md border border-white/40">
                 <h2 className="text-2xl font-bold mb-6 text-center">Configuração Inicial</h2>
                 <p className="mb-4 text-gray-600 text-center">Cadastre o Administrador Master do sistema.</p>
                 <form onSubmit={handleSubmit(onSubmit)}>
