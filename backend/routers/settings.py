@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend import schemas, models, crud, auth
 from backend.database import get_db
-from typing import Dict
+from typing import Dict, Tuple, Optional
 import os
 import shutil
 import time
@@ -68,8 +68,77 @@ async def upload_favicon(
 
     return {"url": url}
 
-def process_background_image(file_content: bytes, output_path: str):
+@router.post("/logo")
+async def upload_logo(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.role != models.UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem alterar o logo")
+
+    UPLOAD_DIR = "/app/uploads/settings"
+    if not os.path.exists(UPLOAD_DIR):
+        os.makedirs(UPLOAD_DIR)
+
+    # Allow PNG, JPG, WEBP, SVG
+    ext = file.filename.split('.')[-1].lower()
+    filename = f"logo_{int(time.time())}.{ext}"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+
+    content = await file.read()
+
+    # Optional: Basic optimization for Logo (resize if huge)
     try:
+        with Image.open(io.BytesIO(content)) as img:
+            if img.width > 500 or img.height > 500:
+                img.thumbnail((500, 500), Image.Resampling.LANCZOS)
+                img.save(filepath, optimize=True)
+            else:
+                with open(filepath, "wb") as buffer:
+                    buffer.write(content)
+    except Exception as e:
+        # If PIL fails (e.g. SVG), just save raw
+        with open(filepath, "wb") as buffer:
+            buffer.write(content)
+
+    url = f"uploads/settings/{filename}"
+    await crud.update_system_setting(db, "logo_url", url)
+
+    return {"url": url}
+
+def get_dominant_color_and_luminance(file_content: bytes) -> Tuple[Optional[str], Optional[str]]:
+    try:
+        with Image.open(io.BytesIO(file_content)) as img:
+            if img.mode in ('RGBA', 'P'):
+                img = img.convert('RGB')
+
+            # Resize to 1x1 to get average color
+            img_small = img.resize((1, 1), Image.Resampling.LANCZOS)
+            color = img_small.getpixel((0, 0))
+
+            r, g, b = color
+            hex_color = '#{:02x}{:02x}{:02x}'.format(r, g, b)
+
+            # Calculate luminance (standard formula)
+            # Y = 0.299*R + 0.587*G + 0.114*B
+            luminance = (0.299 * r + 0.587 * g + 0.114 * b)
+
+            # If dark (low luminance), text should be light (white)
+            # If light (high luminance), text should be dark (slate-800)
+            text_color_class = "text-white" if luminance < 128 else "text-slate-800"
+
+            return hex_color, text_color_class
+
+    except Exception as e:
+        print(f"Error extracting color: {e}")
+        return None, None
+
+def process_background_image(file_content: bytes, output_path: str) -> Tuple[bool, Optional[str], Optional[str]]:
+    try:
+        # Extract color first
+        hex_color, text_class = get_dominant_color_and_luminance(file_content)
+
         with Image.open(io.BytesIO(file_content)) as img:
             # Convert to RGB (in case of RGBA/PNG)
             if img.mode in ('RGBA', 'P'):
@@ -81,10 +150,10 @@ def process_background_image(file_content: bytes, output_path: str):
 
             # Optimize and save as WEBP
             img.save(output_path, 'WEBP', quality=80, optimize=True)
-            return True
+            return True, hex_color, text_class
     except Exception as e:
         print(f"Error processing image: {e}")
-        return False
+        return False, None, None
 
 @router.post("/background")
 async def upload_background(
@@ -106,7 +175,8 @@ async def upload_background(
     content = await file.read()
 
     # Process image in thread pool to prevent blocking async loop
-    success = await asyncio.to_thread(process_background_image, content, filepath)
+    # Returns (success, color, text_class)
+    success, theme_color, theme_text = await asyncio.to_thread(process_background_image, content, filepath)
 
     if not success:
         raise HTTPException(status_code=400, detail="Erro ao processar imagem. Certifique-se de que é um arquivo de imagem válido.")
@@ -115,7 +185,12 @@ async def upload_background(
     url = f"uploads/settings/{filename}"
     await crud.update_system_setting(db, "background_url", url)
 
-    return {"url": url}
+    if theme_color:
+        await crud.update_system_setting(db, "theme_primary_color", theme_color)
+    if theme_text:
+        await crud.update_system_setting(db, "theme_text_color", theme_text)
+
+    return {"url": url, "theme_primary_color": theme_color, "theme_text_color": theme_text}
 
 @router.post("/smtp/test")
 async def test_smtp(

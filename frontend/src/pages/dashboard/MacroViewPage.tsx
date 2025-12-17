@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, Filter, Search, FileSpreadsheet, Table as TableIcon, FileText, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Download, Search, FileSpreadsheet, Table as TableIcon, FileText, ChevronDown } from 'lucide-react';
 import api from '../../api';
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
+    Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
     PieChart, Pie, Cell
 } from 'recharts';
 import * as XLSX from 'xlsx';
@@ -115,7 +115,6 @@ const MacroViewPage: React.FC = () => {
             // Ex: /dashboard/categoria/1 -> type='categoria', id='1'
 
             // Primeiro pegamos os metadados para o título
-            let filterName = '';
 
             if (type === 'filial') {
                 // Tenta pegar o nome da filial se possível, ou busca na lista de branches
@@ -123,16 +122,13 @@ const MacroViewPage: React.FC = () => {
                 // Se o ID for o nome (hack), usamos direto.
                 // O hook de navegação codificou o ID/Nome.
                 const decodedId = decodeURIComponent(id || '');
-                filterName = decodedId;
                 setTitle(`Filial: ${decodedId}`);
             } else if (type === 'categoria') {
                 const decodedId = decodeURIComponent(id || '');
-                filterName = decodedId;
                 setTitle(`Categoria: ${decodedId}`);
             } else if (type === 'status') {
                  // Caso genérico, ex: status
                  const val = searchParams.get('value');
-                 filterName = val || '';
                  setTitle(`Status: ${translateStatus(val || '')}`);
             }
 
@@ -281,7 +277,7 @@ const MacroViewPage: React.FC = () => {
                                     paddingAngle={5}
                                     dataKey="value"
                                 >
-                                    {chartData.statusData.map((entry, index) => (
+                                    {chartData.statusData.map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>

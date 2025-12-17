@@ -14,6 +14,7 @@ import Suppliers from './pages/Suppliers';
 import MacroViewPage from './pages/dashboard/MacroViewPage';
 import { AuthProvider, useAuth } from './AuthContext';
 import { ErrorProvider } from './context/ErrorContext';
+import { SettingsProvider, useSettings } from './context/SettingsContext';
 import Notifications from './components/Notifications';
 import { NotificationCenter } from './components/NotificationCenter';
 import api from './api';
@@ -31,33 +32,50 @@ import {
     Settings,
     Shield
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 const PrivateRoute = () => {
     const { isAuthenticated } = useAuth();
     return isAuthenticated ? <Outlet /> : <Navigate to="/login" />;
 };
 
-const NavItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, label: string, active: boolean }) => (
-    <Link
-        to={to}
-        className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group
-            ${active
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-blue-600'
-            }`}
-    >
-        <Icon size={20} className={active ? 'text-white' : 'text-slate-400 group-hover:text-blue-600'} />
-        <span className="font-medium">{label}</span>
-    </Link>
-);
-
 const Layout = () => {
     const { logout, user } = useAuth();
+    const { settings } = useSettings();
     const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(true);
 
     const isActive = (path: string) => location.pathname === path;
+
+    // Dynamic Sidebar Styles
+    const sidebarBgStyle = settings.theme_primary_color ? {
+        backgroundColor: settings.theme_primary_color + (settings.theme_primary_color.length === 7 ? 'E6' : ''), // 90% opacity
+    } : {};
+
+    // Determine text color class based on setting or default
+    const sidebarTextColorClass = settings.theme_text_color || 'text-slate-600';
+    const sidebarHeaderColorClass = settings.theme_text_color === 'text-white' ? 'text-white' : 'text-slate-800';
+    const navItemHoverClass = settings.theme_text_color === 'text-white'
+        ? 'hover:bg-white/10 hover:text-white'
+        : 'hover:bg-slate-100 hover:text-blue-600';
+
+    const activeItemClass = settings.theme_text_color === 'text-white'
+        ? 'bg-white/20 text-white shadow-md shadow-black/10'
+        : 'bg-blue-600 text-white shadow-md shadow-blue-500/20';
+
+    const NavItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, label: string, active: boolean }) => (
+        <Link
+            to={to}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group
+                ${active
+                    ? activeItemClass
+                    : `${sidebarTextColorClass} ${navItemHoverClass}`
+                }`}
+        >
+            <Icon size={20} className={active ? 'text-white' : (settings.theme_text_color === 'text-white' ? 'text-white/70 group-hover:text-white' : 'text-slate-400 group-hover:text-blue-600')} />
+            <span className="font-medium">{label}</span>
+        </Link>
+    );
 
     return (
         <div className="flex h-screen font-sans text-slate-800 bg-transparent">
@@ -65,31 +83,42 @@ const Layout = () => {
 
             {/* Sidebar */}
             <aside
-                className={`fixed inset-y-0 left-0 z-50 bg-white/90 backdrop-blur-md border-r border-slate-200/50 w-64 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto
+                style={sidebarBgStyle}
+                className={`fixed inset-y-0 left-0 z-50 ${!settings.theme_primary_color ? 'bg-white/90' : ''} backdrop-blur-md border-r border-slate-200/50 w-64 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
             >
-                <div className="flex items-center justify-between h-16 px-6 border-b border-slate-100">
+                <div className={`flex items-center justify-between h-16 px-6 border-b ${settings.theme_text_color === 'text-white' ? 'border-white/10' : 'border-slate-100'}`}>
                     <div className="flex items-center gap-2">
-                        <div className="bg-blue-600 p-1.5 rounded-lg">
-                            <Package className="text-white" size={20} />
-                        </div>
-                        <span className="text-xl font-bold bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent">
-                            Inventário
-                        </span>
+                        {settings.logo_url ? (
+                             <img
+                                src={`${api.defaults.baseURL}/${settings.logo_url}`}
+                                alt="Logo"
+                                className="h-10 w-auto object-contain"
+                             />
+                        ) : (
+                            <>
+                                <div className="bg-blue-600 p-1.5 rounded-lg">
+                                    <Package className="text-white" size={20} />
+                                </div>
+                                <span className={`text-xl font-bold ${settings.theme_primary_color ? sidebarHeaderColorClass : 'bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent'}`}>
+                                    Inventário
+                                </span>
+                            </>
+                        )}
                     </div>
-                    <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-600">
+                    <button onClick={() => setSidebarOpen(false)} className={`lg:hidden ${settings.theme_text_color === 'text-white' ? 'text-white/70 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
                         ×
                     </button>
                 </div>
 
                 <div className="p-4 space-y-1 overflow-y-auto h-[calc(100vh-4rem)]">
-                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-4 mt-2">Menu</div>
+                    <div className={`text-xs font-semibold uppercase tracking-wider mb-2 px-4 mt-2 ${settings.theme_text_color === 'text-white' ? 'text-white/50' : 'text-slate-400'}`}>Menu</div>
                     <NavItem to="/" icon={LayoutDashboard} label="Painel" active={isActive('/')} />
                     <NavItem to="/inventory" icon={Package} label="Inventário" active={isActive('/inventory')} />
                     <NavItem to="/branches" icon={Building2} label="Filiais" active={isActive('/branches')} />
                     <NavItem to="/suppliers" icon={Truck} label="Fornecedores" active={isActive('/suppliers')} />
 
-                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-4 mt-6">Gestão</div>
+                    <div className={`text-xs font-semibold uppercase tracking-wider mb-2 px-4 mt-6 ${settings.theme_text_color === 'text-white' ? 'text-white/50' : 'text-slate-400'}`}>Gestão</div>
                     <NavItem to="/reports" icon={FileText} label="Relatórios" active={isActive('/reports')} />
 
                     {user?.role !== 'OPERATOR' && (
@@ -105,10 +134,14 @@ const Layout = () => {
                         <NavItem to="/system-settings" icon={Settings} label="Configurações" active={isActive('/system-settings')} />
                     )}
 
-                    <div className="mt-8 pt-4 border-t border-slate-100">
+                    <div className={`mt-8 pt-4 border-t ${settings.theme_text_color === 'text-white' ? 'border-white/10' : 'border-slate-100'}`}>
                         <button
                             onClick={logout}
-                            className="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+                            className={`flex w-full items-center gap-3 px-4 py-3 rounded-lg transition-colors
+                                ${settings.theme_text_color === 'text-white'
+                                    ? 'text-white/80 hover:bg-white/10 hover:text-white'
+                                    : 'text-slate-600 hover:bg-red-50 hover:text-red-600'
+                                }`}
                         >
                             <LogOut size={20} />
                             <span className="font-medium">Sair</span>
@@ -187,64 +220,36 @@ const AppRoutes = () => {
      );
 }
 
+const MainLayout = () => {
+    const { settings } = useSettings();
+    const backgroundUrl = settings.background_url
+        ? `${api.defaults.baseURL}/${settings.background_url}?t=${new Date().getTime()}`
+        : null;
+
+    return (
+        <div className={!backgroundUrl ? "bg-slate-50" : ""} style={backgroundUrl ? {
+            backgroundImage: `url(${backgroundUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundAttachment: 'fixed',
+            minHeight: '100vh'
+        } : {}}>
+             <AppRoutes />
+        </div>
+    )
+}
+
 function App() {
-  const [backgroundUrl, setBackgroundUrl] = useState<string | null>(null);
-
-  const loadSettings = async () => {
-      try {
-          const response = await api.get('/settings/');
-          const settings = response.data;
-          if (settings.app_title) {
-              document.title = settings.app_title;
-          }
-          if (settings.favicon_url) {
-              let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
-              if (!link) {
-                  link = document.createElement('link');
-                  link.rel = 'icon';
-                  document.getElementsByTagName('head')[0].appendChild(link);
-              }
-              link.href = `${api.defaults.baseURL}/${settings.favicon_url}`;
-          }
-          if (settings.background_url) {
-              // Append timestamp to force reload if URL is same but content changed (though filename changes usually)
-              setBackgroundUrl(`${api.defaults.baseURL}/${settings.background_url}?t=${new Date().getTime()}`);
-          }
-      } catch (error) {
-          // Silent fail
-      }
-  };
-
-  useEffect(() => {
-        loadSettings();
-
-        const handleSettingsUpdate = () => {
-             loadSettings();
-        };
-
-        window.addEventListener('settings_updated', handleSettingsUpdate);
-
-        return () => {
-            window.removeEventListener('settings_updated', handleSettingsUpdate);
-        };
-    }, []);
-
   return (
-    <div className={!backgroundUrl ? "bg-slate-50" : ""} style={backgroundUrl ? {
-        backgroundImage: `url(${backgroundUrl})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
-        minHeight: '100vh'
-    } : {}}>
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
             <ErrorProvider>
-                <AppRoutes />
+                <SettingsProvider>
+                    <MainLayout />
+                </SettingsProvider>
             </ErrorProvider>
         </AuthProvider>
     </Router>
-    </div>
   )
 }
 

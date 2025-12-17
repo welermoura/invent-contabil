@@ -3,12 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import api from '../api';
 import { useAuth } from '../AuthContext';
+import { useSettings } from '../context/SettingsContext';
 import { useNavigate } from 'react-router-dom';
 import { Package, Lock, Mail, Loader2, ArrowRight } from 'lucide-react';
 
 const Login: React.FC = () => {
     const { register, handleSubmit, formState: { errors } } = useForm();
     const { login } = useAuth();
+    const { settings } = useSettings();
     const navigate = useNavigate();
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -58,9 +60,19 @@ const Login: React.FC = () => {
 
             <div className="bg-white/80 backdrop-blur-md p-10 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] w-full max-w-md z-10 border border-white/40">
                 <div className="text-center mb-8">
-                    <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30">
-                        <Package className="text-white" size={24} />
-                    </div>
+                    {settings.logo_url ? (
+                        <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+                            <img
+                                src={`${api.defaults.baseURL}/${settings.logo_url}`}
+                                alt="Logo"
+                                className="w-full h-full object-contain"
+                            />
+                        </div>
+                    ) : (
+                        <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30">
+                            <Package className="text-white" size={24} />
+                        </div>
+                    )}
                     <h2 className="text-2xl font-bold text-slate-800">Bem-vindo</h2>
                     <p className="text-slate-500 text-sm mt-1">Acesse sua conta para continuar</p>
                 </div>
