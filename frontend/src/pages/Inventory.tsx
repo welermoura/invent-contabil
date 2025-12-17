@@ -61,6 +61,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
 
     const [isDuplicateAssetModalOpen, setIsDuplicateAssetModalOpen] = useState(false);
     const [duplicateAssetItem, setDuplicateAssetItem] = useState<any>(null);
+    const [safeguardThreshold, setSafeguardThreshold] = useState<number | null>(null);
 
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [transferTargetBranch, setTransferTargetBranch] = useState<string>('');
@@ -216,6 +217,17 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
         }
     }
 
+    const fetchSettings = async () => {
+        try {
+            const response = await api.get('/settings/');
+            if (response.data.safeguard_threshold) {
+                setSafeguardThreshold(parseFloat(response.data.safeguard_threshold));
+            }
+        } catch (error) {
+            console.error("Erro ao carregar configurações", error);
+        }
+    }
+
     const fetchSuppliers = async (search: string = '') => {
         try {
             const response = await api.get('/suppliers/', { params: { search } });
@@ -229,6 +241,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
         // Initial load
         fetchBranches();
         fetchCategories();
+        fetchSettings();
     }, []);
 
     // Export Logic
@@ -861,7 +874,12 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Ativo Fixo {selectedItem.fixed_asset_number ? '' : '(Obrigatório)'}</label>
+                                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                    Ativo Fixo
+                                    {selectedItem.fixed_asset_number ? '' :
+                                        (safeguardThreshold !== null && selectedItem.invoice_value < safeguardThreshold ? ' (Opcional - Abaixo da Salva Guarda)' : ' (Obrigatório)')
+                                    }
+                                </label>
                                 {selectedItem.fixed_asset_number ? (
                                     <div className="px-4 py-2 bg-slate-100 border border-slate-200 rounded-lg text-slate-600 font-mono">{selectedItem.fixed_asset_number}</div>
                                 ) : (
@@ -873,7 +891,12 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                             <button onClick={() => { setIsApproveModalOpen(false); setRejectionReason(''); setIsRejectModalOpen(true); }} className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors">Rejeitar</button>
                             <button onClick={() => setIsApproveModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">Cancelar</button>
                             <button onClick={async () => {
-                                if (!fixedAssetNumber && !selectedItem.fixed_asset_number) { showWarning("ASSET_REQUIRED"); return; }
+                                const isAssetRequired = safeguardThreshold === null || selectedItem.invoice_value >= safeguardThreshold;
+
+                                if (!fixedAssetNumber && !selectedItem.fixed_asset_number && isAssetRequired) {
+                                    showWarning("O número do Ativo Fixo é obrigatório para este valor.");
+                                    return;
+                                }
 
                                 // Verify uniqueness
                                 try {

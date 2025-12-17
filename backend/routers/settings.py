@@ -24,8 +24,14 @@ async def update_settings(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    # Allow Approvers to update 'safeguard_threshold'
     if current_user.role != models.UserRole.ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores podem alterar configurações do sistema")
+        # If not admin, check if only safeguard_threshold is being updated and user is APPROVER
+        if current_user.role == models.UserRole.APPROVER:
+            if not all(key == 'safeguard_threshold' for key in settings.keys()):
+                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Aprovadores podem alterar apenas a configuração de Salva Guarda")
+        else:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem alterar configurações")
 
     updated = {}
     for key, value in settings.items():
