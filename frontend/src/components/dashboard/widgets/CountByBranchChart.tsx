@@ -34,7 +34,7 @@ const CountByBranchChart: React.FC = () => {
                 margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
                 onClick={(state) => {
                     if (state && state.activePayload) {
-                        navigateToMacroView('branch', state.activePayload[0].payload.name);
+                        navigateToMacroView('filial', state.activePayload[0].payload.name);
                     }
                 }}
                 className="cursor-pointer"

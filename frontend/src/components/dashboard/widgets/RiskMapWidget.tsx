@@ -2,9 +2,11 @@ import React from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import ChartWidget from './ChartWidget';
 import { useDashboard } from '../DashboardContext';
+import { useDashboardNavigation } from '../../../hooks/useDashboardNavigation';
 
 const RiskMapWidget: React.FC = () => {
     const { aggregates, theme } = useDashboard();
+    const { navigateToMacroView } = useDashboardNavigation();
 
     // Map status to risk levels/colors
     // Approved -> Low Risk (Green)
@@ -22,6 +24,7 @@ const RiskMapWidget: React.FC = () => {
     const data = Object.entries(aggregates.itemsByStatus)
         .map(([status, count]) => ({
             name: statusMap[status]?.label || status,
+            statusKey: status,
             value: count,
             color: statusMap[status]?.color || '#cbd5e1'
         }))
@@ -43,7 +46,14 @@ const RiskMapWidget: React.FC = () => {
 
     return (
         <ChartWidget title="Mapa de Risco (Status)">
-            <PieChart>
+            <PieChart
+                onClick={(data) => {
+                    if (data && data.activePayload) {
+                        navigateToMacroView('status', data.activePayload[0].payload.statusKey);
+                    }
+                }}
+                className="cursor-pointer"
+            >
                 <Pie
                     data={data}
                     cx="50%"
