@@ -1,5 +1,5 @@
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend import schemas, models, auth, crud
@@ -32,9 +32,9 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.post("/forgot-password", status_code=200)
-async def forgot_password(request: schemas.ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+async def forgot_password(request_body: schemas.ForgotPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)):
     # 1. Check if user exists
-    result = await db.execute(select(models.User).where(models.User.email == request.email))
+    result = await db.execute(select(models.User).where(models.User.email == request_body.email))
     user = result.scalars().first()
 
     if user:
@@ -45,18 +45,32 @@ async def forgot_password(request: schemas.ForgotPasswordRequest, db: AsyncSessi
             expires_delta=expires
         )
 
-        # 3. Send Email
-        # We need the frontend URL. Since this is an internal app, we might check Referer or settings.
-        # For now, we will assume the host from the request or a setting.
-        # Let's try to get a system setting 'frontend_url', else default to something reasonable or relative.
-        # Actually, best is to rely on user config, but for now we'll assume standard port or rely on users correct config.
-        # Simplest: Just send the token or a constructed link if we know the domain.
-        # Let's look for a system setting, or use a placeholder the user must replace if we don't know.
+        # 3. Determine Base URL
+        # Priority:
+        # 1. Origin Header (where the request came from)
+        # 2. Referer Header
+        # 3. System Setting 'frontend_url'
+        # 4. Default localhost
 
+        origin = request.headers.get("origin")
+        referer = request.headers.get("referer")
         frontend_url_setting = await crud.get_system_setting(db, "frontend_url")
-        base_url = frontend_url_setting.value if frontend_url_setting else "http://localhost:5173"
 
-        # Handle trailing slash
+        base_url = "http://localhost:5173" # Default
+
+        if origin:
+            base_url = origin
+        elif referer:
+            # Referer might contain path, we need just the domain
+            # simple strip for now or use urlparse if strictly needed, but typically Origin is best.
+            # If referer ends with '/', remove it.
+            base_url = referer.rstrip("/")
+            # If referer includes path like /login, we should ideally strip it,
+            # but usually for this simple app, origin is present for CORS requests.
+        elif frontend_url_setting:
+             base_url = frontend_url_setting.value
+
+        # Clean trailing slash
         if base_url.endswith("/"):
             base_url = base_url[:-1]
 
