@@ -42,35 +42,113 @@ async def get_branch_members(db: AsyncSession, branch_id: int) -> List[models.Us
 
     return branch_members
 
-def generate_html_email(title: str, message: str, action_url: Optional[str] = None, action_text: Optional[str] = "Ver no Sistema") -> str:
-    """Generates a clean HTML email body."""
+def generate_html_email(title: str, message: str, action_url: Optional[str] = None, action_text: Optional[str] = "Ver no Sistema", app_title: str = "Sistema de Inventário") -> str:
+    """Generates a modern, responsive HTML email body."""
 
     html = f"""
     <!DOCTYPE html>
-    <html>
+    <html lang="pt-BR">
     <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-            body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-            .container {{ max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9; }}
-            .header {{ background-color: #4F46E5; color: white; padding: 15px; text-align: center; border-radius: 8px 8px 0 0; }}
-            .content {{ padding: 20px; background-color: white; }}
-            .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #666; }}
-            .button {{ display: inline-block; padding: 10px 20px; margin-top: 20px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 5px; }}
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+            body {{
+                font-family: 'Inter', Arial, sans-serif;
+                background-color: #f3f4f6;
+                margin: 0;
+                padding: 0;
+                -webkit-font-smoothing: antialiased;
+                color: #1f2937;
+            }}
+            .wrapper {{
+                width: 100%;
+                background-color: #f3f4f6;
+                padding: 40px 0;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                background-color: #ffffff;
+                border-radius: 12px;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                overflow: hidden;
+            }}
+            .header {{
+                background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+                padding: 30px 20px;
+                text-align: center;
+            }}
+            .header h1 {{
+                color: #ffffff;
+                margin: 0;
+                font-size: 24px;
+                font-weight: 700;
+                letter-spacing: -0.025em;
+            }}
+            .content {{
+                padding: 40px 30px;
+            }}
+            .message-title {{
+                font-size: 20px;
+                font-weight: 600;
+                color: #111827;
+                margin-bottom: 16px;
+            }}
+            .message-body {{
+                font-size: 16px;
+                line-height: 1.6;
+                color: #4b5563;
+                margin-bottom: 30px;
+            }}
+            .action-button {{
+                display: inline-block;
+                background-color: #2563eb;
+                color: #ffffff !important;
+                font-weight: 600;
+                text-decoration: none;
+                padding: 12px 32px;
+                border-radius: 8px;
+                transition: background-color 0.2s;
+            }}
+            .action-button:hover {{
+                background-color: #1d4ed8;
+            }}
+            .footer {{
+                background-color: #f9fafb;
+                padding: 24px;
+                text-align: center;
+                border-top: 1px solid #e5e7eb;
+            }}
+            .footer p {{
+                margin: 0;
+                font-size: 12px;
+                color: #9ca3af;
+            }}
+            .app-name {{
+                font-weight: 600;
+                color: #6b7280;
+            }}
         </style>
     </head>
     <body>
-        <div class="container">
-            <div class="header">
-                <h2>{title}</h2>
-            </div>
-            <div class="content">
-                <p>Olá,</p>
-                <p>{message.replace(chr(10), '<br>')}</p>
-
-                {f'<a href="{action_url}" class="button">{action_text}</a>' if action_url else ''}
-            </div>
-            <div class="footer">
-                <p>Este é um e-mail automático do Sistema de Inventário. Por favor, não responda.</p>
+        <div class="wrapper">
+            <div class="container">
+                <div class="header">
+                    <h1>{app_title}</h1>
+                </div>
+                <div class="content">
+                    <h2 class="message-title">{title}</h2>
+                    <div class="message-body">
+                        {message.replace(chr(10), '<br>')}
+                    </div>
+                    {f'<div style="text-align: center;"><a href="{action_url}" class="action-button">{action_text}</a></div>' if action_url else ''}
+                </div>
+                <div class="footer">
+                    <p>Este é um e-mail automático. Por favor, não responda.</p>
+                    <p style="margin-top: 8px;">&copy; {app_title}. Todos os direitos reservados.</p>
+                </div>
             </div>
         </div>
     </body>
@@ -125,9 +203,17 @@ async def notify_users(
         smtp_from = (await crud.get_system_setting(db, "smtp_from_email")).value
         smtp_security = (await crud.get_system_setting(db, "smtp_security")).value
 
-        subject = email_subject or title
-        # Use provided HTML or generate default
-        body_html = email_html or generate_html_email(title, message)
+        # Get App Title for subject
+        app_title_setting = await crud.get_system_setting(db, "app_title")
+        app_title = app_title_setting.value if app_title_setting else "Sistema de Inventário"
+
+        # Format Subject: [AppName] Title
+        final_subject = email_subject or title
+        if app_title:
+             final_subject = f"[{app_title}] {final_subject}"
+
+        # Use provided HTML or generate default with app title
+        body_html = email_html or generate_html_email(title, message, app_title=app_title)
 
         # Deduplicate users by email
         sent_emails = set()
