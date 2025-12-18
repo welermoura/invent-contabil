@@ -1,10 +1,12 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 import ChartWidget from './ChartWidget';
 import { useDashboard } from '../DashboardContext';
 
 const PurchaseVsAccountingChart: React.FC = () => {
     const { aggregates, theme } = useDashboard();
+    const navigate = useNavigate();
 
     const data = [
         {
@@ -33,7 +35,12 @@ const PurchaseVsAccountingChart: React.FC = () => {
 
     return (
         <ChartWidget title="Valor de Compra vs. Contábil">
-            <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <BarChart
+                data={data}
+                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                onClick={() => navigate('/inventory')}
+                className="cursor-pointer"
+            >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#334155' : '#e2e8f0'} />
                 <XAxis dataKey="name" hide />
                 <YAxis

@@ -52,7 +52,7 @@ const CountByCategoryChart: React.FC = () => {
                     stroke={theme === 'dark' ? '#1e293b' : '#fff'}
                     strokeWidth={2}
                     onClick={(data) => {
-                         if (data) {
+                         if (data && data.name !== 'Outros') {
                              navigateToMacroView('categoria', data.name);
                          }
                     }}
