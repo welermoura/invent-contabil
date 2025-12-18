@@ -222,7 +222,7 @@ async def notify_users(
             if user.email and "@" in user.email and user.email not in sent_emails:
                 send_email(
                     to_email=user.email,
-                    subject=subject,
+                    subject=final_subject,
                     html_body=body_html,
                     host=smtp_host_setting.value,
                     port=smtp_port,
