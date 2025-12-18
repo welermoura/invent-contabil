@@ -20,7 +20,6 @@ import { SettingsProvider, useSettings } from './context/SettingsContext';
 import Notifications from './components/Notifications';
 import { NotificationCenter } from './components/NotificationCenter';
 import api from './api';
-import { translateRole } from './utils/translations';
 import {
     LayoutDashboard,
     Package,
@@ -176,15 +175,13 @@ const Layout = () => {
                     <div className="flex items-center ml-auto gap-4">
                         <NotificationCenter />
 
-                        <div className="text-right hidden md:block">
-                            <p className="text-sm font-medium text-slate-700">{user?.email || 'Usuário'}</p>
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-medium">
-                                {translateRole(user?.role)}
-                            </span>
-                        </div>
-                        <div className="h-9 w-9 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold border border-blue-200">
+                        <Link
+                            to="/profile"
+                            title="Meu Perfil"
+                            className="h-10 w-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold border border-blue-200 hover:ring-2 hover:ring-blue-500 hover:bg-blue-200 transition-all cursor-pointer shadow-sm"
+                        >
                             {user?.email?.charAt(0).toUpperCase()}
-                        </div>
+                        </Link>
                     </div>
                 </header>
 
