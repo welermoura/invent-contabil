@@ -22,7 +22,7 @@ const CountByCategoryChart: React.FC = () => {
         data.push({ name: 'Outros', value: totalAll - totalTop });
     }
 
-    const COLORS = ['#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#e0e7ff', '#c7d2fe', '#a5b4fc', '#818cf8', '#94a3b8'];
+    const COLORS = ['#0ea5e9', '#22c55e', '#eab308', '#f97316', '#ef4444', '#a855f7', '#ec4899', '#6366f1', '#14b8a6', '#f43f5e'];
 
     const CustomTooltip = ({ active, payload }: any) => {
         if (active && payload && payload.length) {
