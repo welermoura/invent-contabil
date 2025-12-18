@@ -55,7 +55,7 @@ const Login: React.FC = () => {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-transparent relative overflow-hidden font-sans">
-            <div className="bg-white/80 backdrop-blur-md p-10 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] w-full max-w-md z-10 border border-white/40">
+            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-10 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] w-full max-w-md z-10 border border-white/40 dark:border-slate-700/50">
                 <div className="text-center mb-8">
                     {settings.logo_url ? (
                         <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
@@ -70,12 +70,12 @@ const Login: React.FC = () => {
                             <Package className="text-white" size={24} />
                         </div>
                     )}
-                    <h2 className="text-2xl font-bold text-slate-800">Bem-vindo</h2>
-                    <p className="text-slate-500 text-sm mt-1">Acesse sua conta para continuar</p>
+                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Bem-vindo</h2>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Acesse sua conta para continuar</p>
                 </div>
 
                 {error && (
-                    <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm flex items-center gap-2 animate-fade-in">
+                    <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400 text-sm flex items-center gap-2 animate-fade-in">
                         <span className="block w-1.5 h-1.5 bg-red-500 rounded-full"></span>
                         {error}
                     </div>
@@ -83,12 +83,12 @@ const Login: React.FC = () => {
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                     <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">E-mail</label>
+                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">E-mail</label>
                         <div className="relative">
-                            <Mail className="absolute left-4 top-3.5 text-slate-400" size={18} />
+                            <Mail className="absolute left-4 top-3.5 text-slate-400 dark:text-slate-500" size={18} />
                             <input
                                 {...register('email', { required: true })}
-                                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
+                                className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                 placeholder="seu@email.com"
                             />
                         </div>
@@ -96,13 +96,13 @@ const Login: React.FC = () => {
                     </div>
 
                     <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider ml-1">Senha</label>
+                        <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Senha</label>
                         <div className="relative">
-                            <Lock className="absolute left-4 top-3.5 text-slate-400" size={18} />
+                            <Lock className="absolute left-4 top-3.5 text-slate-400 dark:text-slate-500" size={18} />
                             <input
                                 type="password"
                                 {...register('password', { required: true })}
-                                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
+                                className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                 placeholder="••••••••"
                             />
                         </div>

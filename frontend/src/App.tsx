@@ -33,7 +33,7 @@ import {
     Shield
 } from 'lucide-react';
 import { useState } from 'react';
-import AdaptiveOverlay from './components/AdaptiveOverlay';
+import AdaptiveContrastManager from './components/AdaptiveContrastManager';
 
 const PrivateRoute = () => {
     const { isAuthenticated } = useAuth();
@@ -234,7 +234,7 @@ const MainLayout = () => {
             backgroundPosition: 'center',
             backgroundAttachment: 'fixed',
         } : {}}>
-             {backgroundUrl && <AdaptiveOverlay imageUrl={backgroundUrl} />}
+             <AdaptiveContrastManager imageUrl={backgroundUrl} />
 
              <div className="relative z-10">
                 <AppRoutes />
