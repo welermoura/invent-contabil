@@ -1,6 +1,7 @@
 
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import Login from './pages/Login';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import Branches from './pages/Branches';
@@ -199,6 +200,7 @@ const AppRoutes = () => {
      return (
         <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/setup" element={<Setup />} />
             <Route element={<PrivateRoute />}>
                 <Route element={<Layout />}>

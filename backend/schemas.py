@@ -235,3 +235,10 @@ class SmtpTestRequest(BaseModel):
     from_email: str
     to_email: str
     security: str  # "TLS", "SSL", "None"
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
