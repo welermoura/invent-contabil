@@ -15,7 +15,8 @@ router = APIRouter()
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     # Autenticar usuário
     # OAuth2PasswordRequestForm espera username e password. Aqui usaremos email como username.
-    result = await db.execute(select(models.User).where(models.User.email == form_data.username))
+    # Use ilike for case-insensitive email lookup
+    result = await db.execute(select(models.User).where(models.User.email.ilike(form_data.username)))
     user = result.scalars().first()
 
     if not user or not auth.verify_password(form_data.password, user.hashed_password):

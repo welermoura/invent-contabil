@@ -8,7 +8,7 @@ from datetime import datetime
 
 # Users
 async def get_user_by_email(db: AsyncSession, email: str):
-    result = await db.execute(select(models.User).where(models.User.email == email))
+    result = await db.execute(select(models.User).where(models.User.email.ilike(email)))
     return result.scalars().first()
 
 async def get_user(db: AsyncSession, user_id: int):
