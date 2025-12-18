@@ -33,6 +33,7 @@ import {
     Shield
 } from 'lucide-react';
 import { useState } from 'react';
+import AdaptiveOverlay from './components/AdaptiveOverlay';
 
 const PrivateRoute = () => {
     const { isAuthenticated } = useAuth();
@@ -227,14 +228,17 @@ const MainLayout = () => {
         : null;
 
     return (
-        <div className={!backgroundUrl ? "bg-slate-50" : ""} style={backgroundUrl ? {
+        <div className={`relative min-h-screen ${!backgroundUrl ? "bg-slate-50" : ""}`} style={backgroundUrl ? {
             backgroundImage: `url(${backgroundUrl})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundAttachment: 'fixed',
-            minHeight: '100vh'
         } : {}}>
-             <AppRoutes />
+             {backgroundUrl && <AdaptiveOverlay imageUrl={backgroundUrl} />}
+
+             <div className="relative z-10">
+                <AppRoutes />
+             </div>
         </div>
     )
 }
