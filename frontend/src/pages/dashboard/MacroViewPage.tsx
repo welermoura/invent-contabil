@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, Search, FileSpreadsheet, Table as TableIcon, FileText, ChevronDown } from 'lucide-react';
 import api from '../../api';
 import {
@@ -24,7 +24,6 @@ interface Item {
 
 const MacroViewPage: React.FC = () => {
     const { type, id } = useParams<{ type: string; id: string }>();
-    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
     // Título dinâmico
@@ -128,7 +127,7 @@ const MacroViewPage: React.FC = () => {
                 setTitle(`Categoria: ${decodedId}`);
             } else if (type === 'status') {
                  // Caso genérico, ex: status
-                 const val = searchParams.get('value');
+                 const val = decodeURIComponent(id || '');
                  setTitle(`Status: ${translateStatus(val || '')}`);
             }
 
@@ -152,7 +151,7 @@ const MacroViewPage: React.FC = () => {
                 // O backend retorna 'category' string legacy ou 'category_rel.name'
                 data = data.filter(i => (i.category_rel?.name === target) || ((i as any).category === target));
             } else if (type === 'status') {
-                const target = searchParams.get('value');
+                const target = decodeURIComponent(id || '');
                 data = data.filter(i => i.status === target);
             }
 
