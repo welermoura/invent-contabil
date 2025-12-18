@@ -1,9 +1,0 @@
-
-> frontend@0.0.0 dev
-> vite --host --port 5174
-
-
-  VITE v5.4.21  ready in 864 ms
-
-  ➜  Local:   http://localhost:5174/
-  ➜  Network: http://192.168.0.2:5174/

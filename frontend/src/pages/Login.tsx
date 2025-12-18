@@ -15,6 +15,12 @@ const Login: React.FC = () => {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
+    // Forgot Password State
+    const [isForgotOpen, setIsForgotOpen] = useState(false);
+    const [forgotEmail, setForgotEmail] = useState('');
+    const [forgotLoading, setForgotLoading] = useState(false);
+    const [forgotMessage, setForgotMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
     useEffect(() => {
         const checkStatus = async () => {
             try {
@@ -53,8 +59,79 @@ const Login: React.FC = () => {
         }
     };
 
+    const handleForgotPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!forgotEmail) return;
+
+        setForgotLoading(true);
+        setForgotMessage(null);
+
+        try {
+            await api.post('/forgot-password', { email: forgotEmail });
+            setForgotMessage({ type: 'success', text: 'Se o e-mail estiver cadastrado, você receberá um link em instantes.' });
+            setTimeout(() => {
+                setIsForgotOpen(false);
+                setForgotMessage(null);
+                setForgotEmail('');
+            }, 3000);
+        } catch (err) {
+            setForgotMessage({ type: 'error', text: 'Erro ao solicitar recuperação. Tente novamente.' });
+        } finally {
+            setForgotLoading(false);
+        }
+    };
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-transparent relative overflow-hidden font-sans">
+             {/* Forgot Password Modal */}
+             {isForgotOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden p-6 border border-white/20 animate-in zoom-in-95">
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Recuperar Senha</h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-4">
+                            Digite seu e-mail para receber um link de redefinição de senha.
+                        </p>
+
+                        {forgotMessage && (
+                            <div className={`p-3 rounded-lg text-sm mb-4 ${forgotMessage.type === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                {forgotMessage.text}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleForgotPassword}>
+                            <div className="mb-4">
+                                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">E-mail</label>
+                                <input
+                                    type="email"
+                                    value={forgotEmail}
+                                    onChange={(e) => setForgotEmail(e.target.value)}
+                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                    placeholder="seu@email.com"
+                                    required
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsForgotOpen(false)}
+                                    className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm font-medium"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={forgotLoading}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm flex items-center gap-2"
+                                >
+                                    {forgotLoading && <Loader2 className="animate-spin" size={14} />}
+                                    Enviar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md p-10 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] w-full max-w-md z-10 border border-white/40 dark:border-slate-700">
                 <div className="text-center mb-8">
                     {settings.logo_url ? (
@@ -107,6 +184,16 @@ const Login: React.FC = () => {
                             />
                         </div>
                         {errors.password && <span className="text-red-500 text-xs ml-1">Campo obrigatório</span>}
+                    </div>
+
+                    <div className="flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => setIsForgotOpen(true)}
+                            className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+                        >
+                            Esqueci minha senha
+                        </button>
                     </div>
 
                     <button
