@@ -33,8 +33,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 @router.post("/forgot-password", status_code=200)
 async def forgot_password(request_body: schemas.ForgotPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)):
-    # 1. Check if user exists
-    result = await db.execute(select(models.User).where(models.User.email == request_body.email))
+    # 1. Check if user exists (Case insensitive)
+    result = await db.execute(select(models.User).where(models.User.email.ilike(request_body.email)))
     user = result.scalars().first()
 
     if user:
