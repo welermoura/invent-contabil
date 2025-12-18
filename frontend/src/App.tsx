@@ -31,9 +31,10 @@ import {
     LogOut,
     Menu as MenuIcon,
     Settings,
-    Shield
+    Shield,
+    User
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import AdaptiveContrastManager from './components/AdaptiveContrastManager';
 
 const PrivateRoute = () => {
@@ -46,8 +47,23 @@ const Layout = () => {
     const { settings } = useSettings();
     const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+    const profileMenuRef = useRef<HTMLDivElement>(null);
 
     const isActive = (path: string) => location.pathname === path;
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+                setIsProfileMenuOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
 
     // Dynamic Sidebar Styles
     const sidebarBgStyle = settings.theme_primary_color ? {
@@ -136,20 +152,6 @@ const Layout = () => {
                         <NavItem to="/system-settings" icon={Settings} label="Configurações" active={isActive('/system-settings')} />
                     )}
 
-                    <div className={`mt-8 pt-4 border-t ${settings.theme_text_color === 'text-white' ? 'border-white/10' : 'border-slate-100'}`}>
-                        <NavItem to="/profile" icon={UsersIcon} label="Meu Perfil" active={isActive('/profile')} />
-                        <button
-                            onClick={logout}
-                            className={`flex w-full items-center gap-3 px-4 py-3 rounded-lg transition-colors mt-1
-                                ${settings.theme_text_color === 'text-white'
-                                    ? 'text-white/80 hover:bg-white/10 hover:text-white'
-                                    : 'text-slate-600 hover:bg-red-50 hover:text-red-600'
-                                }`}
-                        >
-                            <LogOut size={20} />
-                            <span className="font-medium">Sair</span>
-                        </button>
-                    </div>
                 </div>
             </aside>
 
@@ -175,13 +177,49 @@ const Layout = () => {
                     <div className="flex items-center ml-auto gap-4">
                         <NotificationCenter />
 
-                        <Link
-                            to="/profile"
-                            title="Meu Perfil"
-                            className="h-10 w-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold border border-blue-200 hover:ring-2 hover:ring-blue-500 hover:bg-blue-200 transition-all cursor-pointer shadow-sm"
-                        >
-                            {user?.email?.charAt(0).toUpperCase()}
-                        </Link>
+                        <div className="relative" ref={profileMenuRef}>
+                            <button
+                                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                                className="h-10 w-10 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold border border-blue-200 hover:ring-2 hover:ring-blue-500 hover:bg-blue-200 transition-all cursor-pointer shadow-sm focus:outline-none"
+                                title="Menu do Usuário"
+                            >
+                                {user?.email?.charAt(0).toUpperCase()}
+                            </button>
+
+                            {isProfileMenuOpen && (
+                                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+                                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                                            {user?.name || 'Usuário'}
+                                        </p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                            {user?.email}
+                                        </p>
+                                    </div>
+
+                                    <div className="py-1">
+                                        <Link
+                                            to="/profile"
+                                            className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                                            onClick={() => setIsProfileMenuOpen(false)}
+                                        >
+                                            <User size={16} />
+                                            Meu Perfil
+                                        </Link>
+                                        <button
+                                            onClick={() => {
+                                                logout();
+                                                setIsProfileMenuOpen(false);
+                                            }}
+                                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                        >
+                                            <LogOut size={16} />
+                                            Sair
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </header>
 
