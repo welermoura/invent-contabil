@@ -2,6 +2,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link, useLocation } from 'react-router-dom';
 import Login from './pages/Login';
 import ResetPassword from './pages/ResetPassword';
+import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import Branches from './pages/Branches';
@@ -137,9 +138,10 @@ const Layout = () => {
                     )}
 
                     <div className={`mt-8 pt-4 border-t ${settings.theme_text_color === 'text-white' ? 'border-white/10' : 'border-slate-100'}`}>
+                        <NavItem to="/profile" icon={UsersIcon} label="Meu Perfil" active={isActive('/profile')} />
                         <button
                             onClick={logout}
-                            className={`flex w-full items-center gap-3 px-4 py-3 rounded-lg transition-colors
+                            className={`flex w-full items-center gap-3 px-4 py-3 rounded-lg transition-colors mt-1
                                 ${settings.theme_text_color === 'text-white'
                                     ? 'text-white/80 hover:bg-white/10 hover:text-white'
                                     : 'text-slate-600 hover:bg-red-50 hover:text-red-600'
@@ -215,6 +217,7 @@ const AppRoutes = () => {
                     <Route path="/suppliers" element={<Suppliers />} />
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/users" element={<Users />} />
+                    <Route path="/profile" element={<Profile />} />
                     <Route path="/system-settings" element={<SystemSettings />} />
                     <Route path="/safeguard-settings" element={<SafeguardSettings />} />
                 </Route>

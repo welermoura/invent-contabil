@@ -10,6 +10,21 @@ router = APIRouter(prefix="/users", tags=["users"])
 async def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
+@router.post("/me/change-password", status_code=status.HTTP_200_OK)
+async def change_password(
+    request: schemas.ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    # Verify current password
+    if not auth.verify_password(request.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Senha atual incorreta")
+
+    # Update password
+    current_user.hashed_password = auth.get_password_hash(request.new_password)
+    await db.commit()
+    return {"message": "Senha alterada com sucesso"}
+
 @router.get("/", response_model=List[schemas.UserResponse])
 async def read_users(
     skip: int = 0,
