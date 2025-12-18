@@ -6,7 +6,7 @@ from backend import schemas, models, auth, crud
 from backend.database import get_db
 from sqlalchemy.future import select
 from sqlalchemy import func
-from backend.notifications import send_email
+from backend.notifications import send_email, generate_html_email
 import logging
 
 router = APIRouter()
@@ -76,14 +76,27 @@ async def forgot_password(request_body: schemas.ForgotPasswordRequest, request: 
 
         reset_link = f"{base_url}/reset-password?token={reset_token}"
 
-        subject = "Recuperação de Senha"
-        html_body = f"""
-        <p>Olá,</p>
-        <p>Você solicitou a recuperação de senha.</p>
-        <p>Clique no link abaixo para redefinir sua senha (válido por 1 hora):</p>
-        <p><a href="{reset_link}">Redefinir Senha</a></p>
-        <p>Se você não solicitou, ignore este e-mail.</p>
+        # Get App Title
+        app_title_setting = await crud.get_system_setting(db, "app_title")
+        app_title = app_title_setting.value if app_title_setting else "Sistema de Inventário"
+
+        subject = f"[{app_title}] Recuperação de Senha"
+
+        message_body = """
+        Você solicitou a recuperação de senha.
+
+        Clique no botão abaixo para redefinir sua senha (válido por 1 hora).
+
+        Se você não solicitou, ignore este e-mail.
         """
+
+        html_body = generate_html_email(
+            title="Recuperação de Senha",
+            message=message_body,
+            action_url=reset_link,
+            action_text="Redefinir Senha",
+            app_title=app_title
+        )
 
         # Get SMTP settings
         try:
