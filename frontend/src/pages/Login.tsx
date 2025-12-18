@@ -55,9 +55,6 @@ const Login: React.FC = () => {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-transparent relative overflow-hidden font-sans">
-            {/* Background Blobs (Optional - can be removed if interfering with background image, or kept as overlay) */}
-            <div className="absolute top-0 left-0 w-full h-full bg-slate-50/50 -z-10"></div>
-
             <div className="bg-white/80 backdrop-blur-md p-10 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] w-full max-w-md z-10 border border-white/40">
                 <div className="text-center mb-8">
                     {settings.logo_url ? (
