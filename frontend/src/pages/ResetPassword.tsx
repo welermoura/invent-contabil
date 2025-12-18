@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../api';
+import { useSettings } from '../context/SettingsContext';
 import { Lock, ArrowRight, Loader2, CheckCircle } from 'lucide-react';
 
 const ResetPassword: React.FC = () => {
     const [searchParams] = useSearchParams();
     const token = searchParams.get('token');
     const navigate = useNavigate();
+    const { settings } = useSettings();
 
     const { register, handleSubmit, watch, formState: { errors } } = useForm();
     const [isLoading, setIsLoading] = useState(false);
@@ -40,8 +42,8 @@ const ResetPassword: React.FC = () => {
 
     if (!token) {
          return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 font-sans p-4">
-                <div className="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-lg max-w-md w-full text-center">
+            <div className="min-h-screen flex items-center justify-center bg-transparent relative overflow-hidden font-sans p-4">
+                <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md p-10 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] max-w-md w-full text-center border border-white/40 dark:border-slate-700">
                     <div className="bg-red-100 text-red-600 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
                          <Lock size={24} />
                     </div>
@@ -56,12 +58,22 @@ const ResetPassword: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 font-sans p-4">
-            <div className="bg-white dark:bg-slate-800 p-8 rounded-xl shadow-lg max-w-md w-full border border-slate-200 dark:border-slate-700">
+        <div className="min-h-screen flex items-center justify-center bg-transparent relative overflow-hidden font-sans p-4">
+            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md p-10 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] w-full max-w-md z-10 border border-white/40 dark:border-slate-700">
                 <div className="text-center mb-8">
-                    <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30">
-                        <Lock className="text-white" size={24} />
-                    </div>
+                    {settings.logo_url ? (
+                        <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+                            <img
+                                src={`${api.defaults.baseURL}/${settings.logo_url}`}
+                                alt="Logo"
+                                className="w-full h-full object-contain"
+                            />
+                        </div>
+                    ) : (
+                        <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30">
+                            <Lock className="text-white" size={24} />
+                        </div>
+                    )}
                     <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Redefinir Senha</h2>
                     <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Digite sua nova senha abaixo.</p>
                 </div>
