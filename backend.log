@@ -1,0 +1,5 @@
+Detected LAN IP: 192.168.0.2
+Setting VITE_API_URL to http://192.168.0.2:8001
+/app/start_lan.sh: line 49: docker-compose: command not found
+Starting services...
+/app/start_lan.sh: line 53: docker-compose: command not found

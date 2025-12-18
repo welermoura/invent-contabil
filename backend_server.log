@@ -1,0 +1,8 @@
+INFO:     Started server process [5940]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+DEBUG: Application Startup - Reloading Mappers...
+DEBUG: Mappers Configured Successfully.
+DEBUG: Database Tables Created.
+INFO:     127.0.0.1:41720 - "GET /health HTTP/1.1" 200 OK

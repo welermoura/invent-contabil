@@ -3,7 +3,7 @@ import { useDashboard } from '../DashboardContext';
 import MultiSelect from './MultiSelect';
 import DateRangePicker from './DateRangePicker';
 import DashboardSettings from './DashboardSettings';
-import { Search, RotateCw, Moon, Sun, Download, Plus, Check } from 'lucide-react';
+import { Search, RotateCw, Download, Plus, Check } from 'lucide-react';
 import { toPng } from 'html-to-image';
 
 const DashboardControls: React.FC = () => {
@@ -14,7 +14,6 @@ const DashboardControls: React.FC = () => {
         availableCategories,
         refreshData,
         theme,
-        toggleTheme,
         isLoading,
         isEditing,
         setIsEditing
@@ -77,14 +76,6 @@ const DashboardControls: React.FC = () => {
                         </button>
 
                         <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden md:block" />
-
-                        <button
-                            onClick={toggleTheme}
-                            className="p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                            title={theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}
-                        >
-                            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-                        </button>
 
                         <button
                             onClick={handleExport}
