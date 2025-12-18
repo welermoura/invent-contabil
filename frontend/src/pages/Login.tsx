@@ -55,7 +55,7 @@ const Login: React.FC = () => {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-transparent relative overflow-hidden font-sans">
-            <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-10 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] w-full max-w-md z-10 border border-white/40 dark:border-slate-700/50">
+            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md p-10 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] w-full max-w-md z-10 border border-white/40 dark:border-slate-700">
                 <div className="text-center mb-8">
                     {settings.logo_url ? (
                         <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
@@ -88,7 +88,7 @@ const Login: React.FC = () => {
                             <Mail className="absolute left-4 top-3.5 text-slate-400 dark:text-slate-500" size={18} />
                             <input
                                 {...register('email', { required: true })}
-                                className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                                className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                 placeholder="seu@email.com"
                             />
                         </div>
@@ -102,7 +102,7 @@ const Login: React.FC = () => {
                             <input
                                 type="password"
                                 {...register('password', { required: true })}
-                                className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                                className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
                                 placeholder="••••••••"
                             />
                         </div>

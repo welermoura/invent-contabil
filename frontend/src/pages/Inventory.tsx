@@ -529,10 +529,10 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
 
     return (
         <div className={`space-y-6 animate-fade-in ${embedded ? 'p-1' : ''}`}>
-            <div className={`flex flex-col md:flex-row justify-between items-center gap-4 bg-white/80 backdrop-blur-md p-4 rounded-xl shadow-sm border border-slate-100/50 ${embedded ? 'sticky top-0 z-10 border-none shadow-none p-0 pb-4' : ''}`}>
+            <div className={`flex flex-col md:flex-row justify-between items-center gap-4 bg-white/80 backdrop-blur-md dark:bg-slate-800/80 p-4 rounded-xl shadow-sm border border-slate-100/50 dark:border-slate-700/50 ${embedded ? 'sticky top-0 z-10 border-none shadow-none p-0 pb-4' : ''}`}>
                 {!embedded && (
-                <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                    <FileText className="text-blue-600" /> Inventário
+                <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                    <FileText className="text-blue-600 dark:text-blue-400" /> Inventário
                 </h1>
                 )}
                  <div className={`flex gap-2 w-full md:w-auto ${embedded ? 'w-full' : ''}`}>
@@ -541,7 +541,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                         <input
                             type="text"
                             placeholder="Buscar item..."
-                            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                            className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200"
                             value={globalSearch}
                             onChange={(e) => setGlobalSearch(e.target.value)}
                         />
@@ -550,7 +550,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                     <div className="relative">
                         <button
                             onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-                            className="bg-slate-100 text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-200 transition-colors text-sm font-medium flex items-center gap-2"
+                            className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 px-4 py-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm font-medium flex items-center gap-2"
                         >
                             <Download size={16} /> Exportar
                             <ChevronDown size={14} />
@@ -558,15 +558,15 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                          {isExportMenuOpen && (
                             <>
                                 <div className="fixed inset-0 z-10" onClick={() => setIsExportMenuOpen(false)}></div>
-                                <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-xl py-1 z-20 border border-slate-100">
-                                    <button onClick={() => { exportXLSX(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2">
-                                        <FileSpreadsheet size={16} className="text-green-600" /> Excel (.xlsx)
+                                <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-slate-800 rounded-lg shadow-xl py-1 z-20 border border-slate-100 dark:border-slate-700">
+                                    <button onClick={() => { exportXLSX(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 dark:hover:text-blue-400 flex items-center gap-2">
+                                        <FileSpreadsheet size={16} className="text-green-600 dark:text-green-400" /> Excel (.xlsx)
                                     </button>
-                                    <button onClick={() => { exportCSV(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2">
-                                        <TableIcon size={16} className="text-blue-600" /> CSV (.csv)
+                                    <button onClick={() => { exportCSV(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 dark:hover:text-blue-400 flex items-center gap-2">
+                                        <TableIcon size={16} className="text-blue-600 dark:text-blue-400" /> CSV (.csv)
                                     </button>
-                                    <button onClick={() => { exportPDF(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2">
-                                        <FileText size={16} className="text-red-600" /> PDF (.pdf)
+                                    <button onClick={() => { exportPDF(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 dark:hover:text-blue-400 flex items-center gap-2">
+                                        <FileText size={16} className="text-red-600 dark:text-red-400" /> PDF (.pdf)
                                     </button>
                                 </div>
                             </>
@@ -576,7 +576,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                     {(user?.role !== 'AUDITOR' && user?.can_import) && (
                         <button
                             onClick={() => setIsImportModalOpen(true)}
-                            className="bg-slate-100 text-slate-600 px-4 py-2 rounded-lg hover:bg-slate-200 transition-colors text-sm font-medium flex items-center gap-2"
+                            className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 px-4 py-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm font-medium flex items-center gap-2"
                         >
                             <Upload size={16} /> Importar
                         </button>
@@ -593,39 +593,39 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                 </div>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-sm border border-slate-100/50 overflow-hidden">
+            <div className="bg-white/80 backdrop-blur-md dark:bg-slate-800/80 rounded-xl shadow-sm border border-slate-100/50 dark:border-slate-700/50 overflow-hidden">
                 <div className="overflow-x-auto min-h-[500px]">
                     <table className="min-w-full text-sm text-left relative">
-                        <thead className="bg-slate-50/80 border-b border-slate-100/50 text-slate-500 font-semibold uppercase tracking-wider text-xs">
+                        <thead className="bg-slate-50/80 dark:bg-slate-700/80 border-b border-slate-100/50 dark:border-slate-700/50 text-slate-500 dark:text-slate-300 font-semibold uppercase tracking-wider text-xs">
                             <tr>
                                 <th className="px-6 py-4 min-w-[200px]">
                                     <div className="flex flex-col gap-2">
                                         <span>Descrição</span>
-                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 rounded font-normal normal-case bg-white/50" value={filterDescription} onChange={e => setFilterDescription(e.target.value)} />
+                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white/50 dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterDescription} onChange={e => setFilterDescription(e.target.value)} />
                                     </div>
                                 </th>
                                 <th className="px-6 py-4 min-w-[150px]">
                                      <div className="flex flex-col gap-2">
                                         <span>Categoria</span>
-                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 rounded font-normal normal-case bg-white" value={filterCategory} onChange={e => setFilterCategory(e.target.value)} />
+                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterCategory} onChange={e => setFilterCategory(e.target.value)} />
                                     </div>
                                 </th>
                                 <th className="px-6 py-4 min-w-[150px]">
                                      <div className="flex flex-col gap-2">
                                         <span>Filial</span>
-                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 rounded font-normal normal-case bg-white" value={filterBranch} onChange={e => setFilterBranch(e.target.value)} />
+                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterBranch} onChange={e => setFilterBranch(e.target.value)} />
                                     </div>
                                 </th>
                                 <th className="px-6 py-4 min-w-[130px]">
                                      <div className="flex flex-col gap-2">
                                         <span>Ativo Fixo</span>
-                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 rounded font-normal normal-case bg-white" value={filterFixedAsset} onChange={e => setFilterFixedAsset(e.target.value)} />
+                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterFixedAsset} onChange={e => setFilterFixedAsset(e.target.value)} />
                                     </div>
                                 </th>
                                 <th className="px-6 py-4 min-w-[130px]">
                                      <div className="flex flex-col gap-2">
                                         <span>Data Compra</span>
-                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 rounded font-normal normal-case bg-white" value={filterPurchaseDate} onChange={e => setFilterPurchaseDate(e.target.value)} />
+                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterPurchaseDate} onChange={e => setFilterPurchaseDate(e.target.value)} />
                                     </div>
                                 </th>
                                 <th className="px-6 py-4">Valor Compra</th>
@@ -634,7 +634,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                      <div className="flex flex-col gap-2">
                                         <span>Status</span>
                                         <select
-                                            className="w-full px-2 py-1 text-xs border border-slate-200 rounded font-normal normal-case bg-white"
+                                            className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200"
                                             value={filterStatus}
                                             onChange={e => setFilterStatus(e.target.value)}
                                             disabled={embedded}
@@ -655,31 +655,31 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                 <th className="px-6 py-4 text-right">Ações</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                             {items.map((item) => (
-                                <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                                    <td className="px-6 py-4 font-medium text-slate-700">{item.description}</td>
-                                    <td className="px-6 py-4 text-slate-500">{item.category}</td>
-                                    <td className="px-6 py-4 text-slate-500">
+                                <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors text-slate-700 dark:text-slate-300">
+                                    <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">{item.description}</td>
+                                    <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{item.category}</td>
+                                    <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
                                         {item.status === 'IN_TRANSIT' ? (
                                            <div className='flex flex-col'>
                                                 <span className='line-through text-xs'>{item.branch?.name}</span>
-                                                <span className='text-blue-600 font-semibold text-xs flex items-center gap-1'><ArrowRightLeft size={10}/> {item.transfer_target_branch?.name}</span>
+                                                <span className='text-blue-600 dark:text-blue-400 font-semibold text-xs flex items-center gap-1'><ArrowRightLeft size={10}/> {item.transfer_target_branch?.name}</span>
                                            </div>
                                         ) : (
                                             item.branch?.name || '-'
                                         )}
                                     </td>
-                                    <td className="px-6 py-4 text-slate-600 font-mono text-xs">
+                                    <td className="px-6 py-4 text-slate-600 dark:text-slate-400 font-mono text-xs">
                                         {item.fixed_asset_number ? (
-                                            <span className="bg-slate-50 px-2 py-1 rounded border border-slate-100">{item.fixed_asset_number}</span>
+                                            <span className="bg-slate-50 dark:bg-slate-700/50 px-2 py-1 rounded border border-slate-100 dark:border-slate-600">{item.fixed_asset_number}</span>
                                         ) : '-'}
                                     </td>
-                                    <td className="px-6 py-4 text-slate-500">{item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '-'}</td>
-                                    <td className="px-6 py-4 font-medium text-slate-700">
+                                    <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '-'}</td>
+                                    <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">
                                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.invoice_value)}
                                     </td>
-                                    <td className="px-6 py-4 font-medium text-slate-600">
+                                    <td className="px-6 py-4 font-medium text-slate-600 dark:text-slate-300">
                                         {item.accounting_value !== undefined
                                             ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.accounting_value)
                                             : '-'}
@@ -755,23 +755,23 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                     </table>
                 </div>
 
-                <div className="px-6 py-4 border-t border-slate-100/50 bg-slate-50/50 flex items-center justify-between">
-                     <span className="text-sm text-slate-500 font-medium">
+                <div className="px-6 py-4 border-t border-slate-100/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-700/30 flex items-center justify-between">
+                     <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
                         Exibindo {items.length} itens nesta página (Scroll Infinito não, paginação padrão)
                      </span>
                     <div className="flex gap-2">
                         <button
                             onClick={() => { if(page > 0) { const prev = page -1; setPage(prev); fetchItems(globalSearch, prev) } }}
                             disabled={page === 0}
-                            className="px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                            className="px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
                         >
                             Anterior
                         </button>
-                        <span className="text-sm text-slate-500 font-medium px-2 py-2">Página {page + 1}</span>
+                        <span className="text-sm text-slate-500 dark:text-slate-400 font-medium px-2 py-2">Página {page + 1}</span>
                         <button
                             onClick={() => { if(hasMore) { const next = page + 1; setPage(next); fetchItems(globalSearch, next) } }}
                             disabled={!hasMore}
-                            className="px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                            className="px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
                         >
                             Próxima
                         </button>
