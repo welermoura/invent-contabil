@@ -7,9 +7,9 @@ const RecentItemsTable: React.FC = () => {
 
     return (
         <ChartWidget title="Últimos Itens Adicionados">
-            <div className="overflow-x-auto">
+            <div className="overflow-auto h-full pr-2 custom-scrollbar">
                 <table className="w-full text-sm text-left text-slate-500 dark:text-slate-400">
-                    <thead className="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700 dark:text-slate-300">
+                    <thead className="sticky top-0 z-10 text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-700 dark:text-slate-300">
                         <tr>
                             <th className="px-4 py-3">Descrição</th>
                             <th className="px-4 py-3">Filial</th>
