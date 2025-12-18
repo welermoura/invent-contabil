@@ -41,7 +41,7 @@ const ValueByCategoryChart: React.FC = () => {
         <ChartWidget title="Valor por Categoria">
             <PieChart onClick={(data) => {
                 if (data && data.activePayload) {
-                     navigateToMacroView('category', data.activePayload[0].payload.name);
+                     navigateToMacroView('categoria', data.activePayload[0].payload.name);
                 }
             }} className="cursor-pointer">
                 <Pie

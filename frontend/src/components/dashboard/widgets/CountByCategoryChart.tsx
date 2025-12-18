@@ -53,7 +53,7 @@ const CountByCategoryChart: React.FC = () => {
                     strokeWidth={2}
                     onClick={(data) => {
                          if (data) {
-                             navigateToMacroView('category', data.name);
+                             navigateToMacroView('categoria', data.name);
                          }
                     }}
                     className="cursor-pointer"
