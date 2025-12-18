@@ -50,7 +50,7 @@ const DashboardControls: React.FC = () => {
     };
 
     return (
-        <div className="bg-white/80 backdrop-blur-md dark:bg-slate-800/80 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6 transition-colors">
+        <div className="relative z-20 bg-white/80 backdrop-blur-md dark:bg-slate-800/80 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 mb-6 transition-colors">
             <div className="flex flex-col gap-4">
                 {/* Top Row: Title + Global Actions */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

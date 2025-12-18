@@ -162,7 +162,7 @@ const Layout = () => {
             {/* Main Content */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Top Header */}
-                <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/50 flex items-center justify-between px-6 lg:px-8">
+                <header className="relative z-30 h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/50 flex items-center justify-between px-6 lg:px-8">
                     <button
                         onClick={() => setSidebarOpen(true)}
                         className="p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg lg:hidden"
