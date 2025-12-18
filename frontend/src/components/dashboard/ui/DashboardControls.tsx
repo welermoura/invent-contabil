@@ -4,7 +4,7 @@ import MultiSelect from './MultiSelect';
 import DateRangePicker from './DateRangePicker';
 import DashboardSettings from './DashboardSettings';
 import { Search, RotateCw, Moon, Sun, Download, Plus, Check } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 
 const DashboardControls: React.FC = () => {
     const {
@@ -35,13 +35,13 @@ const DashboardControls: React.FC = () => {
         const dashboardElement = document.getElementById('dashboard-container');
         if (dashboardElement) {
             try {
-                const canvas = await html2canvas(dashboardElement, {
-                    scale: 2,
+                const dataUrl = await toPng(dashboardElement, {
                     backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc',
+                    pixelRatio: 2,
                 });
                 const link = document.createElement('a');
                 link.download = `dashboard-contabil-${new Date().toISOString().split('T')[0]}.png`;
-                link.href = canvas.toDataURL();
+                link.href = dataUrl;
                 link.click();
             } catch (err) {
                 console.error("Export failed", err);
