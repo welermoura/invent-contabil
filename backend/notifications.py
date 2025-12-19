@@ -60,6 +60,10 @@ def generate_html_email(title: str, message: str, item_details: Optional[dict] =
             "invoice_value": "Valor (R$)",
             "purchase_date": "Data Compra",
             "supplier": "Fornecedor",
+            "invoice_number": "Número da NF",
+            "invoice_link": "Arquivo da NF",
+            "observations": "Observações",
+            "responsible": "Responsável",
             "transfer_target": "Destino (Transferência)"
         }
 
@@ -73,10 +77,16 @@ def generate_html_email(title: str, message: str, item_details: Optional[dict] =
             if k == "purchase_date":
                 # Assuming datetime object or iso string, simplest is just return string if formatted, else try parse
                 return str(v).split(' ')[0] # Simple split for date
+            if k == "invoice_link":
+                 return f'<a href="{v}" target="_blank" style="color: #2563eb; text-decoration: underline;">Visualizar Nota Fiscal</a>'
             return str(v)
 
         # Iterate specific keys to maintain order, then others
-        priority_keys = ["description", "fixed_asset_number", "category", "branch", "status", "serial_number", "invoice_value", "purchase_date"]
+        priority_keys = [
+            "description", "fixed_asset_number", "category", "branch", "status",
+            "serial_number", "invoice_value", "purchase_date", "invoice_number",
+            "invoice_link", "supplier", "observations", "responsible"
+        ]
 
         # Filter details to only include what we want to show
         for key in priority_keys:

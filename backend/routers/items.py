@@ -26,6 +26,17 @@ def build_item_details(item: models.Item) -> dict:
         }
         return m.get(s, s)
 
+    # Infer base URL from environment or fallback to localhost
+    base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+
+    invoice_link = None
+    if item.invoice_file:
+         # Assuming invoice_file is stored as relative path "uploads/..."
+         # and static mount is at /uploads
+         # If path starts with uploads/, we prepend base url.
+         clean_path = item.invoice_file.strip("/")
+         invoice_link = f"{base_url}/{clean_path}"
+
     return {
         "description": item.description,
         "category": item.category_rel.name if item.category_rel else item.category,
@@ -35,7 +46,11 @@ def build_item_details(item: models.Item) -> dict:
         "status": translate_status(item.status),
         "invoice_value": item.invoice_value,
         "purchase_date": item.purchase_date,
-        "supplier": item.supplier.name if item.supplier else 'N/A'
+        "supplier": item.supplier.name if item.supplier else 'N/A',
+        "invoice_number": item.invoice_number,
+        "invoice_link": invoice_link,
+        "observations": item.observations,
+        "responsible": item.responsible.name if item.responsible else 'N/A'
     }
 
 async def notify_new_item(db: AsyncSession, item: models.Item):
