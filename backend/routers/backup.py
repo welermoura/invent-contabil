@@ -193,6 +193,13 @@ async def import_backup(
         env = os.environ.copy()
         env["PGPASSWORD"] = password
 
+        # Debug version
+        try:
+            version_check = subprocess.run(["pg_restore", "--version"], capture_output=True, text=True)
+            print(f"DEBUG: pg_restore version: {version_check.stdout.strip()}")
+        except Exception as e:
+            print(f"DEBUG: Failed to check pg_restore version: {e}")
+
         command = [
             "pg_restore",
             "-h", host,
