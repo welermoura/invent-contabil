@@ -121,7 +121,7 @@ def generate_html_email(title: str, message: str, item_details: Optional[dict] =
                 <div style="overflow-x: auto;">
                     <table style="width: 100%; border-collapse: collapse; font-size: 14px; border-top: {border_style}; border-left: {border_style};">
                         <thead>
-                            <tr>{headers_html}</tr>
+                            <tr style="border-top: {border_style}; border-left: {border_style};">{headers_html}</tr>
                         </thead>
                         <tbody>
                             <tr>{values_html}</tr>

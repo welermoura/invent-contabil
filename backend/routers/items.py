@@ -479,6 +479,162 @@ async def request_write_off(
 
     return item
 
+@router.post("/bulk/write-off")
+async def bulk_write_off(
+    request: schemas.BulkWriteOffRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Executes bulk write-off of items.
+    Validates that all items belong to the same category.
+    Immediate execution (No Approval).
+    """
+    if current_user.role == models.UserRole.AUDITOR:
+        raise HTTPException(status_code=403, detail="Auditores não podem realizar baixas")
+
+    if not request.item_ids:
+        raise HTTPException(status_code=400, detail="Nenhum item selecionado")
+
+    # 1. Fetch Items
+    items = await crud.get_items_by_ids(db, request.item_ids)
+    if len(items) != len(request.item_ids):
+        raise HTTPException(status_code=404, detail="Alguns itens não foram encontrados")
+
+    # 2. Validation: Same Category
+    first_category_id = items[0].category_id
+    for item in items:
+        if item.category_id != first_category_id:
+            raise HTTPException(status_code=400, detail="Todos os itens da baixa em lote devem pertencer à mesma categoria")
+
+        # Permission check per item
+        if current_user.role == models.UserRole.OPERATOR and not current_user.all_branches:
+             allowed = [b.id for b in current_user.branches]
+             if current_user.branch_id: allowed.append(current_user.branch_id)
+             if item.branch_id not in allowed:
+                 raise HTTPException(status_code=403, detail=f"Sem permissão para o item {item.description}")
+
+    # 3. Execution Loop
+    updated_items = []
+    for item in items:
+        # Update status directly to WRITTEN_OFF (Immediate)
+        # Store reason in the new field
+        item.status = models.ItemStatus.WRITTEN_OFF
+        item.write_off_reason = request.reason
+        item.observations = f"{item.observations or ''}\n[Baixa em Lote] Justificativa: {request.justification or 'N/A'}"
+
+        # Log
+        log = models.Log(
+            item_id=item.id,
+            user_id=current_user.id,
+            action=f"BULK_WRITE_OFF: Baixa por {request.reason}. {request.justification or ''}"
+        )
+        db.add(log)
+        updated_items.append(item)
+
+    await db.commit()
+
+    # 4. Consolidated Notification
+    # We need to construct a summary.
+    try:
+        approvers = await notifications.get_approvers(db)
+        # Also notify user responsible? Maybe just approvers/admins for now as per requirement.
+
+        category_name = items[0].category_rel.name if items[0].category_rel else "Desconhecida"
+
+        msg = f"Operação de Baixa em Lote Realizada.\n\n"
+        msg += f"Motivo: {request.reason}\n"
+        msg += f"Categoria: {category_name}\n"
+        msg += f"Responsável: {current_user.name}\n"
+        msg += f"Quantidade: {len(items)}\n"
+        msg += f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n"
+        msg += "Itens:\n"
+        for item in items:
+            msg += f"- {item.description} ({item.fixed_asset_number or 'S/N'})\n"
+
+        html = notifications.generate_html_email("Baixa em Lote Realizada", msg)
+        await notifications.notify_users(db, approvers, "Baixa em Lote", msg, email_subject="Relatório de Baixa em Lote", email_html=html)
+    except Exception as e:
+        print(f"Error sending bulk notification: {e}")
+
+    return {"message": "Baixa em lote realizada com sucesso", "count": len(items)}
+
+@router.post("/bulk/transfer")
+async def bulk_transfer(
+    request: schemas.BulkTransferRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Executes bulk transfer of items.
+    Immediate execution (No Approval implies direct move or IN_TRANSIT? Prompt said 'Execução da Operação... atualiazr status'. Usually transfer needs receipt. But let's assume direct move for simplicity or set to IN_TRANSIT.)
+    Re-reading prompt: "A baixa ou transferência é executada imediatamente".
+    If I set to IN_TRANSIT, it is 'executed'. If I set to IN_STOCK at target, it skips receipt.
+    Given 'Sem fluxo de aprovação', I will set to IN_TRANSIT so target branch can receive, OR just move them if that's what 'immediate' means.
+    Let's stick to IN_TRANSIT to keep data consistent with single transfer, but without the 'Request' step?
+    Actually, existing single transfer is 'request_transfer' -> 'notify' -> 'approve' -> 'in_transit'.
+    If "Sem Aprovação", maybe we go straight to 'IN_TRANSIT' (Skipping approval).
+    """
+    if current_user.role == models.UserRole.AUDITOR:
+        raise HTTPException(status_code=403, detail="Auditores não podem transferir")
+
+    if not request.item_ids:
+        raise HTTPException(status_code=400, detail="Nenhum item selecionado")
+
+    items = await crud.get_items_by_ids(db, request.item_ids)
+    if len(items) != len(request.item_ids):
+        raise HTTPException(status_code=404, detail="Alguns itens não foram encontrados")
+
+    target_branch = await crud.get_branch(db, request.target_branch_id)
+    if not target_branch:
+        raise HTTPException(status_code=404, detail="Filial de destino não encontrada")
+
+    for item in items:
+        # Permission check
+        if current_user.role == models.UserRole.OPERATOR and not current_user.all_branches:
+             allowed = [b.id for b in current_user.branches]
+             if current_user.branch_id: allowed.append(current_user.branch_id)
+             if item.branch_id not in allowed:
+                 raise HTTPException(status_code=403, detail=f"Sem permissão para o item {item.description}")
+
+        # Update
+        # We skip 'TRANSFER_PENDING' and go to 'IN_TRANSIT' or directly 'IN_STOCK' at target?
+        # "A baixa ou transferência é executada imediatamente".
+        # Let's move them to IN_TRANSIT and set target branch.
+        item.status = models.ItemStatus.IN_TRANSIT
+        item.transfer_target_branch_id = request.target_branch_id
+        item.transfer_invoice_number = request.invoice_number
+        item.transfer_invoice_series = request.invoice_series
+        item.transfer_invoice_date = request.invoice_date
+
+        log = models.Log(
+            item_id=item.id,
+            user_id=current_user.id,
+            action=f"BULK_TRANSFER: Transferência imediata para {target_branch.name}"
+        )
+        db.add(log)
+
+    await db.commit()
+
+    # Notification
+    try:
+        approvers = await notifications.get_approvers(db)
+        msg = f"Operação de Transferência em Lote Realizada.\n\n"
+        msg += f"Destino: {target_branch.name}\n"
+        msg += f"Responsável: {current_user.name}\n"
+        msg += f"Quantidade: {len(items)}\n"
+        msg += f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n"
+        msg += "Itens:\n"
+        for item in items:
+            msg += f"- {item.description} ({item.fixed_asset_number or 'S/N'})\n"
+
+        html = notifications.generate_html_email("Transferência em Lote Realizada", msg)
+        await notifications.notify_users(db, approvers, "Transferência em Lote", msg, email_subject="Relatório de Transferência em Lote", email_html=html)
+    except Exception as e:
+        print(f"Error sending bulk notification: {e}")
+
+    return {"message": "Transferência em lote iniciada", "count": len(items)}
+
 @router.put("/{item_id}", response_model=schemas.ItemResponse)
 async def update_item(
     item_id: int,

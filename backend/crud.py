@@ -235,6 +235,24 @@ async def delete_supplier(db: AsyncSession, supplier_id: int):
     return False
 
 # Items
+async def get_items_by_ids(db: AsyncSession, item_ids: list[int]):
+    """Fetch items by a list of IDs."""
+    if not item_ids:
+        return []
+    query = select(models.Item).options(
+        selectinload(models.Item.branch),
+        selectinload(models.Item.transfer_target_branch),
+        selectinload(models.Item.category_rel),
+        selectinload(models.Item.supplier),
+        selectinload(models.Item.responsible)
+    ).where(models.Item.id.in_(item_ids))
+    result = await db.execute(query)
+    return result.scalars().all()
+
+async def get_branch(db: AsyncSession, branch_id: int):
+    result = await db.execute(select(models.Branch).where(models.Branch.id == branch_id))
+    return result.scalars().first()
+
 async def get_items(
     db: AsyncSession,
     skip: int = 0,

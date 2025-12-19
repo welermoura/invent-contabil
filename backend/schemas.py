@@ -246,3 +246,16 @@ class ResetPasswordRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
+
+# Bulk Operations
+class BulkWriteOffRequest(BaseModel):
+    item_ids: List[int]
+    reason: str
+    justification: Optional[str] = None
+
+class BulkTransferRequest(BaseModel):
+    item_ids: List[int]
+    target_branch_id: int
+    invoice_number: Optional[str] = None
+    invoice_series: Optional[str] = None
+    invoice_date: Optional[datetime] = None
