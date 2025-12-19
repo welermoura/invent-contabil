@@ -39,29 +39,29 @@ import { DollarSign, Package, AlertCircle, FileWarning, Activity, Clock, Clipboa
 
 // Widget Registry
 export const WIDGETS: Record<string, any> = {
-    'kpi-total-value': { label: "KPI Valor Total", component: StatCard, type: 'kpi', className: 'row-span-1', props: { title: "Valor Contábil Total", icon: DollarSign, colorClass: "text-emerald-600" } },
-    'kpi-total-items': { label: "KPI Total Itens", component: StatCard, type: 'kpi', className: 'row-span-1', props: { title: "Itens Totais", icon: Package, colorClass: "text-blue-600" } },
-    'kpi-pending-items-action': { label: "KPI Itens Pendentes", component: StatCard, type: 'kpi', className: 'row-span-1', props: { title: "Aprovações Pendentes", icon: ClipboardList, colorClass: "text-orange-600" } },
-    'kpi-pending-value': { label: "KPI Valor Pendente", component: StatCard, type: 'kpi', className: 'row-span-1', props: { title: "Valor Pendente", icon: AlertCircle, colorClass: "text-amber-500" } },
-    'kpi-rejected': { label: "KPI Rejeitados", component: StatCard, type: 'kpi', className: 'row-span-1', props: { title: "Itens Rejeitados", icon: XCircle, colorClass: "text-rose-600" } },
-    'kpi-writeoff': { label: "KPI Baixas", component: StatCard, type: 'kpi', className: 'row-span-1', props: { title: "Baixas Pendentes", icon: FileWarning, colorClass: "text-red-500" } },
+    'kpi-total-value': { label: "KPI Valor Total", component: StatCard, type: 'kpi', props: { title: "Valor Contábil Total", icon: DollarSign, colorClass: "text-emerald-600" } },
+    'kpi-total-items': { label: "KPI Total Itens", component: StatCard, type: 'kpi', props: { title: "Itens Totais", icon: Package, colorClass: "text-blue-600" } },
+    'kpi-pending-items-action': { label: "KPI Itens Pendentes", component: StatCard, type: 'kpi', props: { title: "Aprovações Pendentes", icon: ClipboardList, colorClass: "text-orange-600" } },
+    'kpi-pending-value': { label: "KPI Valor Pendente", component: StatCard, type: 'kpi', props: { title: "Valor Pendente", icon: AlertCircle, colorClass: "text-amber-500" } },
+    'kpi-rejected': { label: "KPI Rejeitados", component: StatCard, type: 'kpi', props: { title: "Itens Rejeitados", icon: XCircle, colorClass: "text-rose-600" } },
+    'kpi-writeoff': { label: "KPI Baixas", component: StatCard, type: 'kpi', props: { title: "Baixas Pendentes", icon: FileWarning, colorClass: "text-red-500" } },
 
-    'kpi-age': { label: "KPI Idade Média", component: StatCard, type: 'kpi', className: 'row-span-1', props: { title: "Idade Média (Meses)", icon: Clock, colorClass: "text-violet-500" } },
-    'kpi-zero-dep': { label: "KPI Fim Vida Útil", component: StatCard, type: 'kpi', className: 'row-span-1', props: { title: "Fim da Vida Útil", icon: Activity, colorClass: "text-slate-500" } },
+    'kpi-age': { label: "KPI Idade Média", component: StatCard, type: 'kpi', props: { title: "Idade Média (Meses)", icon: Clock, colorClass: "text-violet-500" } },
+    'kpi-zero-dep': { label: "KPI Fim Vida Útil", component: StatCard, type: 'kpi', props: { title: "Fim da Vida Útil", icon: Activity, colorClass: "text-slate-500" } },
 
-    'chart-branch': { label: "Valor por Filial", component: ValueByBranchChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1 row-span-2' },
-    'chart-branch-count': { label: "Qtd. por Filial", component: CountByBranchChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1 row-span-2' },
+    'chart-branch': { label: "Valor por Filial", component: ValueByBranchChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
+    'chart-branch-count': { label: "Qtd. por Filial", component: CountByBranchChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
 
-    'chart-category': { label: "Valor por Categoria", component: ValueByCategoryChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1 row-span-2' },
-    'chart-category-count': { label: "Qtd. por Categoria", component: CountByCategoryChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1 row-span-2' },
+    'chart-category': { label: "Valor por Categoria", component: ValueByCategoryChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
+    'chart-category-count': { label: "Qtd. por Categoria", component: CountByCategoryChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
 
-    'chart-risk': { label: "Mapa de Risco", component: RiskMapWidget, type: 'chart', className: 'md:col-span-1 lg:col-span-1 row-span-2' },
-    'chart-purch-vs-acc': { label: "Compra vs Contábil", component: PurchaseVsAccountingChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1 row-span-2' },
+    'chart-risk': { label: "Mapa de Risco", component: RiskMapWidget, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
+    'chart-purch-vs-acc': { label: "Compra vs Contábil", component: PurchaseVsAccountingChart, type: 'chart', className: 'md:col-span-1 lg:col-span-1' },
 
-    'chart-evolution': { label: "Evolução Patrimonial", component: EvolutionChart, type: 'chart', className: 'md:col-span-2 lg:col-span-2 row-span-2' },
+    'chart-evolution': { label: "Evolução Patrimonial", component: EvolutionChart, type: 'chart', className: 'md:col-span-2 lg:col-span-2' },
 
-    'table-top-items': { label: "Top Itens", component: TopItemsTable, type: 'chart', className: 'md:col-span-1 lg:col-span-2 row-span-3' },
-    'table-recent-items': { label: "Itens Recentes", component: RecentItemsTable, type: 'chart', className: 'md:col-span-1 lg:col-span-2 row-span-3' },
+    'table-top-items': { label: "Top Itens", component: TopItemsTable, type: 'chart', className: 'md:col-span-1 lg:col-span-2' },
+    'table-recent-items': { label: "Itens Recentes", component: RecentItemsTable, type: 'chart', className: 'md:col-span-1 lg:col-span-2' },
 };
 
 const DEFAULT_LAYOUT = [
@@ -165,19 +165,15 @@ const DraggableGrid: React.FC = () => {
         setWidgetSize(id, nextSize);
     };
 
-    const getGridClasses = (id: string) => {
-        const def = WIDGETS[id];
-        const rowSpan = def?.className?.match(/row-span-\d/)?.[0] || 'row-span-1';
+    const getColSpan = (id: string) => {
         const size = widgetSizes[id];
+        if (size === 'small') return 'md:col-span-1 lg:col-span-1';
+        if (size === 'medium') return 'md:col-span-1 lg:col-span-2';
+        if (size === 'large') return 'md:col-span-2 lg:col-span-3';
+        if (size === 'full') return 'md:col-span-2 lg:col-span-4';
 
-        let colSpan = def?.className?.replace(/row-span-\d/g, '').trim() || 'col-span-1';
-
-        if (size === 'small') colSpan = 'md:col-span-1 lg:col-span-1';
-        if (size === 'medium') colSpan = 'md:col-span-1 lg:col-span-2';
-        if (size === 'large') colSpan = 'md:col-span-2 lg:col-span-3';
-        if (size === 'full') colSpan = 'md:col-span-2 lg:col-span-4';
-
-        return `${colSpan} ${rowSpan}`;
+        // Default
+        return WIDGETS[id]?.className || 'col-span-1';
     };
 
     // Initial load check
@@ -277,13 +273,13 @@ const DraggableGrid: React.FC = () => {
             onDragEnd={handleDragEnd}
         >
             <SortableContext items={items} strategy={rectSortingStrategy}>
-                <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-10 grid-flow-dense auto-rows-[10rem] ${isEditing ? 'p-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl bg-slate-50/50 dark:bg-slate-900/50 min-h-[500px]' : ''}`} id="dashboard-container">
+                <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-10 ${isEditing ? 'p-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl bg-slate-50/50 dark:bg-slate-900/50 min-h-[500px]' : ''}`} id="dashboard-container">
                     {items.map((id: string) => {
                         return (
                             <SortableItem
                                 key={id}
                                 id={id}
-                                className={getGridClasses(id)}
+                                className={getColSpan(id)}
                                 onRemove={removeWidget}
                                 onResize={handleResize}
                             >
