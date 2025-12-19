@@ -85,27 +85,27 @@ def generate_html_email(title: str, message: str, item_details: Optional[dict] =
         priority_keys = [
             "description", "fixed_asset_number", "category", "branch", "status",
             "serial_number", "invoice_value", "purchase_date", "invoice_number",
-            "invoice_link", "supplier", "observations", "responsible"
+            "invoice_link", "supplier", "responsible"
         ]
 
-        # Filtrar detalhes e separar 'observações' para exibir fora da tabela horizontal
-        table_keys = [k for k in priority_keys if k != "observations"]
+        # Filtrar chaves a ignorar
+        ignored_keys = ["observations"]
 
         headers_html = ""
         values_html = ""
 
         # Gerar Cabeçalhos e Valores para a tabela horizontal
-        for key in table_keys:
-            if key in item_details:
+        for key in priority_keys:
+            if key in item_details and key not in ignored_keys:
                 label = labels.get(key, key)
                 val = format_val(key, item_details[key])
 
                 headers_html += f'<th style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 600; text-align: left; white-space: nowrap;">{label}</th>'
                 values_html += f'<td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #111827; white-space: nowrap;">{val}</td>'
 
-        # Verificar chaves extras (exceto observations)
+        # Verificar chaves extras (exceto ignoradas)
         for key, val in item_details.items():
-            if key not in priority_keys and key != "observations" and key in labels:
+            if key not in priority_keys and key not in ignored_keys and key in labels:
                 label = labels.get(key, key)
                 headers_html += f'<th style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 600; text-align: left; white-space: nowrap;">{label}</th>'
                 values_html += f'<td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #111827; white-space: nowrap;">{format_val(key, val)}</td>'
@@ -127,17 +127,6 @@ def generate_html_email(title: str, message: str, item_details: Optional[dict] =
                 </div>
             </div>
             """
-
-        # Adicionar Observações separadamente, se houver
-        if "observations" in item_details and item_details["observations"]:
-             obs_val = format_val("observations", item_details["observations"])
-             if obs_val != "-":
-                 item_table_html += f"""
-                 <div style="margin-top: 16px; background-color: #f9fafb; border-radius: 8px; padding: 16px;">
-                    <h4 style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">Observações</h4>
-                    <p style="margin: 0; font-size: 14px; color: #111827; line-height: 1.5;">{obs_val}</p>
-                 </div>
-                 """
 
     html = f"""
     <!DOCTYPE html>
