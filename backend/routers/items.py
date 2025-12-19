@@ -443,7 +443,8 @@ async def request_transfer(
 @router.post("/{item_id}/write-off", response_model=schemas.ItemResponse)
 async def request_write_off(
     item_id: int,
-    justification: str = Form(...),
+    justification: Optional[str] = Form(None),
+    reason: str = Form(...),
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -461,7 +462,16 @@ async def request_write_off(
         if item.branch_id not in allowed_branches:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para solicitar baixa deste item")
 
-    item = await crud.request_write_off(db, item_id, justification, current_user.id)
+    # Combine reason and justification for the log/email message if needed,
+    # but store structured data if model supports it.
+    # Current request_write_off in crud only takes justification. We should update crud or append.
+    full_justification = f"Motivo: {reason}. {justification or ''}"
+
+    # We update the item with the reason separately if possible
+    # But crud.request_write_off currently updates status and adds log.
+    # Ideally we should update write_off_reason column too.
+
+    item = await crud.request_write_off(db, item_id, full_justification, current_user.id, reason=reason)
     if not item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
 
@@ -475,7 +485,7 @@ async def request_write_off(
     await manager.broadcast(json.dumps(payload))
 
     # Notify Approvers
-    await notify_write_off_request(db, item, justification)
+    await notify_write_off_request(db, item, full_justification)
 
     return item
 
