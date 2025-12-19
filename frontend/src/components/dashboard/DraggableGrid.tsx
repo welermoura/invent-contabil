@@ -20,7 +20,7 @@ import {
   useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, X } from 'lucide-react';
+import { GripVertical, X, XCircle } from 'lucide-react';
 
 import { useDashboard } from './DashboardContext';
 import { useDashboardNavigation } from '../../hooks/useDashboardNavigation';
@@ -43,6 +43,7 @@ export const WIDGETS: Record<string, any> = {
     'kpi-total-items': { label: "KPI Total Itens", component: StatCard, type: 'kpi', props: { title: "Itens Totais", icon: Package, colorClass: "text-blue-600" } },
     'kpi-pending-items-action': { label: "KPI Itens Pendentes", component: StatCard, type: 'kpi', props: { title: "Aprovações Pendentes", icon: ClipboardList, colorClass: "text-orange-600" } },
     'kpi-pending-value': { label: "KPI Valor Pendente", component: StatCard, type: 'kpi', props: { title: "Valor Pendente", icon: AlertCircle, colorClass: "text-amber-500" } },
+    'kpi-rejected': { label: "KPI Rejeitados", component: StatCard, type: 'kpi', props: { title: "Itens Rejeitados", icon: XCircle, colorClass: "text-rose-600" } },
     'kpi-writeoff': { label: "KPI Baixas", component: StatCard, type: 'kpi', props: { title: "Baixas Pendentes", icon: FileWarning, colorClass: "text-red-500" } },
 
     'kpi-age': { label: "KPI Idade Média", component: StatCard, type: 'kpi', props: { title: "Idade Média (Meses)", icon: Clock, colorClass: "text-violet-500" } },
@@ -64,7 +65,7 @@ export const WIDGETS: Record<string, any> = {
 };
 
 const DEFAULT_LAYOUT = [
-    'kpi-pending-items-action', 'kpi-total-value', 'kpi-total-items', 'kpi-pending-value', 'kpi-writeoff',
+    'kpi-pending-items-action', 'kpi-rejected', 'kpi-total-value', 'kpi-total-items', 'kpi-pending-value', 'kpi-writeoff',
     'chart-evolution',
     'chart-branch', 'chart-category',
     'table-top-items'
@@ -187,6 +188,10 @@ const DraggableGrid: React.FC = () => {
                 props.value = aggregates.pendingValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                 props.subtext = `${aggregates.pendingCount} itens pendentes`;
                 props.onClick = () => openDetailModal('Itens Pendentes', { status: 'PENDING' });
+            }
+            if (id === 'kpi-rejected') {
+                props.value = aggregates.itemsByStatus['REJECTED'] || 0;
+                props.onClick = () => openDetailModal('Itens Rejeitados', { status: 'REJECTED' });
             }
             if (id === 'kpi-writeoff') {
                 props.value = aggregates.itemsByStatus['WRITE_OFF_PENDING'] || 0;
