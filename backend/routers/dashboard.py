@@ -67,10 +67,25 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db), current_user: 
     result_branch = await db.execute(query_branch)
     items_by_branch = [{"branch_id": row[0], "branch": row[1], "count": row[2]} for row in result_branch.all()]
 
+    # Write-offs by Reason (Baixas por Motivo)
+    query_reason = select(models.Item.write_off_reason, func.count(models.Item.id), func.sum(models.Item.invoice_value))\
+        .where(models.Item.status == models.ItemStatus.WRITTEN_OFF)
+
+    if branch_filter is not None:
+        query_reason = query_reason.where(branch_filter)
+
+    query_reason = query_reason.group_by(models.Item.write_off_reason)
+    result_reason = await db.execute(query_reason)
+    write_offs_by_reason = [
+        {"reason": row[0] or "Não especificado", "count": row[1], "value": row[2] or 0.0}
+        for row in result_reason.all()
+    ]
+
     return {
         "pending_items_count": pending_count,
         "pending_items_value": pending_value,
         "write_off_count": write_off_count,
         "items_by_category": items_by_category,
-        "items_by_branch": items_by_branch
+        "items_by_branch": items_by_branch,
+        "write_offs_by_reason": write_offs_by_reason
     }

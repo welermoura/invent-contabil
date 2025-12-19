@@ -48,4 +48,30 @@ api.interceptors.response.use(
     }
 );
 
+// Bulk Operations Types
+export interface BulkWriteOffData {
+    item_ids: number[];
+    reason: string;
+    justification?: string;
+}
+
+export interface BulkTransferData {
+    item_ids: number[];
+    target_branch_id: number;
+    invoice_number?: string;
+    invoice_series?: string;
+    invoice_date?: string; // ISO string
+}
+
+// Helper functions for bulk operations
+export const bulkWriteOff = async (data: BulkWriteOffData) => {
+    const response = await api.post('/items/bulk/write-off', data);
+    return response.data;
+};
+
+export const bulkTransfer = async (data: BulkTransferData) => {
+    const response = await api.post('/items/bulk/transfer', data);
+    return response.data;
+};
+
 export default api;
