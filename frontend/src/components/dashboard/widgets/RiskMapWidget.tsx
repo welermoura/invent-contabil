@@ -46,14 +46,7 @@ const RiskMapWidget: React.FC = () => {
 
     return (
         <ChartWidget title="Mapa de Risco (Status)">
-            <PieChart
-                onClick={(data) => {
-                    if (data && data.activePayload) {
-                        navigateToMacroView('status', data.activePayload[0].payload.statusKey);
-                    }
-                }}
-                className="cursor-pointer"
-            >
+            <PieChart>
                 <Pie
                     data={data}
                     cx="50%"
@@ -64,6 +57,12 @@ const RiskMapWidget: React.FC = () => {
                     dataKey="value"
                     stroke={theme === 'dark' ? '#1e293b' : '#fff'}
                     strokeWidth={2}
+                    onClick={(data) => {
+                        if (data && data.payload) {
+                            navigateToMacroView('status', data.payload.statusKey);
+                        }
+                    }}
+                    className="cursor-pointer"
                 >
                     {data.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />

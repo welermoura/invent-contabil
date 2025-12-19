@@ -39,11 +39,7 @@ const ValueByCategoryChart: React.FC = () => {
 
     return (
         <ChartWidget title="Valor por Categoria">
-            <PieChart onClick={(data) => {
-                if (data && data.activePayload && data.activePayload[0].payload.name !== 'Outros') {
-                     navigateToMacroView('categoria', data.activePayload[0].payload.name);
-                }
-            }} className="cursor-pointer">
+            <PieChart>
                 <Pie
                     data={chartData}
                     cx="50%"
@@ -52,6 +48,12 @@ const ValueByCategoryChart: React.FC = () => {
                     outerRadius={80}
                     paddingAngle={5}
                     dataKey="value"
+                    onClick={(data) => {
+                         if (data && data.name !== 'Outros') {
+                             navigateToMacroView('categoria', data.name);
+                         }
+                    }}
+                    className="cursor-pointer"
                 >
                     {chartData.map((_entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke={theme === 'dark' ? '#1e293b' : '#fff'} />
