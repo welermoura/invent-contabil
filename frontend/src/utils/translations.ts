@@ -12,7 +12,8 @@ export const translateStatus = (status: string) => {
         'WRITE_OFF_PENDING': 'Baixa Pendente',
         'WRITTEN_OFF': 'Baixado',
         'MAINTENANCE': 'Em Manutenção',
-        'IN_STOCK': 'Em Estoque'
+        'IN_STOCK': 'Em Estoque',
+        'IN_TRANSIT': 'Em Trânsito'
     };
     return map[cleanStatus] || cleanStatus;
 };

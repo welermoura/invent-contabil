@@ -3,6 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import ChartWidget from './ChartWidget';
 import { useDashboard } from '../DashboardContext';
 import { useDashboardNavigation } from '../../../hooks/useDashboardNavigation';
+import { translateStatus } from '../../../utils/translations';
 
 const RiskMapWidget: React.FC = () => {
     const { aggregates, theme } = useDashboard();
@@ -13,17 +14,21 @@ const RiskMapWidget: React.FC = () => {
     // Pending -> Medium Risk (Yellow)
     // WriteOff/Transfer -> High Risk (Red/Orange)
 
-    const statusMap: Record<string, { label: string, color: string }> = {
-        'APPROVED': { label: 'Aprovado', color: '#10b981' },
-        'PENDING': { label: 'Pendente', color: '#f59e0b' },
-        'WRITE_OFF_PENDING': { label: 'Baixa Pendente', color: '#ef4444' },
-        'TRANSFER_PENDING': { label: 'Transferência', color: '#8b5cf6' },
-        'WRITTEN_OFF': { label: 'Baixado', color: '#64748b' }
+    const statusMap: Record<string, { color: string }> = {
+        'APPROVED': { color: '#10b981' },
+        'PENDING': { color: '#f59e0b' },
+        'WRITE_OFF_PENDING': { color: '#ef4444' },
+        'TRANSFER_PENDING': { color: '#8b5cf6' },
+        'WRITTEN_OFF': { color: '#64748b' },
+        'MAINTENANCE': { color: '#eab308' },
+        'IN_STOCK': { color: '#0ea5e9' },
+        'IN_TRANSIT': { color: '#a855f7' },
+        'REJECTED': { color: '#dc2626' }
     };
 
     const data = Object.entries(aggregates.itemsByStatus)
         .map(([status, count]) => ({
-            name: statusMap[status]?.label || status,
+            name: translateStatus(status),
             statusKey: status,
             value: count,
             color: statusMap[status]?.color || '#cbd5e1'
