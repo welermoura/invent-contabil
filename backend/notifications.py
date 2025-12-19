@@ -88,38 +88,56 @@ def generate_html_email(title: str, message: str, item_details: Optional[dict] =
             "invoice_link", "supplier", "observations", "responsible"
         ]
 
-        # Filter details to only include what we want to show
-        for key in priority_keys:
+        # Filtrar detalhes e separar 'observações' para exibir fora da tabela horizontal
+        table_keys = [k for k in priority_keys if k != "observations"]
+
+        headers_html = ""
+        values_html = ""
+
+        # Gerar Cabeçalhos e Valores para a tabela horizontal
+        for key in table_keys:
             if key in item_details:
                 label = labels.get(key, key)
                 val = format_val(key, item_details[key])
-                rows += f"""
-                <tr>
-                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 600; width: 40%;">{label}</td>
-                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #111827;">{val}</td>
-                </tr>
-                """
 
-        # Add remaining keys if meaningful (e.g. transfer target)
+                headers_html += f'<th style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 600; text-align: left; white-space: nowrap;">{label}</th>'
+                values_html += f'<td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #111827; white-space: nowrap;">{val}</td>'
+
+        # Verificar chaves extras (exceto observations)
         for key, val in item_details.items():
-            if key not in priority_keys and key in labels: # Only show known keys to avoid noise
+            if key not in priority_keys and key != "observations" and key in labels:
                 label = labels.get(key, key)
-                rows += f"""
-                <tr>
-                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 600; width: 40%;">{label}</td>
-                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #111827;">{format_val(key, val)}</td>
-                </tr>
-                """
+                headers_html += f'<th style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 600; text-align: left; white-space: nowrap;">{label}</th>'
+                values_html += f'<td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #111827; white-space: nowrap;">{format_val(key, val)}</td>'
 
-        if rows:
+        # Montar a tabela horizontal com scroll horizontal
+        if headers_html:
             item_table_html = f"""
             <div style="margin: 24px 0; background-color: #f9fafb; border-radius: 8px; padding: 16px;">
                 <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 16px; color: #374151;">Detalhes do Item</h3>
-                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-                    {rows}
-                </table>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                        <thead>
+                            <tr>{headers_html}</tr>
+                        </thead>
+                        <tbody>
+                            <tr>{values_html}</tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
             """
+
+        # Adicionar Observações separadamente, se houver
+        if "observations" in item_details and item_details["observations"]:
+             obs_val = format_val("observations", item_details["observations"])
+             if obs_val != "-":
+                 item_table_html += f"""
+                 <div style="margin-top: 16px; background-color: #f9fafb; border-radius: 8px; padding: 16px;">
+                    <h4 style="margin: 0 0 8px 0; font-size: 14px; color: #6b7280;">Observações</h4>
+                    <p style="margin: 0; font-size: 14px; color: #111827; line-height: 1.5;">{obs_val}</p>
+                 </div>
+                 """
 
     html = f"""
     <!DOCTYPE html>
