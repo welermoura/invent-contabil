@@ -112,6 +112,7 @@ class Item(Base):
     responsible_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     status = Column(Enum(ItemStatus), default=ItemStatus.PENDING)
     observations = Column(Text, nullable=True)
+    write_off_reason = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
