@@ -42,8 +42,74 @@ async def get_branch_members(db: AsyncSession, branch_id: int) -> List[models.Us
 
     return branch_members
 
-def generate_html_email(title: str, message: str, action_url: Optional[str] = None, action_text: Optional[str] = "Ver no Sistema", app_title: str = "Sistema de Inventário") -> str:
-    """Generates a modern, responsive HTML email body."""
+def generate_html_email(title: str, message: str, item_details: Optional[dict] = None, action_url: Optional[str] = None, action_text: Optional[str] = "Ver no Sistema", app_title: str = "Sistema de Inventário") -> str:
+    """Generates a modern, responsive HTML email body with item details table."""
+
+    # Generate Item Table if details provided
+    item_table_html = ""
+    if item_details:
+        rows = ""
+        # Definindo ordem de prioridade e rótulos em português
+        labels = {
+            "description": "Descrição",
+            "category": "Categoria",
+            "fixed_asset_number": "Ativo Fixo",
+            "serial_number": "Nº Série",
+            "branch": "Filial",
+            "status": "Status",
+            "invoice_value": "Valor (R$)",
+            "purchase_date": "Data Compra",
+            "supplier": "Fornecedor",
+            "transfer_target": "Destino (Transferência)"
+        }
+
+        # Helper para formatar valores
+        def format_val(k, v):
+            if v is None or v == "": return "-"
+            if k == "invoice_value":
+                try:
+                    return f"R$ {float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                except: return str(v)
+            if k == "purchase_date":
+                # Assuming datetime object or iso string, simplest is just return string if formatted, else try parse
+                return str(v).split(' ')[0] # Simple split for date
+            return str(v)
+
+        # Iterate specific keys to maintain order, then others
+        priority_keys = ["description", "fixed_asset_number", "category", "branch", "status", "serial_number", "invoice_value", "purchase_date"]
+
+        # Filter details to only include what we want to show
+        for key in priority_keys:
+            if key in item_details:
+                label = labels.get(key, key)
+                val = format_val(key, item_details[key])
+                rows += f"""
+                <tr>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 600; width: 40%;">{label}</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #111827;">{val}</td>
+                </tr>
+                """
+
+        # Add remaining keys if meaningful (e.g. transfer target)
+        for key, val in item_details.items():
+            if key not in priority_keys and key in labels: # Only show known keys to avoid noise
+                label = labels.get(key, key)
+                rows += f"""
+                <tr>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 600; width: 40%;">{label}</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #111827;">{format_val(key, val)}</td>
+                </tr>
+                """
+
+        if rows:
+            item_table_html = f"""
+            <div style="margin: 24px 0; background-color: #f9fafb; border-radius: 8px; padding: 16px;">
+                <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 16px; color: #374151;">Detalhes do Item</h3>
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    {rows}
+                </table>
+            </div>
+            """
 
     html = f"""
     <!DOCTYPE html>
@@ -143,7 +209,8 @@ def generate_html_email(title: str, message: str, action_url: Optional[str] = No
                     <div class="message-body">
                         {message.replace(chr(10), '<br>')}
                     </div>
-                    {f'<div style="text-align: center;"><a href="{action_url}" class="action-button">{action_text}</a></div>' if action_url else ''}
+                    {item_table_html}
+                    {f'<div style="text-align: center; margin-top: 30px;"><a href="{action_url}" class="action-button">{action_text}</a></div>' if action_url else ''}
                 </div>
                 <div class="footer">
                     <p>Este é um e-mail automático. Por favor, não responda.</p>

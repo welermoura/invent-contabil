@@ -16,12 +16,37 @@ if not os.path.exists(UPLOAD_DIR):
 
 # --- Notification Helpers ---
 
+def build_item_details(item: models.Item) -> dict:
+    """Extract standard item details for email table."""
+    def translate_status(s):
+        m = {
+            "APPROVED": "Aprovado", "REJECTED": "Rejeitado", "IN_STOCK": "Estoque",
+            "MAINTENANCE": "Manutenção", "WRITTEN_OFF": "Baixado", "IN_TRANSIT": "Em Trânsito",
+            "PENDING": "Pendente", "TRANSFER_PENDING": "Transferência Pendente", "WRITE_OFF_PENDING": "Baixa Pendente"
+        }
+        return m.get(s, s)
+
+    return {
+        "description": item.description,
+        "category": item.category_rel.name if item.category_rel else item.category,
+        "fixed_asset_number": item.fixed_asset_number,
+        "serial_number": item.serial_number,
+        "branch": item.branch.name if item.branch else 'N/A',
+        "status": translate_status(item.status),
+        "invoice_value": item.invoice_value,
+        "purchase_date": item.purchase_date,
+        "supplier": item.supplier.name if item.supplier else 'N/A'
+    }
+
 async def notify_new_item(db: AsyncSession, item: models.Item):
     """Notify Approvers about new pending item."""
     try:
         approvers = await notifications.get_approvers(db)
-        msg = f"Um novo item foi cadastrado e aguarda aprovação.\n\nItem: {item.description}\nFilial: {item.branch.name if item.branch else 'N/A'}\nValor: {item.invoice_value}"
-        html = notifications.generate_html_email("Novo Item Aguardando Aprovação", msg)
+        msg = f"Um novo item foi cadastrado e aguarda aprovação."
+
+        details = build_item_details(item)
+
+        html = notifications.generate_html_email("Novo Item Aguardando Aprovação", msg, item_details=details)
         await notifications.notify_users(db, approvers, "Novo Item Pendente", msg, email_subject="Ação Necessária: Novo Item Cadastrado", email_html=html)
     except Exception as e:
         print(f"Failed to send notification for new item {item.id}: {e}")
@@ -31,8 +56,12 @@ async def notify_transfer_request(db: AsyncSession, item: models.Item):
     try:
         approvers = await notifications.get_approvers(db)
         target_name = item.transfer_target_branch.name if item.transfer_target_branch else "Desconhecida"
-        msg = f"Solicitação de transferência criada.\n\nItem: {item.description}\nOrigem: {item.branch.name}\nDestino: {target_name}"
-        html = notifications.generate_html_email("Solicitação de Transferência", msg)
+        msg = f"Solicitação de transferência criada.\nOrigem: {item.branch.name}\nDestino: {target_name}"
+
+        details = build_item_details(item)
+        details["transfer_target"] = target_name # Add extra field specific to this email
+
+        html = notifications.generate_html_email("Solicitação de Transferência", msg, item_details=details)
         await notifications.notify_users(db, approvers, "Solicitação de Transferência", msg, email_subject="Ação Necessária: Transferência Solicitada", email_html=html)
     except Exception as e:
         print(f"Failed to send notification for transfer request {item.id}: {e}")
@@ -41,8 +70,11 @@ async def notify_write_off_request(db: AsyncSession, item: models.Item, justific
     """Notify Approvers about write-off request."""
     try:
         approvers = await notifications.get_approvers(db)
-        msg = f"Solicitação de baixa criada.\n\nItem: {item.description}\nFilial: {item.branch.name}\nJustificativa: {justification}"
-        html = notifications.generate_html_email("Solicitação de Baixa", msg)
+        msg = f"Solicitação de baixa criada.\nJustificativa: {justification}"
+
+        details = build_item_details(item)
+
+        html = notifications.generate_html_email("Solicitação de Baixa", msg, item_details=details)
         await notifications.notify_users(db, approvers, "Solicitação de Baixa", msg, email_subject="Ação Necessária: Baixa Solicitada", email_html=html)
     except Exception as e:
         print(f"Failed to send notification for write-off request {item.id}: {e}")
@@ -111,7 +143,11 @@ async def notify_status_change(db: AsyncSession, item: models.Item, old_status: 
         if is_transfer_approval:
             msg += "\nO item está em trânsito e aguarda confirmação de recebimento na filial de destino."
 
-        html = notifications.generate_html_email(title, msg)
+        details = build_item_details(item)
+        if is_transfer_approval and item.transfer_target_branch:
+             details["transfer_target"] = item.transfer_target_branch.name
+
+        html = notifications.generate_html_email(title, msg, item_details=details)
         await notifications.notify_users(db, target_users, title, msg, email_subject=f"Aviso de Sistema: Item {action_label}", email_html=html)
     except Exception as e:
         print(f"Failed to send notification for status change {item.id}: {e}")
