@@ -496,13 +496,15 @@ async def get_all_logs(db: AsyncSession, limit: int = 1000):
     result = await db.execute(query)
     return result.scalars().all()
 
-async def request_write_off(db: AsyncSession, item_id: int, justification: str, user_id: int):
+async def request_write_off(db: AsyncSession, item_id: int, justification: str, user_id: int, reason: str = None):
     result = await db.execute(select(models.Item).where(models.Item.id == item_id))
     db_item = result.scalars().first()
     if db_item:
         db_item.status = models.ItemStatus.WRITE_OFF_PENDING
+        if reason:
+            db_item.write_off_reason = reason
 
-        log = models.Log(item_id=item_id, user_id=user_id, action=f"Solicitação de baixa. Motivo: {justification}")
+        log = models.Log(item_id=item_id, user_id=user_id, action=f"Solicitação de baixa. {justification}")
         db.add(log)
         await db.commit()
 

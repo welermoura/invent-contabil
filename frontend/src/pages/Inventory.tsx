@@ -551,7 +551,9 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
 
     const openWriteOffModal = (item: any) => {
         setSelectedItem(item);
+        // Reset fields for mandatory reason logic
         setWriteOffJustification('');
+        setBulkWriteOffReason(''); // Reusing this state or create new one for individual
         setIsWriteOffModalOpen(true);
     };
 
@@ -608,10 +610,17 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
     };
 
     const handleWriteOffRequest = async () => {
-        if (!selectedItem || !writeOffJustification) return;
+        if (!selectedItem) return;
+
+        // Validation: Reason is mandatory
+        if (!bulkWriteOffReason) {
+            showWarning("O motivo da baixa é obrigatório.");
+            return;
+        }
 
         const formData = new FormData();
-        formData.append('justification', writeOffJustification);
+        formData.append('reason', bulkWriteOffReason);
+        if (writeOffJustification) formData.append('justification', writeOffJustification);
 
         try {
             await api.post(`/items/${selectedItem.id}/write-off`, formData);
@@ -619,6 +628,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
             setIsWriteOffModalOpen(false);
             setSelectedItem(null);
             setWriteOffJustification('');
+            setBulkWriteOffReason('');
             showSuccess("Solicitação de baixa enviada com sucesso!");
         } catch (error) {
             console.error("Erro ao solicitar baixa", error);
@@ -1109,8 +1119,40 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                         {/* Content for these modals using state variables */}
                         {isWriteOffModalOpen && (
                              <div className='space-y-4'>
-                                <p className="text-sm text-slate-600">Informe o motivo da baixa para aprovação.</p>
-                                <textarea value={writeOffJustification} onChange={e => setWriteOffJustification(e.target.value)} className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" rows={3} placeholder="Justificativa..." />
+                                {/* Summary Block */}
+                                <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-sm mb-4">
+                                    <p><span className="text-slate-500 font-medium">Item:</span> {selectedItem.description}</p>
+                                    <p><span className="text-slate-500 font-medium">Categoria:</span> {selectedItem.category}</p>
+                                    <p><span className="text-slate-500 font-medium">Valor Contábil:</span> {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedItem.accounting_value || selectedItem.invoice_value)}</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Motivo da Baixa (Obrigatório)</label>
+                                    <select
+                                        value={bulkWriteOffReason}
+                                        onChange={(e) => setBulkWriteOffReason(e.target.value)}
+                                        className="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none bg-white"
+                                    >
+                                        <option value="">Selecione um motivo...</option>
+                                        <option value="Venda">Venda</option>
+                                        <option value="Doação">Doação</option>
+                                        <option value="Obsolescência">Obsolescência</option>
+                                        <option value="Perda / Extravio">Perda / Extravio</option>
+                                        <option value="Sinistro">Sinistro</option>
+                                        <option value="Fim de vida útil">Fim de vida útil</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Observação Complementar (Opcional)</label>
+                                    <textarea
+                                        value={writeOffJustification}
+                                        onChange={(e) => setWriteOffJustification(e.target.value)}
+                                        className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                                        rows={3}
+                                        placeholder="Detalhes adicionais..."
+                                    />
+                                </div>
                             </div>
                         )}
                         {isTransferModalOpen && (
@@ -1141,7 +1183,13 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                         )}
                         <div className="flex justify-end gap-2 mt-6 border-t border-slate-100 pt-4">
                             <button onClick={() => { setIsWriteOffModalOpen(false); setIsTransferModalOpen(false); }} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors font-medium">Cancelar</button>
-                            <button onClick={isWriteOffModalOpen ? handleWriteOffRequest : handleTransferRequest} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-lg shadow-blue-500/30">Confirmar</button>
+                            <button
+                                onClick={isWriteOffModalOpen ? handleWriteOffRequest : handleTransferRequest}
+                                disabled={isWriteOffModalOpen && !bulkWriteOffReason}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isWriteOffModalOpen ? 'Confirmar Baixa' : 'Confirmar'}
+                            </button>
                         </div>
                     </div>
                 </div>
