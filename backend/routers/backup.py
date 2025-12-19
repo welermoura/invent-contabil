@@ -185,60 +185,109 @@ async def import_backup(
 
         dump_path = os.path.join(temp_dir, "database.dump")
 
-        # Run pg_restore
-        # --clean: drop objects before creating
-        # --if-exists: used with --clean
-        # -d: database
+        # Definir caminhos para conversão e sanitização
+        sql_dump_path = os.path.join(temp_dir, "dump_converted.sql")
+        sanitized_sql_path = os.path.join(temp_dir, "dump_sanitized.sql")
 
         env = os.environ.copy()
         env["PGPASSWORD"] = password
 
-        # Debug version
-        try:
-            version_check = subprocess.run(["pg_restore", "--version"], capture_output=True, text=True)
-            print(f"DEBUG: pg_restore version: {version_check.stdout.strip()}")
-        except Exception as e:
-            print(f"DEBUG: Failed to check pg_restore version: {e}")
-
-        command = [
+        # 1. Converter Dump Binário para SQL Texto (sem conectar no banco)
+        # Isso permite que a gente edite o arquivo antes de aplicar
+        print("Convertendo dump binário para SQL...")
+        convert_command = [
             "pg_restore",
+            "-f", sql_dump_path,
+            "--clean",
+            "--if-exists",
+            "--no-owner",
+            "--no-privileges",
+            dump_path
+        ]
+
+        process_convert = subprocess.run(convert_command, env=env, capture_output=True, text=True)
+        if process_convert.returncode != 0:
+             print(f"Convert Output: {process_convert.stdout}")
+             print(f"Convert Error: {process_convert.stderr}")
+             raise HTTPException(status_code=500, detail=f"Erro ao converter dump: {process_convert.stderr}")
+
+        # 2. Sanitizar o arquivo SQL
+        # Remover configurações incompatíveis com Postgres 15 (ex: transaction_timeout do PG 17)
+        print("Sanitizando arquivo SQL...")
+        try:
+            with open(sql_dump_path, 'r', encoding='utf-8', errors='replace') as fin, \
+                 open(sanitized_sql_path, 'w', encoding='utf-8') as fout:
+                for line in fin:
+                    # O PostgreSQL 15 não suporta 'transaction_timeout', comum em dumps do PG 17+
+                    # Verifica se a linha começa exatamente com o comando SET para evitar falso-positivo em dados
+                    if line.strip().startswith("SET transaction_timeout"):
+                        continue
+                    fout.write(line)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Erro ao sanitizar dump SQL: {str(e)}")
+
+        # IMPORTANTE: Liberar conexão do banco atual para evitar deadlock no DROP
+        await db.close()
+
+        # Derrubar outras conexões ativas para permitir DROP DATABASE/TABLES
+        print("Encerrando conexões ativas no banco...")
+        kill_connections_command = [
+            "psql",
+            "-h", host,
+            "-p", port,
+            "-U", user,
+            "-d", "postgres", # Conectar no 'postgres' para matar conexões do 'inventory'
+            "-c", f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{dbname}' AND pid <> pg_backend_pid();"
+        ]
+
+        process_kill = subprocess.run(kill_connections_command, env=env, capture_output=True, text=True)
+        # Não falhamos se der erro aqui, mas logamos
+        if process_kill.returncode != 0:
+            print(f"Aviso ao matar conexões: {process_kill.stderr}")
+
+        # 3. Importar SQL Sanitizado via psql
+        print("Importando SQL sanitizado via psql...")
+        import_command = [
+            "psql",
             "-h", host,
             "-p", port,
             "-U", user,
             "-d", dbname,
-            "--clean",
-            "--if-exists",
-            "--no-owner", # Avoid ownership issues if users differ
-            "--no-privileges", # Avoid privilege issues
-            dump_path
+            "-f", sanitized_sql_path
         ]
 
-        # Warning: This is a blocking operation. For large DBs, this should be a background task.
-        # However, for this requirement, we will do it synchronously to report success/failure immediately.
+        # Warning: This is a blocking operation.
+        process_import = subprocess.run(import_command, env=env, capture_output=True, text=True)
 
-        process = subprocess.run(command, env=env, capture_output=True, text=True)
-
-        if process.returncode != 0:
-            # Check strictly for errors. If pg_restore fails, we must alert the user.
-            print(f"Restore Output: {process.stdout}")
-            print(f"Restore Error: {process.stderr}")
+        if process_import.returncode != 0:
+            print(f"Restore Output: {process_import.stdout}")
+            print(f"Restore Error: {process_import.stderr}")
             raise HTTPException(
                 status_code=500,
-                detail=f"Erro crítico ao restaurar banco de dados (Código {process.returncode}): {process.stderr}"
+                detail=f"Erro crítico ao restaurar banco de dados (Código {process_import.returncode}): {process_import.stderr}"
             )
 
-        # Log action
-        new_log = Log(
-            user_id=current_user.id,
-            item_id=None,
-            action=f"BACKUP_IMPORT: Restaurado backup enviado por {current_user.email}"
-        )
-        db.add(new_log)
-        await db.commit()
+        # Log action - Inserir via psql em nova conexão
+        try:
+             # Escapar aspas simples para SQL seguro
+             safe_email = current_user.email.replace("'", "''")
+             log_action = f"BACKUP_IMPORT: Restaurado backup enviado por {safe_email}"
+
+             # timestamp já é handled pelo DEFAULT NOW() ou passado explicitamente
+             log_sql = f"INSERT INTO logs (user_id, action, timestamp) VALUES ({current_user.id}, '{log_action}', NOW());"
+
+             subprocess.run(
+                 ["psql", "-h", host, "-p", port, "-U", user, "-d", dbname, "-c", log_sql],
+                 env=env,
+                 check=False # Não falhar o request se o log falhar
+             )
+        except Exception as e:
+             print(f"Erro ao salvar log de restore: {e}")
 
         return {"message": "Restauração concluída com sucesso. Por favor, faça login novamente se necessário."}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        shutil.rmtree(temp_dir)
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
