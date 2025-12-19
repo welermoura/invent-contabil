@@ -3,8 +3,11 @@ import { useForm } from 'react-hook-form';
 import api from '../api';
 import { useError } from '../hooks/useError';
 import { Settings, Save, Image as ImageIcon, Type, Mail, Server, Shield, User, Key, Send } from 'lucide-react';
+import BackupMigration from '../components/BackupMigration';
+import { useAuth } from '../AuthContext';
 
 const SystemSettings: React.FC = () => {
+    const { user } = useAuth();
     const { register, handleSubmit, setValue, getValues } = useForm();
     const { showSuccess, showError } = useError();
     const [loading, setLoading] = useState(false);
@@ -360,6 +363,11 @@ const SystemSettings: React.FC = () => {
                 </div>
 
             </form>
+
+            {/* Seção de Backup e Migração (Apenas Admin) */}
+            {user?.role === 'ADMIN' && (
+                <BackupMigration />
+            )}
         </div>
     );
 };
