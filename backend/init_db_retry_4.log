@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/app/backend/initial_data.py", line 2, in <module>
+    from backend import models, schemas, crud
+  File "/app/backend/crud.py", line 6, in <module>
+    from backend.auth import get_password_hash
+  File "/app/backend/auth.py", line 4, in <module>
+    from passlib.context import CryptContext
+ModuleNotFoundError: No module named 'passlib'

@@ -707,6 +707,24 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                     <table className="min-w-full text-sm text-left relative">
                         <thead className="bg-slate-50/80 dark:bg-slate-700/80 border-b border-slate-100/50 dark:border-slate-700/50 text-slate-500 dark:text-slate-300 font-semibold uppercase tracking-wider text-xs">
                             <tr>
+                                <th className="px-3 py-4 w-12 text-center">
+                                    <input
+                                        type="checkbox"
+                                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                        checked={items.length > 0 && items.every(i => selectedItems.has(i.id))}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                const newSet = new Set(selectedItems);
+                                                items.forEach(i => newSet.add(i.id));
+                                                setSelectedItems(newSet);
+                                            } else {
+                                                const newSet = new Set(selectedItems);
+                                                items.forEach(i => newSet.delete(i.id));
+                                                setSelectedItems(newSet);
+                                            }
+                                        }}
+                                    />
+                                </th>
                                 <th className="px-6 py-4 min-w-[200px]">
                                     <div className="flex flex-col gap-2">
                                         <span>Descrição</span>
@@ -766,7 +784,15 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                             {items.map((item) => (
-                                <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors text-slate-700 dark:text-slate-300">
+                                <tr key={item.id} className={`hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors text-slate-700 dark:text-slate-300 ${selectedItems.has(item.id) ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}>
+                                    <td className="px-3 py-4 text-center">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                            checked={selectedItems.has(item.id)}
+                                            onChange={() => toggleSelection(item.id)}
+                                        />
+                                    </td>
                                     <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">{item.description}</td>
                                     <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{item.category}</td>
                                     <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
@@ -887,6 +913,49 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                     </div>
                 </div>
             </div>
+
+            {/* Bulk Actions Bar */}
+            {selectedItems.size > 0 && (
+                <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl z-40 flex items-center gap-6 animate-slide-up border border-slate-600">
+                    <span className="font-semibold text-sm">{selectedItems.size} itens selecionados</span>
+                    <div className="h-4 w-px bg-slate-600"></div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => {
+                                // Pre-validate category locally if possible
+                                const selectedList = items.filter(i => selectedItems.has(i.id));
+                                if (selectedList.length > 0) {
+                                    const firstCategory = selectedList[0].category;
+                                    if (selectedList.some(i => i.category !== firstCategory)) {
+                                        showWarning("Selecione itens da mesma categoria para baixa.");
+                                        return;
+                                    }
+                                }
+                                setBulkWriteOffJustification('');
+                                setBulkWriteOffReason('');
+                                setIsBulkWriteOffModalOpen(true);
+                            }}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded-lg text-xs font-medium transition-colors"
+                        >
+                            <FileWarning size={14} /> Baixar
+                        </button>
+                        <button
+                            onClick={() => {
+                                setBulkTransferTargetBranch('');
+                                setBulkTransferInvoiceNumber('');
+                                fetchAllBranches();
+                                setIsBulkTransferModalOpen(true);
+                            }}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-xs font-medium transition-colors"
+                        >
+                            <ArrowRightLeft size={14} /> Transferir
+                        </button>
+                    </div>
+                    <button onClick={clearSelection} className="ml-2 text-slate-400 hover:text-white transition-colors">
+                        <XCircle size={18} />
+                    </button>
+                </div>
+            )}
 
             {/* Create/Edit Modal */}
             {isCreateModalOpen && (
