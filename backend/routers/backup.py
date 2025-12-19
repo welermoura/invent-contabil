@@ -185,39 +185,67 @@ async def import_backup(
 
         dump_path = os.path.join(temp_dir, "database.dump")
 
-        # Run pg_restore
-        # --clean: drop objects before creating
-        # --if-exists: used with --clean
-        # -d: database
+        # Definir caminhos para conversão e sanitização
+        sql_dump_path = os.path.join(temp_dir, "dump_converted.sql")
+        sanitized_sql_path = os.path.join(temp_dir, "dump_sanitized.sql")
 
         env = os.environ.copy()
         env["PGPASSWORD"] = password
 
-        command = [
+        # 1. Converter Dump Binário para SQL Texto (sem conectar no banco)
+        # Isso permite que a gente edite o arquivo antes de aplicar
+        print("Convertendo dump binário para SQL...")
+        convert_command = [
             "pg_restore",
+            "-f", sql_dump_path,
+            "--clean",
+            "--if-exists",
+            "--no-owner",
+            "--no-privileges",
+            dump_path
+        ]
+
+        process_convert = subprocess.run(convert_command, env=env, capture_output=True, text=True)
+        if process_convert.returncode != 0:
+             print(f"Convert Output: {process_convert.stdout}")
+             print(f"Convert Error: {process_convert.stderr}")
+             raise HTTPException(status_code=500, detail=f"Erro ao converter dump: {process_convert.stderr}")
+
+        # 2. Sanitizar o arquivo SQL
+        # Remover configurações incompatíveis com Postgres 15 (ex: transaction_timeout do PG 17)
+        print("Sanitizando arquivo SQL...")
+        try:
+            with open(sql_dump_path, 'r', encoding='utf-8', errors='replace') as fin, \
+                 open(sanitized_sql_path, 'w', encoding='utf-8') as fout:
+                for line in fin:
+                    # O PostgreSQL 15 não suporta 'transaction_timeout', comum em dumps do PG 17+
+                    # Verifica se a linha começa exatamente com o comando SET para evitar falso-positivo em dados
+                    if line.strip().startswith("SET transaction_timeout"):
+                        continue
+                    fout.write(line)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Erro ao sanitizar dump SQL: {str(e)}")
+
+        # 3. Importar SQL Sanitizado via psql
+        print("Importando SQL sanitizado via psql...")
+        import_command = [
+            "psql",
             "-h", host,
             "-p", port,
             "-U", user,
             "-d", dbname,
-            "--clean",
-            "--if-exists",
-            "--no-owner", # Avoid ownership issues if users differ
-            "--no-privileges", # Avoid privilege issues
-            dump_path
+            "-f", sanitized_sql_path
         ]
 
-        # Warning: This is a blocking operation. For large DBs, this should be a background task.
-        # However, for this requirement, we will do it synchronously to report success/failure immediately.
+        # Warning: This is a blocking operation.
+        process_import = subprocess.run(import_command, env=env, capture_output=True, text=True)
 
-        process = subprocess.run(command, env=env, capture_output=True, text=True)
-
-        if process.returncode != 0:
-            # Check strictly for errors. If pg_restore fails, we must alert the user.
-            print(f"Restore Output: {process.stdout}")
-            print(f"Restore Error: {process.stderr}")
+        if process_import.returncode != 0:
+            print(f"Restore Output: {process_import.stdout}")
+            print(f"Restore Error: {process_import.stderr}")
             raise HTTPException(
                 status_code=500,
-                detail=f"Erro crítico ao restaurar banco de dados (Código {process.returncode}): {process.stderr}"
+                detail=f"Erro crítico ao restaurar banco de dados (Código {process_import.returncode}): {process_import.stderr}"
             )
 
         # Log action
