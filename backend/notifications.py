@@ -94,21 +94,24 @@ def generate_html_email(title: str, message: str, item_details: Optional[dict] =
         headers_html = ""
         values_html = ""
 
+        # Estilo de borda mais forte para separação clara
+        border_style = "1px solid #9ca3af"
+
         # Gerar Cabeçalhos e Valores para a tabela horizontal
         for key in priority_keys:
             if key in item_details and key not in ignored_keys:
                 label = labels.get(key, key)
                 val = format_val(key, item_details[key])
 
-                headers_html += f'<th style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 600; text-align: left; white-space: nowrap;">{label}</th>'
-                values_html += f'<td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #111827; white-space: nowrap;">{val}</td>'
+                headers_html += f'<th style="padding: 12px; border-bottom: {border_style}; border-right: {border_style}; color: #374151; font-weight: 700; text-align: left; white-space: nowrap; background-color: #f3f4f6;">{label}</th>'
+                values_html += f'<td style="padding: 12px; border-bottom: {border_style}; border-right: {border_style}; color: #111827; white-space: nowrap;">{val}</td>'
 
         # Verificar chaves extras (exceto ignoradas)
         for key, val in item_details.items():
             if key not in priority_keys and key not in ignored_keys and key in labels:
                 label = labels.get(key, key)
-                headers_html += f'<th style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-weight: 600; text-align: left; white-space: nowrap;">{label}</th>'
-                values_html += f'<td style="padding: 12px; border-bottom: 1px solid #e5e7eb; color: #111827; white-space: nowrap;">{format_val(key, val)}</td>'
+                headers_html += f'<th style="padding: 12px; border-bottom: {border_style}; border-right: {border_style}; color: #374151; font-weight: 700; text-align: left; white-space: nowrap; background-color: #f3f4f6;">{label}</th>'
+                values_html += f'<td style="padding: 12px; border-bottom: {border_style}; border-right: {border_style}; color: #111827; white-space: nowrap;">{format_val(key, val)}</td>'
 
         # Montar a tabela horizontal com scroll horizontal
         if headers_html:
