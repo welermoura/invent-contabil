@@ -1,0 +1,109 @@
+ERROR:backend.initial_data:Error during initial data seeding: (sqlite3.OperationalError) no such column: branches.cnpj
+[SQL: SELECT branches.id, branches.name, branches.address, branches.cnpj
+FROM branches
+ LIMIT ? OFFSET ?]
+[parameters: (100, 0)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+Traceback (most recent call last):
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/dialects/sqlite/aiosqlite.py", line 180, in execute
+    self._adapt_connection._handle_exception(error)
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/dialects/sqlite/aiosqlite.py", line 340, in _handle_exception
+    raise error
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/dialects/sqlite/aiosqlite.py", line 162, in execute
+    self.await_(_cursor.execute(operation, parameters))
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/aiosqlite/cursor.py", line 40, in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/aiosqlite/cursor.py", line 32, in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/aiosqlite/core.py", line 133, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/aiosqlite/core.py", line 65, in _connection_worker_thread
+    result = function()
+             ^^^^^^^^^^
+sqlite3.OperationalError: no such column: branches.cnpj
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/app/backend/initial_data.py", line 17, in init_db
+    branches = await crud.get_branches(db)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/backend/crud.py", line 123, in get_branches
+    result = await db.execute(query.offset(skip).limit(limit))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py", line 449, in execute
+    result = await greenlet_spawn(
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 201, in greenlet_spawn
+    result = context.throw(*sys.exc_info())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2351, in execute
+    return self._execute_internal(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/orm/session.py", line 2249, in _execute_internal
+    result: Result[Any] = compile_state_cls.orm_execute_statement(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/orm/context.py", line 306, in orm_execute_statement
+    result = conn.execute(
+             ^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/dialects/sqlite/aiosqlite.py", line 180, in execute
+    self._adapt_connection._handle_exception(error)
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/dialects/sqlite/aiosqlite.py", line 340, in _handle_exception
+    raise error
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/dialects/sqlite/aiosqlite.py", line 162, in execute
+    self.await_(_cursor.execute(operation, parameters))
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/aiosqlite/cursor.py", line 40, in execute
+    await self._execute(self._cursor.execute, sql, parameters)
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/aiosqlite/cursor.py", line 32, in _execute
+    return await self._conn._execute(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/aiosqlite/core.py", line 133, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "/home/jules/.pyenv/versions/3.12.12/lib/python3.12/site-packages/aiosqlite/core.py", line 65, in _connection_worker_thread
+    result = function()
+             ^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such column: branches.cnpj
+[SQL: SELECT branches.id, branches.name, branches.address, branches.cnpj
+FROM branches
+ LIMIT ? OFFSET ?]
+[parameters: (100, 0)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)

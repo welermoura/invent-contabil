@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/app/backend/initial_data.py", line 2, in <module>
+    from backend import models, schemas, crud
+  File "/app/backend/schemas.py", line 1, in <module>
+    from pydantic import BaseModel, EmailStr, computed_field
+ModuleNotFoundError: No module named 'pydantic'
