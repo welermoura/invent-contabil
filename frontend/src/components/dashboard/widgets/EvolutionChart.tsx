@@ -11,7 +11,13 @@ const EvolutionChart: React.FC = () => {
     const { openDetailModal } = useDashboardNavigation();
 
     const itemsWithDate = filteredItems
-        .filter((item: any) => item.purchase_date)
+        .filter((item: any) => {
+            if (!item.purchase_date) return false;
+            // Only include financial items (Approved, Stock, Maintenance, Transit)
+            // Exclude PENDING, REJECTED, WRITTEN_OFF
+            const isFinancial = ['APPROVED', 'IN_STOCK', 'MAINTENANCE', 'IN_TRANSIT', 'TRANSFER_PENDING', 'WRITE_OFF_PENDING'].includes(item.status);
+            return isFinancial;
+        })
         .map((item: any) => ({
             date: new Date(item.purchase_date),
             value: item.accounting_value || 0
