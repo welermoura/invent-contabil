@@ -1,6 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 from backend.database import get_db
 from backend import models, crud, schemas, auth
 from datetime import datetime
@@ -103,11 +104,47 @@ async def upload_import(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erro ao ler arquivo: {str(e)}")
 
+    # Validação Prévia de Duplicidade
+    # Coletar todos os Ativos Fixos do arquivo
+    file_fixed_assets = set()
+    duplicate_in_file = set()
+    assets_to_check = []
+
+    for idx, r in enumerate(rows):
+        af = str(r.get("ATIVO_FIXO", "")).strip().upper()
+        if af and af != "NONE":
+            if af in file_fixed_assets:
+                duplicate_in_file.add(af)
+            else:
+                file_fixed_assets.add(af)
+                assets_to_check.append(af)
+
+    # Verificar existência no banco
+    existing_db_assets = set()
+    if assets_to_check:
+        result = await db.execute(select(models.Item.fixed_asset_number).where(models.Item.fixed_asset_number.in_(assets_to_check)))
+        existing_db_assets = set(row[0] for row in result.all())
+
     success_count = 0
     errors = []
 
     for index, row in enumerate(rows):
         try:
+            # Check duplication before processing logic
+            af_val = str(row.get("ATIVO_FIXO", "")).strip().upper()
+            desc_val = str(row.get("DESCRICAO", "")).upper()
+
+            if not desc_val or desc_val == "NONE":
+                 continue
+
+            if af_val and af_val != "NONE":
+                if af_val in duplicate_in_file:
+                    errors.append(f"Linha {index+2}: Item '{desc_val}' com Ativo Fixo '{af_val}' duplicado no arquivo.")
+                    continue
+                if af_val in existing_db_assets:
+                    errors.append(f"Linha {index+2}: Item '{desc_val}' com Ativo Fixo '{af_val}' já existe no sistema.")
+                    continue
+
             # Map Row Keys (handle potential variations if needed, but assuming strict header)
 
             # 1. Date
@@ -174,13 +211,10 @@ async def upload_import(
                     c = await crud.create_category(db, cat_in)
                     cat_id = c.id
 
-            # 5. Description & Others
-            desc = str(row.get("DESCRICAO", "")).upper()
-            if not desc or desc == "NONE": # Handle xlsx None
-                continue # Skip empty rows
+            # 5. Description & Others (Already extracted above for logging)
 
             item_in = schemas.ItemCreate(
-                description=desc,
+                description=desc_val,
                 category=cat_name,
                 category_id=cat_id,
                 purchase_date=p_date,
@@ -189,7 +223,7 @@ async def upload_import(
                 branch_id=branch_id,
                 supplier_id=supplier_id,
                 serial_number=str(row.get("NUMERO_SERIE", "")),
-                fixed_asset_number=str(row.get("ATIVO_FIXO", "")),
+                fixed_asset_number=af_val,
                 observations=str(row.get("OBSERVACOES", "")),
                 responsible_id=current_user.id,
                 status=models.ItemStatus.APPROVED if current_user.can_import else models.ItemStatus.PENDING
