@@ -100,6 +100,105 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
     const [importResult, setImportResult] = useState<any>(null);
     const { showError, showSuccess, showWarning } = useError();
 
+    // Bulk Operations State
+    const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+    const [isBulkActionsVisible, setIsBulkActionsVisible] = useState(false);
+    const [isBulkWriteOffModalOpen, setIsBulkWriteOffModalOpen] = useState(false);
+    const [isBulkTransferModalOpen, setIsBulkTransferModalOpen] = useState(false);
+    const [bulkWriteOffReason, setBulkWriteOffReason] = useState('Venda'); // Default
+    const [bulkWriteOffJustification, setBulkWriteOffJustification] = useState('');
+    const [bulkTransferTargetBranch, setBulkTransferTargetBranch] = useState<string>('');
+    const [bulkTransferInvoiceNumber, setBulkTransferInvoiceNumber] = useState('');
+    const [bulkTransferInvoiceSeries, setBulkTransferInvoiceSeries] = useState('');
+    const [bulkTransferInvoiceDate, setBulkTransferInvoiceDate] = useState('');
+
+    const toggleSelection = (id: number) => {
+        const newSelection = new Set(selectedItems);
+        if (newSelection.has(id)) {
+            newSelection.delete(id);
+        } else {
+            newSelection.add(id);
+        }
+        setSelectedItems(newSelection);
+    };
+
+    const clearSelection = () => {
+        setSelectedItems(new Set());
+    };
+
+    useEffect(() => {
+        setIsBulkActionsVisible(selectedItems.size > 0);
+    }, [selectedItems]);
+
+    const handleBulkWriteOff = async () => {
+        // Validate Category Homogeneity
+        if (selectedItems.size === 0) return;
+
+        // We need to check categories of selected items.
+        // Ideally we fetch details or use loaded items.
+        // Using loaded 'items' might miss items if pagination changed, but user prompt says "Persistent selection".
+        // The implementation strategy: We assume selected items are in 'items' array OR we must fetch them.
+        // Simplest robust way: Check loaded items first. If some missing (due to page change), backend validates anyway.
+        // Frontend validation for better UX:
+        const selectedList = items.filter(i => selectedItems.has(i.id));
+
+        // Note: If persistence across pages works, 'items' only has current page.
+        // We can't validate mixed categories easily on frontend if items aren't loaded.
+        // Strategy: Let backend validate. Or fetch IDs.
+        // For UX "Bloquear a ação", we try our best with visible items.
+
+        if (selectedList.length > 0) {
+            const firstCategory = selectedList[0].category;
+            const hasMixed = selectedList.some(i => i.category !== firstCategory);
+            if (hasMixed) {
+                showWarning("A baixa em lote só é permitida para itens da MESMA categoria.");
+                return;
+            }
+        }
+
+        try {
+            await bulkWriteOff({
+                item_ids: Array.from(selectedItems),
+                reason: bulkWriteOffReason,
+                justification: bulkWriteOffJustification
+            });
+            showSuccess("Baixa em lote realizada com sucesso!");
+            clearSelection();
+            setIsBulkWriteOffModalOpen(false);
+            fetchItems(globalSearch, page); // Reload current page
+        } catch (error: any) {
+            console.error("Bulk Write-off error", error);
+            // Show specific backend message
+            const msg = error.response?.data?.detail || "Erro ao realizar baixa em lote.";
+            showError(msg); // Use string directly if custom hook supports or handle object
+        }
+    };
+
+    const handleBulkTransfer = async () => {
+        if (!bulkTransferTargetBranch) {
+            showWarning("Selecione a filial de destino.");
+            return;
+        }
+
+        try {
+            await bulkTransfer({
+                item_ids: Array.from(selectedItems),
+                target_branch_id: parseInt(bulkTransferTargetBranch),
+                invoice_number: bulkTransferInvoiceNumber,
+                invoice_series: bulkTransferInvoiceSeries,
+                invoice_date: bulkTransferInvoiceDate
+            });
+            showSuccess("Transferência em lote iniciada!");
+            clearSelection();
+            setIsBulkTransferModalOpen(false);
+            fetchItems(globalSearch, page);
+        } catch (error: any) {
+            console.error("Bulk Transfer error", error);
+            const msg = error.response?.data?.detail || "Erro ao realizar transferência em lote.";
+            showError(msg);
+        }
+    };
+
     const handleImport = async () => {
         if (!importFile || !importBranch) {
             return;
@@ -1228,6 +1327,86 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                             >
                                 Entendido
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Write Off Modal */}
+            {isBulkWriteOffModalOpen && (
+                <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                    <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md animate-scale-in">
+                        <h3 className="text-lg font-bold mb-4 text-slate-800">Baixa em Lote ({selectedItems.size} itens)</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Motivo da Baixa (Obrigatório)</label>
+                                <select
+                                    value={bulkWriteOffReason}
+                                    onChange={(e) => setBulkWriteOffReason(e.target.value)}
+                                    className="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none"
+                                >
+                                    <option value="Venda">Venda</option>
+                                    <option value="Doação">Doação</option>
+                                    <option value="Obsolescência">Obsolescência</option>
+                                    <option value="Perda / Extravio">Perda / Extravio</option>
+                                    <option value="Sinistro">Sinistro</option>
+                                    <option value="Fim de vida útil">Fim de vida útil</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Observação (Opcional)</label>
+                                <textarea
+                                    value={bulkWriteOffJustification}
+                                    onChange={(e) => setBulkWriteOffJustification(e.target.value)}
+                                    className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none"
+                                    rows={3}
+                                    placeholder="Detalhes adicionais..."
+                                />
+                            </div>
+                            <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-xs text-yellow-700">
+                                <AlertCircle size={14} className="inline mr-1 mb-0.5"/>
+                                Atenção: Esta ação é irreversível e será aplicada imediatamente a todos os itens selecionados.
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-6 border-t border-slate-100 pt-4">
+                            <button onClick={() => setIsBulkWriteOffModalOpen(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors font-medium">Cancelar</button>
+                            <button onClick={handleBulkWriteOff} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium shadow-lg shadow-red-500/30">Confirmar Baixa</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Transfer Modal */}
+            {isBulkTransferModalOpen && (
+                <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                    <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md animate-scale-in">
+                        <h3 className="text-lg font-bold mb-4 text-slate-800">Transferência em Lote ({selectedItems.size} itens)</h3>
+                        <div className='space-y-4'>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Filial de Destino</label>
+                                <select value={bulkTransferTargetBranch} onChange={e => setBulkTransferTargetBranch(e.target.value)} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none">
+                                    <option value="">Selecione filial...</option>
+                                    {(allBranches.length > 0 ? allBranches : branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Nota Fiscal de Transf.</label>
+                                <input type="text" value={bulkTransferInvoiceNumber} onChange={e => setBulkTransferInvoiceNumber(e.target.value)} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" placeholder="Número da NF" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Série</label>
+                                    <input type="text" value={bulkTransferInvoiceSeries} onChange={e => setBulkTransferInvoiceSeries(e.target.value)} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" placeholder="Série" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Data Emissão</label>
+                                    <input type="date" value={bulkTransferInvoiceDate} onChange={e => setBulkTransferInvoiceDate(e.target.value)} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-6 border-t border-slate-100 pt-4">
+                            <button onClick={() => setIsBulkTransferModalOpen(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors font-medium">Cancelar</button>
+                            <button onClick={handleBulkTransfer} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-lg shadow-blue-500/30">Confirmar Transferência</button>
                         </div>
                     </div>
                 </div>
