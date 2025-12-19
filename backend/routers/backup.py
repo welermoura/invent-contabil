@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db, DATABASE_URL
 from backend.auth import get_current_user
 from backend.models import User, UserRole, Log
-from backend.crud import create_log
 
 router = APIRouter(
     prefix="/backup",
@@ -213,18 +212,13 @@ async def import_backup(
         process = subprocess.run(command, env=env, capture_output=True, text=True)
 
         if process.returncode != 0:
-            # pg_restore returns non-zero on warnings sometimes. We need to be careful.
-            # But generally, if it fails to restore data, it's an error.
-            # "Warnings are ignored" policy?
-            # Let's check if output contains "error"
-            if "error" in process.stderr.lower():
-                print(f"Restore warnings/errors: {process.stderr}")
-                # We might not want to raise 500 if it's just warnings, but usually 0 is success.
-                # Common issue: cannot drop connection.
-                # Since we are connected via 'db' session in this request, we might block ourselves?
-                # No, pg_restore makes a new connection. But we hold a lock?
-                # The 'db' dependency creates a session. It doesn't lock the whole DB usually.
-                pass
+            # Check strictly for errors. If pg_restore fails, we must alert the user.
+            print(f"Restore Output: {process.stdout}")
+            print(f"Restore Error: {process.stderr}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Erro crítico ao restaurar banco de dados (Código {process.returncode}): {process.stderr}"
+            )
 
         # Log action
         new_log = Log(
