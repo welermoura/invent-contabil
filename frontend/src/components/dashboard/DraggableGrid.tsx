@@ -20,7 +20,7 @@ import {
   useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, X, XCircle } from 'lucide-react';
+import { GripVertical, X, XCircle, Maximize2 } from 'lucide-react';
 
 import { useDashboard } from './DashboardContext';
 import { useDashboardNavigation } from '../../hooks/useDashboardNavigation';
@@ -76,9 +76,10 @@ interface SortableItemProps {
     children: React.ReactNode;
     className?: string;
     onRemove: (id: string) => void;
+    onResize: (id: string) => void;
 }
 
-const SortableItem = ({ id, children, className, onRemove }: SortableItemProps) => {
+const SortableItem = ({ id, children, className, onRemove, onResize }: SortableItemProps) => {
     const {
         attributes,
         listeners,
@@ -99,6 +100,13 @@ const SortableItem = ({ id, children, className, onRemove }: SortableItemProps) 
         <div ref={setNodeRef} style={style} className={`relative group ${className}`}>
              {/* Drag handle and close button */}
              <div className="absolute top-2 right-2 flex gap-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                    onClick={(e) => { e.stopPropagation(); onResize(id); }}
+                    className="p-1.5 bg-white dark:bg-slate-700 rounded-md shadow-sm text-slate-400 hover:text-indigo-500 hover:scale-105 transition-all"
+                    title="Redimensionar Widget"
+                >
+                    <Maximize2 size={16} />
+                </button>
                 <div
                     {...attributes}
                     {...listeners}
@@ -124,9 +132,49 @@ const SortableItem = ({ id, children, className, onRemove }: SortableItemProps) 
 };
 
 const DraggableGrid: React.FC = () => {
-    const { layout, setLayout, aggregates, isLoading, isEditing, removeWidget } = useDashboard();
+    const { layout, setLayout, aggregates, isLoading, isEditing, removeWidget, widgetSizes, setWidgetSize } = useDashboard();
     const { openDetailModal } = useDashboardNavigation();
     const [activeId, setActiveId] = React.useState<string | null>(null);
+
+    const handleResize = (id: string) => {
+        // Cycle: default -> small -> medium -> large -> full -> default
+        // But initial state might be undefined (default from WIDGETS).
+        // Let's define cycle based on effective size.
+
+        // Define sequence: 1 col -> 2 col -> 4 col -> 1 col
+        // Mapping: small=1, medium=2, full=4
+        // If default is 1 (KPI), next is 2.
+        // If default is 2 (Chart), next is 4.
+
+        const def = WIDGETS[id];
+        let currentEffective = 'small';
+        if (widgetSizes[id]) {
+            currentEffective = widgetSizes[id];
+        } else if (def?.className?.includes('col-span-2')) {
+            currentEffective = 'medium';
+        } else {
+            currentEffective = 'small';
+        }
+
+        let nextSize: 'small' | 'medium' | 'full' = 'medium';
+        if (currentEffective === 'small') nextSize = 'medium';
+        else if (currentEffective === 'medium') nextSize = 'full';
+        else if (currentEffective === 'full') nextSize = 'small';
+        else if (currentEffective === 'large') nextSize = 'full'; // legacy support
+
+        setWidgetSize(id, nextSize);
+    };
+
+    const getColSpan = (id: string) => {
+        const size = widgetSizes[id];
+        if (size === 'small') return 'md:col-span-1 lg:col-span-1';
+        if (size === 'medium') return 'md:col-span-1 lg:col-span-2';
+        if (size === 'large') return 'md:col-span-2 lg:col-span-3';
+        if (size === 'full') return 'md:col-span-2 lg:col-span-4';
+
+        // Default
+        return WIDGETS[id]?.className || 'col-span-1';
+    };
 
     // Initial load check
     React.useEffect(() => {
@@ -227,11 +275,14 @@ const DraggableGrid: React.FC = () => {
             <SortableContext items={items} strategy={rectSortingStrategy}>
                 <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-10 ${isEditing ? 'p-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl bg-slate-50/50 dark:bg-slate-900/50 min-h-[500px]' : ''}`} id="dashboard-container">
                     {items.map((id: string) => {
-                        const def = WIDGETS[id];
-                        const colSpan = def?.className || 'col-span-1';
-
                         return (
-                            <SortableItem key={id} id={id} className={colSpan} onRemove={removeWidget}>
+                            <SortableItem
+                                key={id}
+                                id={id}
+                                className={getColSpan(id)}
+                                onRemove={removeWidget}
+                                onResize={handleResize}
+                            >
                                 {renderWidget(id)}
                             </SortableItem>
                         );
