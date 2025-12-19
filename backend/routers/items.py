@@ -439,17 +439,28 @@ async def update_item(
     if not existing_item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
 
-    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
-        if current_user.role == models.UserRole.OPERATOR and existing_item.status == models.ItemStatus.REJECTED:
+    # Permission Logic
+    is_admin_approver = current_user.role in [models.UserRole.ADMIN, models.UserRole.APPROVER]
+    is_operator = current_user.role == models.UserRole.OPERATOR
+
+    if not is_admin_approver:
+        if is_operator and existing_item.status == models.ItemStatus.REJECTED:
+             # Check Branch Permission
             if not current_user.all_branches:
                 allowed_branches = [b.id for b in current_user.branches]
                 if current_user.branch_id and current_user.branch_id not in allowed_branches:
                     allowed_branches.append(current_user.branch_id)
                 if existing_item.branch_id not in allowed_branches:
                      raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para editar este item")
-            item_update.status = models.ItemStatus.PENDING
         else:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem editar itens")
+
+    # Workflow: If item is REJECTED and updated, it should go back to PENDING for re-evaluation.
+    # This applies to Operators (required) and generally makes sense for others editing a rejected item.
+    if existing_item.status == models.ItemStatus.REJECTED:
+        # If status is not explicitly being changed to something else (e.g. via API magic), force PENDING
+        if item_update.status is None:
+            item_update.status = models.ItemStatus.PENDING
 
     updated_item = await crud.update_item(db, item_id, item_update)
 

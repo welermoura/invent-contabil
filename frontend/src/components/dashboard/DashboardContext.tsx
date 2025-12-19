@@ -281,36 +281,43 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             const val = item.accounting_value || 0;
             const purchVal = item.invoice_value || 0;
 
+            // Financial Statuses: Only these count towards Value totals
+            const isFinancial = ['APPROVED', 'IN_STOCK', 'MAINTENANCE', 'IN_TRANSIT', 'TRANSFER_PENDING', 'WRITE_OFF_PENDING'].includes(item.status);
+
             // Totals
-            totalValue += val;
-            totalPurchaseValue += purchVal;
-            totalItems += 1;
+            if (isFinancial) {
+                totalValue += val;
+                totalPurchaseValue += purchVal;
+                totalItems += 1; // Count only financial items in Total Items? Or keep raw count?
+                                 // Usually "Total Items" implies active assets.
+                                 // Pending items are separate.
 
-            if (val === 0) zeroDepreciationCount += 1;
+                if (val === 0) zeroDepreciationCount += 1;
 
-            if (item.purchase_date) {
-                 const pDate = new Date(item.purchase_date).getTime();
-                 const ageMonths = (now - pDate) / (1000 * 60 * 60 * 24 * 30.44); // Approx months
-                 if (ageMonths > 0) totalAgeMonths += ageMonths;
+                if (item.purchase_date) {
+                     const pDate = new Date(item.purchase_date).getTime();
+                     const ageMonths = (now - pDate) / (1000 * 60 * 60 * 24 * 30.44); // Approx months
+                     if (ageMonths > 0) totalAgeMonths += ageMonths;
+                }
+
+                // By Branch (Financial Only)
+                const branchName = item.branch ? item.branch.name : 'Sem Filial';
+                valueByBranch[branchName] = (valueByBranch[branchName] || 0) + val;
+                countByBranch[branchName] = (countByBranch[branchName] || 0) + 1;
+
+                // By Category (Financial Only)
+                const catName = item.category || 'Sem Categoria';
+                valueByCategory[catName] = (valueByCategory[catName] || 0) + val;
+                countByCategory[catName] = (countByCategory[catName] || 0) + 1;
             }
 
-            // Pending
+            // Pending (for KPI)
             if (item.status === 'PENDING' || item.status === 'WRITE_OFF_PENDING' || item.status === 'TRANSFER_PENDING') {
                 pendingCount += 1;
                 pendingValue += val;
             }
 
-            // By Branch
-            const branchName = item.branch ? item.branch.name : 'Sem Filial';
-            valueByBranch[branchName] = (valueByBranch[branchName] || 0) + val;
-            countByBranch[branchName] = (countByBranch[branchName] || 0) + 1;
-
-            // By Category
-            const catName = item.category || 'Sem Categoria';
-            valueByCategory[catName] = (valueByCategory[catName] || 0) + val;
-            countByCategory[catName] = (countByCategory[catName] || 0) + 1;
-
-            // By Status
+            // By Status (All items)
             itemsByStatus[item.status] = (itemsByStatus[item.status] || 0) + 1;
         });
 
