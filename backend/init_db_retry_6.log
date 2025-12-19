@@ -1,6 +1,0 @@
-ERROR:backend.initial_data:Error during initial data seeding: (sqlite3.OperationalError) no such table: branches
-[SQL: SELECT branches.id, branches.name, branches.address, branches.cnpj
-FROM branches
- LIMIT ? OFFSET ?]
-[parameters: (100, 0)]
-(Background on this error at: https://sqlalche.me/e/20/e3q8)
