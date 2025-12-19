@@ -44,6 +44,8 @@ interface DashboardContextType {
     refreshData: () => void;
     layout: any[];
     setLayout: (layout: any[]) => void;
+    widgetSizes: Record<string, 'small' | 'medium' | 'large' | 'full'>;
+    setWidgetSize: (widgetId: string, size: 'small' | 'medium' | 'large' | 'full') => void;
     isEditing: boolean;
     setIsEditing: (isEditing: boolean) => void;
     theme: 'light' | 'dark';
@@ -134,6 +136,20 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (saved) return JSON.parse(saved);
         return getDefaultLayout();
     });
+
+    const [widgetSizes, setWidgetSizesState] = useState<Record<string, 'small' | 'medium' | 'large' | 'full'>>(() => {
+        const saved = localStorage.getItem('dashboard_widget_sizes');
+        if (saved) return JSON.parse(saved);
+        return {};
+    });
+
+    const setWidgetSize = (widgetId: string, size: 'small' | 'medium' | 'large' | 'full') => {
+        setWidgetSizesState(prev => {
+            const next = { ...prev, [widgetId]: size };
+            localStorage.setItem('dashboard_widget_sizes', JSON.stringify(next));
+            return next;
+        });
+    };
 
     useEffect(() => {
         if (theme === 'dark') {
@@ -366,6 +382,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             refreshData: fetchData,
             layout,
             setLayout,
+            widgetSizes,
+            setWidgetSize,
             isEditing,
             setIsEditing,
             theme,
