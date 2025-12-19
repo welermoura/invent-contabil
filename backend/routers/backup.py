@@ -226,6 +226,25 @@ async def import_backup(
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Erro ao sanitizar dump SQL: {str(e)}")
 
+        # IMPORTANTE: Liberar conexão do banco atual para evitar deadlock no DROP
+        await db.close()
+
+        # Derrubar outras conexões ativas para permitir DROP DATABASE/TABLES
+        print("Encerrando conexões ativas no banco...")
+        kill_connections_command = [
+            "psql",
+            "-h", host,
+            "-p", port,
+            "-U", user,
+            "-d", "postgres", # Conectar no 'postgres' para matar conexões do 'inventory'
+            "-c", f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{dbname}' AND pid <> pg_backend_pid();"
+        ]
+
+        process_kill = subprocess.run(kill_connections_command, env=env, capture_output=True, text=True)
+        # Não falhamos se der erro aqui, mas logamos
+        if process_kill.returncode != 0:
+            print(f"Aviso ao matar conexões: {process_kill.stderr}")
+
         # 3. Importar SQL Sanitizado via psql
         print("Importando SQL sanitizado via psql...")
         import_command = [
@@ -248,18 +267,27 @@ async def import_backup(
                 detail=f"Erro crítico ao restaurar banco de dados (Código {process_import.returncode}): {process_import.stderr}"
             )
 
-        # Log action
-        new_log = Log(
-            user_id=current_user.id,
-            item_id=None,
-            action=f"BACKUP_IMPORT: Restaurado backup enviado por {current_user.email}"
-        )
-        db.add(new_log)
-        await db.commit()
+        # Log action - Inserir via psql em nova conexão
+        try:
+             # Escapar aspas simples para SQL seguro
+             safe_email = current_user.email.replace("'", "''")
+             log_action = f"BACKUP_IMPORT: Restaurado backup enviado por {safe_email}"
+
+             # timestamp já é handled pelo DEFAULT NOW() ou passado explicitamente
+             log_sql = f"INSERT INTO logs (user_id, action, timestamp) VALUES ({current_user.id}, '{log_action}', NOW());"
+
+             subprocess.run(
+                 ["psql", "-h", host, "-p", port, "-U", user, "-d", dbname, "-c", log_sql],
+                 env=env,
+                 check=False # Não falhar o request se o log falhar
+             )
+        except Exception as e:
+             print(f"Erro ao salvar log de restore: {e}")
 
         return {"message": "Restauração concluída com sucesso. Por favor, faça login novamente se necessário."}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        shutil.rmtree(temp_dir)
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
