@@ -184,7 +184,10 @@ const MacroViewPage: React.FC = () => {
         filteredItems.forEach(i => {
             statusCount[i.status] = (statusCount[i.status] || 0) + 1;
         });
-        const statusData = Object.entries(statusCount).map(([name, value]) => ({ name, value }));
+        const statusData = Object.entries(statusCount).map(([name, value]) => ({
+            name: translateStatus(name),
+            value
+        }));
 
         return { statusData };
     }, [filteredItems]);
