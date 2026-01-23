@@ -211,9 +211,9 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
             await bulkTransfer({
                 item_ids: Array.from(selectedItems),
                 target_branch_id: parseInt(bulkTransferTargetBranch),
-                invoice_number: bulkTransferInvoiceNumber,
-                invoice_series: bulkTransferInvoiceSeries,
-                invoice_date: bulkTransferInvoiceDate
+                invoice_number: bulkTransferInvoiceNumber || undefined,
+                invoice_series: bulkTransferInvoiceSeries || undefined,
+                invoice_date: bulkTransferInvoiceDate || undefined
             });
             showSuccess("Transferência em lote iniciada!");
             clearSelection();
