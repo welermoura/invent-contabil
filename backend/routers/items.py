@@ -81,11 +81,14 @@ async def notify_transfer_request(db: AsyncSession, item: models.Item):
     except Exception as e:
         print(f"Failed to send notification for transfer request {item.id}: {e}")
 
-async def notify_write_off_request(db: AsyncSession, item: models.Item, justification: str):
+async def notify_write_off_request(db: AsyncSession, item: models.Item, reason: str, justification: Optional[str]):
     """Notify Approvers about write-off request."""
     try:
         approvers = await notifications.get_approvers(db)
-        msg = f"Solicitação de baixa criada.\nJustificativa: {justification}"
+
+        msg = "Solicitação de baixa criada.\n\n"
+        msg += f"Motivo: {reason}\n"
+        msg += f"Justificativa: {justification or 'N/A'}"
 
         details = build_item_details(item)
 
@@ -384,7 +387,7 @@ async def bulk_write_off(
 
         msg = f"Solicitação de Baixa em Lote Criada.\n\n"
         msg += f"Motivo: {request.reason}\n"
-        msg += f"Justificativa: {request.justification or 'N/A'}\n"
+        msg += f"Justificativa: {request.justification or 'N/A'}\n\n"
         msg += f"Categoria: {category_name}\n"
         msg += f"Solicitante: {current_user.name}\n"
         msg += f"Quantidade: {len(items)}\n"
@@ -635,7 +638,7 @@ async def request_write_off(
     await manager.broadcast(json.dumps(payload))
 
     # Notify Approvers
-    await notify_write_off_request(db, item, full_justification)
+    await notify_write_off_request(db, item, reason, justification)
 
     return item
 
