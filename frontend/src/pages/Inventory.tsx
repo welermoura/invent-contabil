@@ -208,12 +208,14 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
         }
 
         try {
+            // Using null for empty optional fields is safer for some backend parsers
+            // than omitting the key (undefined) or sending empty strings
             await bulkTransfer({
                 item_ids: Array.from(selectedItems),
                 target_branch_id: parseInt(bulkTransferTargetBranch),
-                invoice_number: bulkTransferInvoiceNumber || undefined,
-                invoice_series: bulkTransferInvoiceSeries || undefined,
-                invoice_date: bulkTransferInvoiceDate || undefined
+                invoice_number: bulkTransferInvoiceNumber ? bulkTransferInvoiceNumber : undefined,
+                invoice_series: bulkTransferInvoiceSeries ? bulkTransferInvoiceSeries : undefined,
+                invoice_date: bulkTransferInvoiceDate ? bulkTransferInvoiceDate : undefined
             });
             showSuccess("Transferência em lote iniciada!");
             clearSelection();
@@ -702,8 +704,8 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                             </button>
                             {isBulkMenuOpen && (
                                 <>
-                                    <div className="fixed inset-0 z-30" onClick={() => setIsBulkMenuOpen(false)}></div>
-                                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl py-1 z-40 border border-slate-100 dark:border-slate-700">
+                                    <div className="fixed inset-0 z-40" onClick={() => setIsBulkMenuOpen(false)}></div>
+                                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl py-1 z-50 border border-slate-100 dark:border-slate-700">
                                         <button onClick={() => startSelectionMode('TRANSFER')} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 dark:hover:text-blue-400 flex items-center gap-2">
                                             <Truck size={16} className="text-blue-600 dark:text-blue-400" /> Transferir em Lote
                                         </button>
