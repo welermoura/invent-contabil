@@ -1,0 +1,90 @@
+INFO:     Started server process [362891]
+INFO:     Waiting for application startup.
+INFO:backend.initial_data:Creating default branch...
+INFO:backend.initial_data:Default branch created.
+INFO:backend.initial_data:Creating default admin user (admin/123)...
+INFO:backend.initial_data:Default admin created: admin / 123
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+DEBUG: Application Startup - Reloading Mappers...
+DEBUG: Mappers Configured Successfully.
+DEBUG: Database Tables Created.
+INFO:     127.0.0.1:35304 - "GET /setup-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35314 - "GET /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35304 - "GET /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35326 - "GET /setup-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35326 - "POST /token HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 35338) - "WebSocket /ws/notifications?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsIm5hbWUiOiJBZG1pbiIsInJvbGUiOiJBRE1JTiIsImNhbl9pbXBvcnQiOmZhbHNlLCJleHAiOjE3NjkyMDQyNDR9.nl-Y2H8-gvFjm1bsS0P4_Em_uHqj0CcoTyJ6hDzg77A" [accepted]
+INFO:     connection open
+INFO:     ('127.0.0.1', 35352) - "WebSocket /ws/notifications?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsIm5hbWUiOiJBZG1pbiIsInJvbGUiOiJBRE1JTiIsImNhbl9pbXBvcnQiOmZhbHNlLCJleHAiOjE3NjkyMDQyNDR9.nl-Y2H8-gvFjm1bsS0P4_Em_uHqj0CcoTyJ6hDzg77A" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:35326 - "OPTIONS /notifications/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35304 - "OPTIONS /branches/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35314 - "OPTIONS /categories/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35354 - "OPTIONS /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35370 - "OPTIONS /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35372 - "OPTIONS /notifications/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35326 - "OPTIONS /branches/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35304 - "OPTIONS /categories/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35314 - "OPTIONS /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35372 - "OPTIONS /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35304 - "GET /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35372 - "GET /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35326 - "GET /categories/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35370 - "GET /notifications/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35354 - "GET /branches/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35304 - "GET /settings/ HTTP/1.1" 200 OK
+INFO:     connection closed
+INFO:     127.0.0.1:35354 - "GET /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35372 - "GET /categories/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35326 - "GET /notifications/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35370 - "GET /branches/ HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 35388) - "WebSocket /ws/notifications?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsIm5hbWUiOiJBZG1pbiIsInJvbGUiOiJBRE1JTiIsImNhbl9pbXBvcnQiOmZhbHNlLCJleHAiOjE3NjkyMDQyNDR9.nl-Y2H8-gvFjm1bsS0P4_Em_uHqj0CcoTyJ6hDzg77A" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:35370 - "GET /notifications/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35370 - "OPTIONS /items/?search=&skip=0&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35326 - "GET /items/?search=&skip=0&limit=50 HTTP/1.1" 200 OK
+INFO:     connection closed
+INFO:     connection closed
+INFO:     127.0.0.1:56828 - "POST /token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56838 - "GET /branches/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56852 - "GET /categories/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56862 - "POST /categories/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56872 - "POST /items/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47028 - "GET /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47026 - "GET /setup-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47030 - "GET /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47028 - "GET /setup-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47028 - "POST /token HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 47042) - "WebSocket /ws/notifications?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsIm5hbWUiOiJBZG1pbiIsInJvbGUiOiJBRE1JTiIsImNhbl9pbXBvcnQiOmZhbHNlLCJleHAiOjE3NjkyMDQzMDl9.3Z4fD2Vqzszi9Mxn-x9a2fsm7uoZRNeQVLBISHVsOjY" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:47028 - "OPTIONS /notifications/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47030 - "OPTIONS /branches/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47026 - "OPTIONS /categories/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47056 - "OPTIONS /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47072 - "OPTIONS /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47082 - "OPTIONS /notifications/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47028 - "OPTIONS /branches/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47030 - "OPTIONS /categories/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47026 - "OPTIONS /settings/ HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 47096) - "WebSocket /ws/notifications?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsIm5hbWUiOiJBZG1pbiIsInJvbGUiOiJBRE1JTiIsImNhbl9pbXBvcnQiOmZhbHNlLCJleHAiOjE3NjkyMDQzMDl9.3Z4fD2Vqzszi9Mxn-x9a2fsm7uoZRNeQVLBISHVsOjY" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:47030 - "OPTIONS /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47056 - "GET /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47028 - "GET /notifications/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47030 - "GET /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47028 - "GET /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47056 - "GET /notifications/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47072 - "GET /branches/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47082 - "GET /categories/ HTTP/1.1" 200 OK
+INFO:     connection closed
+INFO:     127.0.0.1:47030 - "GET /settings/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47056 - "GET /branches/ HTTP/1.1" 200 OK
+INFO:     ('127.0.0.1', 47104) - "WebSocket /ws/notifications?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsIm5hbWUiOiJBZG1pbiIsInJvbGUiOiJBRE1JTiIsImNhbl9pbXBvcnQiOmZhbHNlLCJleHAiOjE3NjkyMDQzMDl9.3Z4fD2Vqzszi9Mxn-x9a2fsm7uoZRNeQVLBISHVsOjY" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:47072 - "GET /categories/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47072 - "GET /notifications/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47072 - "OPTIONS /items/?search=&skip=0&limit=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:47056 - "GET /items/?search=&skip=0&limit=50 HTTP/1.1" 200 OK
+INFO:     connection closed
+INFO:     connection closed
