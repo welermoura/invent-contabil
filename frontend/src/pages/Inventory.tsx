@@ -1,12 +1,12 @@
 
 import React, { useEffect, useState } from 'react';
-import api from '../api';
+import api, { bulkWriteOff, bulkTransfer } from '../api';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '../AuthContext';
 import { useError } from '../hooks/useError';
 import { useSearchParams } from 'react-router-dom';
 import { translateStatus, translateLogAction } from '../utils/translations';
-import { Edit2, Eye, CheckCircle, XCircle, ArrowRightLeft, FileText, Search, Plus, FileWarning, AlertCircle, Download, FileSpreadsheet, Table as TableIcon, ChevronDown, Wrench, Archive, RefreshCw, Upload, Truck, PackageCheck } from 'lucide-react';
+import { Edit2, Eye, CheckCircle, XCircle, ArrowRightLeft, FileText, Search, Plus, FileWarning, AlertCircle, Download, FileSpreadsheet, Table as TableIcon, ChevronDown, Wrench, Archive, RefreshCw, Upload, Truck, PackageCheck, Layers, X, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -105,6 +105,9 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
     const [isBulkActionsVisible, setIsBulkActionsVisible] = useState(false);
     const [isBulkWriteOffModalOpen, setIsBulkWriteOffModalOpen] = useState(false);
     const [isBulkTransferModalOpen, setIsBulkTransferModalOpen] = useState(false);
+    const [selectionMode, setSelectionMode] = useState<'TRANSFER' | 'WRITE_OFF' | null>(null);
+    const [lockedCategory, setLockedCategory] = useState<string | null>(null);
+    const [isBulkMenuOpen, setIsBulkMenuOpen] = useState(false);
     const [bulkWriteOffReason, setBulkWriteOffReason] = useState('Venda'); // Default
     const [bulkWriteOffJustification, setBulkWriteOffJustification] = useState('');
     const [bulkTransferTargetBranch, setBulkTransferTargetBranch] = useState<string>('');
@@ -112,11 +115,25 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
     const [bulkTransferInvoiceSeries, setBulkTransferInvoiceSeries] = useState('');
     const [bulkTransferInvoiceDate, setBulkTransferInvoiceDate] = useState('');
 
-    const toggleSelection = (id: number) => {
+    const toggleSelection = (item: any) => {
+        const id = item.id;
         const newSelection = new Set(selectedItems);
+
         if (newSelection.has(id)) {
             newSelection.delete(id);
         } else {
+            // Adding item
+            if (newSelection.size === 0) {
+                // First item - Lock Category and Filter
+                setLockedCategory(item.category);
+                setFilterCategory(item.category);
+            } else {
+                // Check constraint
+                if (lockedCategory && item.category !== lockedCategory) {
+                    showWarning(`Você só pode selecionar itens da categoria: ${lockedCategory}`);
+                    return;
+                }
+            }
             newSelection.add(id);
         }
         setSelectedItems(newSelection);
@@ -124,6 +141,16 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
 
     const clearSelection = () => {
         setSelectedItems(new Set());
+        setLockedCategory(null);
+        setSelectionMode(null);
+        setFilterCategory('');
+    };
+
+    const startSelectionMode = (mode: 'TRANSFER' | 'WRITE_OFF') => {
+        setSelectionMode(mode);
+        setSelectedItems(new Set());
+        setLockedCategory(null);
+        setIsBulkMenuOpen(false);
     };
 
     useEffect(() => {
@@ -656,6 +683,39 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                         />
                     </div>
 
+                    {/* Bulk Actions Menu */}
+                    {selectionMode ? (
+                        <button
+                            onClick={clearSelection}
+                            className="bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium flex items-center gap-2 animate-fade-in"
+                        >
+                            <X size={16} /> Cancelar Seleção
+                        </button>
+                    ) : (
+                        <div className="relative">
+                            <button
+                                onClick={() => setIsBulkMenuOpen(!isBulkMenuOpen)}
+                                className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 px-4 py-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm font-medium flex items-center gap-2"
+                            >
+                                <Layers size={16} /> Ações em Lote
+                                <ChevronDown size={14} />
+                            </button>
+                            {isBulkMenuOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-10" onClick={() => setIsBulkMenuOpen(false)}></div>
+                                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl py-1 z-20 border border-slate-100 dark:border-slate-700">
+                                        <button onClick={() => startSelectionMode('TRANSFER')} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 dark:hover:text-blue-400 flex items-center gap-2">
+                                            <Truck size={16} className="text-blue-600 dark:text-blue-400" /> Transferir em Lote
+                                        </button>
+                                        <button onClick={() => startSelectionMode('WRITE_OFF')} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 dark:hover:text-blue-400 flex items-center gap-2">
+                                            <Trash2 size={16} className="text-red-600 dark:text-red-400" /> Baixar em Lote
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+
                     <div className="relative">
                         <button
                             onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
@@ -707,6 +767,11 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                     <table className="min-w-full text-sm text-left relative">
                         <thead className="bg-slate-50/80 dark:bg-slate-700/80 border-b border-slate-100/50 dark:border-slate-700/50 text-slate-500 dark:text-slate-300 font-semibold uppercase tracking-wider text-xs">
                             <tr>
+                                {selectionMode && (
+                                    <th className="px-3 py-4 w-12 text-center">
+                                        <CheckCircle size={16} className="mx-auto text-slate-400" />
+                                    </th>
+                                )}
                                 <th className="px-6 py-4 min-w-[200px]">
                                     <div className="flex flex-col gap-2">
                                         <span>Descrição</span>
@@ -767,6 +832,17 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                             {items.map((item) => (
                                 <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors text-slate-700 dark:text-slate-300">
+                                    {selectionMode && (
+                                        <td className="px-3 py-4 text-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedItems.has(item.id)}
+                                                onChange={() => toggleSelection(item)}
+                                                disabled={lockedCategory !== null && item.category !== lockedCategory}
+                                                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                            />
+                                        </td>
+                                    )}
                                     <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">{item.description}</td>
                                     <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{item.category}</td>
                                     <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
@@ -887,6 +963,23 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                     </div>
                 </div>
             </div>
+
+            {/* Bulk Action Floating Bar */}
+            {selectionMode && selectedItems.size > 0 && (
+                <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 bg-slate-900 text-white px-6 py-3 rounded-xl shadow-xl flex items-center gap-6 animate-fade-in">
+                    <span className="font-medium">{selectedItems.size} itens selecionados</span>
+                    <div className="h-4 w-px bg-slate-700"></div>
+                    <button
+                        onClick={() => {
+                            if (selectionMode === 'TRANSFER') setIsBulkTransferModalOpen(true);
+                            if (selectionMode === 'WRITE_OFF') setIsBulkWriteOffModalOpen(true);
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg font-medium transition-colors text-sm shadow-lg shadow-blue-500/20"
+                    >
+                        {selectionMode === 'TRANSFER' ? 'Confirmar Transferência' : 'Confirmar Baixa'}
+                    </button>
+                </div>
+            )}
 
             {/* Create/Edit Modal */}
             {isCreateModalOpen && (
