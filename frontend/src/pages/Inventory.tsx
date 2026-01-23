@@ -667,7 +667,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
 
     return (
         <div className={`space-y-6 animate-fade-in ${embedded ? 'p-1' : ''}`}>
-            <div className={`flex flex-col md:flex-row justify-between items-center gap-4 bg-white/80 backdrop-blur-md dark:bg-slate-800/80 p-4 rounded-xl shadow-sm border border-slate-100/50 dark:border-slate-700/50 ${embedded ? 'sticky top-0 z-10 border-none shadow-none p-0 pb-4' : ''}`}>
+            <div className={`flex flex-col md:flex-row justify-between items-center gap-4 bg-white/80 backdrop-blur-md dark:bg-slate-800/80 p-4 rounded-xl shadow-sm border border-slate-100/50 dark:border-slate-700/50 z-30 ${embedded ? 'sticky top-0 border-none shadow-none p-0 pb-4' : 'relative'}`}>
                 {!embedded && (
                 <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
                     <FileText className="text-blue-600 dark:text-blue-400" /> Inventário
