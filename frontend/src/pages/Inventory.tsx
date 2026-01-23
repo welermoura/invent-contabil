@@ -102,7 +102,6 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
 
     // Bulk Operations State
     const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
-    const [isBulkActionsVisible, setIsBulkActionsVisible] = useState(false);
     const [isBulkWriteOffModalOpen, setIsBulkWriteOffModalOpen] = useState(false);
     const [isBulkTransferModalOpen, setIsBulkTransferModalOpen] = useState(false);
     const [selectionMode, setSelectionMode] = useState<'TRANSFER' | 'WRITE_OFF' | null>(null);
@@ -153,9 +152,6 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
         setIsBulkMenuOpen(false);
     };
 
-    useEffect(() => {
-        setIsBulkActionsVisible(selectedItems.size > 0);
-    }, [selectedItems]);
 
     const handleBulkWriteOff = async () => {
         // Validate Category Homogeneity
@@ -183,11 +179,16 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
             }
         }
 
+        if (!bulkWriteOffReason) {
+            showWarning("Selecione um motivo para a baixa.");
+            return;
+        }
+
         try {
             await bulkWriteOff({
                 item_ids: Array.from(selectedItems),
                 reason: bulkWriteOffReason,
-                justification: bulkWriteOffJustification
+                justification: bulkWriteOffJustification || undefined
             });
             showSuccess("Baixa em lote realizada com sucesso!");
             clearSelection();
