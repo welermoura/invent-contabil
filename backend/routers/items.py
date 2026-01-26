@@ -391,12 +391,12 @@ async def bulk_write_off(
         msg += f"Categoria: {category_name}\n"
         msg += f"Solicitante: {current_user.name}\n"
         msg += f"Quantidade: {len(items)}\n"
-        msg += f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n"
-        msg += "Itens:\n"
-        for item in items:
-            msg += f"- {item.description} ({item.fixed_asset_number or 'S/N'})\n"
+        msg += f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
 
-        html = notifications.generate_html_email("Solicitação de Baixa em Lote", msg)
+        # Build list of item details for table
+        items_details = [build_item_details(item) for item in items]
+
+        html = notifications.generate_html_email("Solicitação de Baixa em Lote", msg, item_details=items_details)
         await notifications.notify_users(db, approvers, "Solicitação de Baixa em Lote", msg, email_subject="Ação Necessária: Aprovar Baixa em Lote", email_html=html)
     except Exception as e:
         print(f"Error sending bulk notification: {e}")
@@ -464,12 +464,12 @@ async def bulk_transfer(
 
         msg += f"Solicitante: {current_user.name}\n"
         msg += f"Quantidade: {len(items)}\n"
-        msg += f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n"
-        msg += "Itens:\n"
-        for item in items:
-            msg += f"- {item.description} ({item.fixed_asset_number or 'S/N'})\n"
+        msg += f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
 
-        html = notifications.generate_html_email("Solicitação de Transferência em Lote", msg)
+        # Build list of item details for table
+        items_details = [build_item_details(item) for item in items]
+
+        html = notifications.generate_html_email("Solicitação de Transferência em Lote", msg, item_details=items_details)
         await notifications.notify_users(db, approvers, "Solicitação de Transferência em Lote", msg, email_subject="Ação Necessária: Aprovar Transferência em Lote", email_html=html)
     except Exception as e:
         print(f"Error sending bulk notification: {e}")

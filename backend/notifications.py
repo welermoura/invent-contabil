@@ -3,7 +3,7 @@ from backend import models, crud
 import smtplib
 import ssl
 from email.message import EmailMessage
-from typing import List, Optional
+from typing import List, Optional, Union
 
 async def get_approvers(db: AsyncSession) -> List[models.User]:
     """Get all admins and approvers."""
@@ -42,94 +42,109 @@ async def get_branch_members(db: AsyncSession, branch_id: int) -> List[models.Us
 
     return branch_members
 
-def generate_html_email(title: str, message: str, item_details: Optional[dict] = None, action_url: Optional[str] = None, action_text: Optional[str] = "Ver no Sistema", app_title: str = "Sistema de Inventário") -> str:
-    """Generates a modern, responsive HTML email body with item details table."""
+def generate_html_email(title: str, message: str, item_details: Optional[Union[dict, List[dict]]] = None, action_url: Optional[str] = None, action_text: Optional[str] = "Ver no Sistema", app_title: str = "Sistema de Inventário") -> str:
+    """Generates a modern, responsive HTML email body with item details table (single or list)."""
 
     # Generate Item Table if details provided
     item_table_html = ""
     if item_details:
-        rows = ""
-        # Definindo ordem de prioridade e rótulos em português
-        labels = {
-            "description": "Descrição",
-            "category": "Categoria",
-            "fixed_asset_number": "Ativo Fixo",
-            "serial_number": "Nº Série",
-            "branch": "Filial",
-            "status": "Status",
-            "invoice_value": "Valor (R$)",
-            "purchase_date": "Data Compra",
-            "supplier": "Fornecedor",
-            "invoice_number": "Número da NF",
-            "invoice_link": "Arquivo da NF",
-            "observations": "Observações",
-            "responsible": "Responsável",
-            "transfer_target": "Destino (Transferência)"
-        }
+        # Normalize to list
+        items_list = [item_details] if isinstance(item_details, dict) else item_details
 
-        # Helper para formatar valores
-        def format_val(k, v):
-            if v is None or v == "": return "-"
-            if k == "invoice_value":
-                try:
-                    return f"R$ {float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                except: return str(v)
-            if k == "purchase_date":
-                # Assuming datetime object or iso string, simplest is just return string if formatted, else try parse
-                return str(v).split(' ')[0] # Simple split for date
-            if k == "invoice_link":
-                 return f'<a href="{v}" target="_blank" style="color: #2563eb; text-decoration: underline;">Visualizar Nota Fiscal</a>'
-            return str(v)
+        if not items_list:
+            pass # Empty list provided
+        else:
+            # Definindo ordem de prioridade e rótulos em português
+            labels = {
+                "description": "Descrição",
+                "category": "Categoria",
+                "fixed_asset_number": "Ativo Fixo",
+                "serial_number": "Nº Série",
+                "branch": "Filial",
+                "status": "Status",
+                "invoice_value": "Valor (R$)",
+                "purchase_date": "Data Compra",
+                "supplier": "Fornecedor",
+                "invoice_number": "Número da NF",
+                "invoice_link": "Arquivo da NF",
+                "observations": "Observações",
+                "responsible": "Responsável",
+                "transfer_target": "Destino (Transferência)"
+            }
 
-        # Iterate specific keys to maintain order, then others
-        priority_keys = [
-            "description", "fixed_asset_number", "category", "branch", "status",
-            "serial_number", "invoice_value", "purchase_date", "invoice_number",
-            "invoice_link", "supplier", "responsible"
-        ]
+            # Helper para formatar valores
+            def format_val(k, v):
+                if v is None or v == "": return "-"
+                if k == "invoice_value":
+                    try:
+                        return f"R$ {float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    except: return str(v)
+                if k == "purchase_date":
+                    return str(v).split(' ')[0]
+                if k == "invoice_link":
+                     return f'<a href="{v}" target="_blank" style="color: #2563eb; text-decoration: underline;">Visualizar</a>'
+                return str(v)
 
-        # Filtrar chaves a ignorar
-        ignored_keys = ["observations"]
+            # Determine keys from the first item (or all items union)
+            # Use priority keys order
+            priority_keys = [
+                "description", "fixed_asset_number", "category", "branch", "status",
+                "serial_number", "invoice_value", "purchase_date", "invoice_number",
+                "invoice_link", "supplier", "responsible"
+            ]
+            ignored_keys = ["observations"] # Keep observations out of main table usually, or include? Image implies condensed.
 
-        headers_html = ""
-        values_html = ""
+            # Determine actual columns present in data
+            present_keys = set()
+            for it in items_list:
+                present_keys.update(k for k in it.keys() if it[k]) # Only show columns with data? Or all? Let's show all standard cols.
+                present_keys.update(it.keys())
 
-        # Estilo de borda mais forte para separação clara
-        border_style = "1px solid #9ca3af"
+            # Build Ordered Column List
+            columns = []
+            for k in priority_keys:
+                if k in present_keys and k not in ignored_keys:
+                    columns.append(k)
+            # Add remaining keys
+            for k in present_keys:
+                if k not in columns and k not in ignored_keys and k in labels:
+                    columns.append(k)
 
-        # Gerar Cabeçalhos e Valores para a tabela horizontal
-        for key in priority_keys:
-            if key in item_details and key not in ignored_keys:
-                label = labels.get(key, key)
-                val = format_val(key, item_details[key])
+            border_style = "1px solid #9ca3af"
 
+            # Header Row
+            headers_html = ""
+            for k in columns:
+                label = labels.get(k, k)
                 headers_html += f'<th style="padding: 12px; border-bottom: {border_style}; border-right: {border_style}; color: #374151; font-weight: 700; text-align: left; white-space: nowrap; background-color: #f3f4f6;">{label}</th>'
-                values_html += f'<td style="padding: 12px; border-bottom: {border_style}; border-right: {border_style}; color: #111827; white-space: nowrap;">{val}</td>'
 
-        # Verificar chaves extras (exceto ignoradas)
-        for key, val in item_details.items():
-            if key not in priority_keys and key not in ignored_keys and key in labels:
-                label = labels.get(key, key)
-                headers_html += f'<th style="padding: 12px; border-bottom: {border_style}; border-right: {border_style}; color: #374151; font-weight: 700; text-align: left; white-space: nowrap; background-color: #f3f4f6;">{label}</th>'
-                values_html += f'<td style="padding: 12px; border-bottom: {border_style}; border-right: {border_style}; color: #111827; white-space: nowrap;">{format_val(key, val)}</td>'
+            # Data Rows
+            rows_html = ""
+            for it in items_list:
+                row_cells = ""
+                for k in columns:
+                    val = format_val(k, it.get(k))
+                    row_cells += f'<td style="padding: 12px; border-bottom: {border_style}; border-right: {border_style}; color: #111827; white-space: nowrap;">{val}</td>'
+                rows_html += f'<tr>{row_cells}</tr>'
 
-        # Montar a tabela horizontal com scroll horizontal
-        if headers_html:
-            item_table_html = f"""
-            <div style="margin: 24px 0; background-color: #f9fafb; border-radius: 8px; padding: 16px;">
-                <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 16px; color: #374151;">Detalhes do Item</h3>
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 14px; border-top: {border_style}; border-left: {border_style};">
-                        <thead>
-                            <tr style="border-top: {border_style}; border-left: {border_style};">{headers_html}</tr>
-                        </thead>
-                        <tbody>
-                            <tr>{values_html}</tr>
-                        </tbody>
-                    </table>
+            # Montar a tabela horizontal com scroll horizontal
+            if headers_html:
+                title_label = "Detalhes do Item" if len(items_list) == 1 else f"Lista de Itens ({len(items_list)})"
+                item_table_html = f"""
+                <div style="margin: 24px 0; background-color: #f9fafb; border-radius: 8px; padding: 16px;">
+                    <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 16px; color: #374151;">{title_label}</h3>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 14px; border-top: {border_style}; border-left: {border_style};">
+                            <thead>
+                                <tr style="border-top: {border_style}; border-left: {border_style};">{headers_html}</tr>
+                            </thead>
+                            <tbody>
+                                {rows_html}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
-            """
+                """
 
     html = f"""
     <!DOCTYPE html>
