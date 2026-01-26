@@ -1,17 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { useError } from '../hooks/useError';
-import { Plus, Trash2, ShieldCheck, Layers } from 'lucide-react';
+import { Plus, Trash2, ShieldCheck, Layers, User } from 'lucide-react';
 
 interface ApprovalWorkflow {
     id: number;
     category_id: number;
     action_type: 'CREATE' | 'TRANSFER' | 'WRITE_OFF';
-    required_role: 'ADMIN' | 'APPROVER' | 'OPERATOR' | 'AUDITOR';
+    required_role: 'ADMIN' | 'APPROVER' | 'OPERATOR' | 'AUDITOR' | null;
+    required_user_id: number | null;
     step_order: number;
     category?: {
         id: number;
         name: string;
+    };
+    required_user?: {
+        id: number;
+        name: string;
+        email: string;
     };
 }
 
@@ -20,26 +26,42 @@ interface Category {
     name: string;
 }
 
+interface UserData {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+}
+
 const ApprovalWorkflows: React.FC = () => {
     const [workflows, setWorkflows] = useState<ApprovalWorkflow[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
+    const [users, setUsers] = useState<UserData[]>([]);
     const { showError, showSuccess } = useError();
     const [loading, setLoading] = useState(false);
 
     // Form State
     const [selectedCategory, setSelectedCategory] = useState<string>('');
     const [selectedAction, setSelectedAction] = useState<string>('CREATE');
+    const [approvalType, setApprovalType] = useState<'ROLE' | 'USER'>('ROLE'); // Toggle between Role and User
     const [selectedRole, setSelectedRole] = useState<string>('APPROVER');
+    const [selectedUserId, setSelectedUserId] = useState<string>('');
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [wfRes, catRes] = await Promise.all([
+            const [wfRes, catRes, userRes] = await Promise.all([
                 api.get('/approval-workflows/'),
-                api.get('/categories/')
+                api.get('/categories/'),
+                api.get('/users/') // Fetches all users visible to current Admin/Approver
             ]);
             setWorkflows(wfRes.data);
             setCategories(catRes.data);
+            // Filter users to show only ADMIN and APPROVER
+            const approvers = userRes.data.filter((u: UserData) =>
+                u.role === 'ADMIN' || u.role === 'APPROVER'
+            );
+            setUsers(approvers);
         } catch (error) {
             console.error("Error fetching data", error);
             showError("Erro ao carregar dados.");
@@ -58,13 +80,27 @@ const ApprovalWorkflows: React.FC = () => {
             return;
         }
 
+        if (approvalType === 'USER' && !selectedUserId) {
+             showError("Selecione um usuário.");
+             return;
+        }
+
         try {
-            await api.post('/approval-workflows/', {
+            const payload: any = {
                 category_id: parseInt(selectedCategory),
                 action_type: selectedAction,
-                required_role: selectedRole,
-                step_order: 1 // Default for now
-            });
+                step_order: 1
+            };
+
+            if (approvalType === 'ROLE') {
+                payload.required_role = selectedRole;
+                payload.required_user_id = null;
+            } else {
+                payload.required_role = null;
+                payload.required_user_id = parseInt(selectedUserId);
+            }
+
+            await api.post('/approval-workflows/', payload);
             showSuccess("Regra adicionada com sucesso!");
             fetchData();
         } catch (error) {
@@ -138,16 +174,41 @@ const ApprovalWorkflows: React.FC = () => {
                         </select>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Aprovador</label>
-                        <select
-                            value={selectedRole}
-                            onChange={e => setSelectedRole(e.target.value)}
-                            className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                            <option value="APPROVER">Aprovador (Padrão)</option>
-                            <option value="ADMIN">Administrador</option>
-                            {/* Can add logic to select specific users later if needed */}
-                        </select>
+                        <div className="flex items-center justify-between mb-1">
+                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Tipo de Aprovador</label>
+                             <div className="flex bg-slate-100 dark:bg-slate-900 rounded p-0.5">
+                                 <button
+                                    onClick={() => setApprovalType('ROLE')}
+                                    className={`text-[10px] px-2 py-0.5 rounded ${approvalType === 'ROLE' ? 'bg-white shadow text-indigo-600' : 'text-slate-400'}`}
+                                 >Cargo</button>
+                                 <button
+                                    onClick={() => setApprovalType('USER')}
+                                    className={`text-[10px] px-2 py-0.5 rounded ${approvalType === 'USER' ? 'bg-white shadow text-indigo-600' : 'text-slate-400'}`}
+                                 >Usuário</button>
+                             </div>
+                        </div>
+
+                        {approvalType === 'ROLE' ? (
+                            <select
+                                value={selectedRole}
+                                onChange={e => setSelectedRole(e.target.value)}
+                                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                <option value="APPROVER">Aprovador (Padrão)</option>
+                                <option value="ADMIN">Administrador</option>
+                            </select>
+                        ) : (
+                            <select
+                                value={selectedUserId}
+                                onChange={e => setSelectedUserId(e.target.value)}
+                                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                <option value="">Selecione um usuário...</option>
+                                {users.map(u => (
+                                    <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                                ))}
+                            </select>
+                        )}
                     </div>
                     <button
                         onClick={handleAdd}
@@ -180,10 +241,17 @@ const ApprovalWorkflows: React.FC = () => {
 
                             <div className="flex items-center gap-2 mt-4 text-sm">
                                 <span className="text-slate-500">Requer:</span>
-                                <span className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-white bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
-                                    <ShieldCheck size={14} className="text-green-600"/>
-                                    {wf.required_role === 'APPROVER' ? 'Aprovador' : 'Admin'}
-                                </span>
+                                {wf.required_user ? (
+                                    <span className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-white bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
+                                        <User size={14} className="text-blue-600"/>
+                                        {wf.required_user.name}
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-white bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
+                                        <ShieldCheck size={14} className="text-green-600"/>
+                                        {wf.required_role === 'APPROVER' ? 'Aprovador' : 'Admin'}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
