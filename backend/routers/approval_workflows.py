@@ -29,6 +29,21 @@ async def create_approval_workflow(
     # For now, just create
     return await crud.create_approval_workflow(db, workflow)
 
+@router.put("/{workflow_id}", response_model=schemas.ApprovalWorkflowResponse)
+async def update_approval_workflow(
+    workflow_id: int,
+    workflow_update: schemas.ApprovalWorkflowUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    updated = await crud.update_approval_workflow(db, workflow_id, workflow_update)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    return updated
+
 @router.delete("/{workflow_id}")
 async def delete_approval_workflow(
     workflow_id: int,

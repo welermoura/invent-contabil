@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { useError } from '../hooks/useError';
-import { Plus, Trash2, ShieldCheck, Layers, User } from 'lucide-react';
+import { Plus, Trash2, ShieldCheck, Layers, User, Edit2, ChevronDown, ChevronRight, Save, X } from 'lucide-react';
 
 interface ApprovalWorkflow {
     id: number;
@@ -40,12 +40,21 @@ const ApprovalWorkflows: React.FC = () => {
     const { showError, showSuccess } = useError();
     const [loading, setLoading] = useState(false);
 
-    // Form State
-    const [selectedCategory, setSelectedCategory] = useState<string>('');
-    const [selectedAction, setSelectedAction] = useState<string>('CREATE');
-    const [approvalType, setApprovalType] = useState<'ROLE' | 'USER'>('ROLE'); // Toggle between Role and User
-    const [selectedRole, setSelectedRole] = useState<string>('APPROVER');
-    const [selectedUserId, setSelectedUserId] = useState<string>('');
+    // Grouping State
+    const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
+
+    // Form State (New Sequence)
+    const [newSeqCategory, setNewSeqCategory] = useState<string>('');
+    const [newSeqAction, setNewSeqAction] = useState<string>('CREATE');
+    const [isAddingSequence, setIsAddingSequence] = useState(false);
+
+    // Edit/Add Step State
+    const [editingStepId, setEditingStepId] = useState<number | null>(null);
+    const [editUserId, setEditUserId] = useState<string>('');
+
+    // Add Step to specific group
+    const [addingToGroup, setAddingToGroup] = useState<string | null>(null);
+    const [addStepUserId, setAddStepUserId] = useState<string>('');
 
     const fetchData = async () => {
         setLoading(true);
@@ -53,11 +62,10 @@ const ApprovalWorkflows: React.FC = () => {
             const [wfRes, catRes, userRes] = await Promise.all([
                 api.get('/approval-workflows/'),
                 api.get('/categories/'),
-                api.get('/users/') // Fetches all users visible to current Admin/Approver
+                api.get('/users/')
             ]);
             setWorkflows(wfRes.data);
             setCategories(catRes.data);
-            // Filter users to show only ADMIN and APPROVER
             const approvers = userRes.data.filter((u: UserData) =>
                 u.role === 'ADMIN' || u.role === 'APPROVER'
             );
@@ -74,50 +82,115 @@ const ApprovalWorkflows: React.FC = () => {
         fetchData();
     }, []);
 
-    const handleAdd = async () => {
-        if (!selectedCategory) {
+    // Helper to generate unique group keys
+    const getGroupKey = (catId: number, action: string) => `${catId}-${action}`;
+
+    const groupedWorkflows = workflows.reduce((acc, wf) => {
+        const key = getGroupKey(wf.category_id, wf.action_type);
+        if (!acc[key]) {
+            acc[key] = {
+                category_name: wf.category?.name || 'Desconhecida',
+                action_type: wf.action_type,
+                category_id: wf.category_id,
+                steps: []
+            };
+        }
+        acc[key].steps.push(wf);
+        return acc;
+    }, {} as Record<string, { category_name: string, action_type: string, category_id: number, steps: ApprovalWorkflow[] }>);
+
+    // Sort steps within groups
+    Object.values(groupedWorkflows).forEach(group => {
+        group.steps.sort((a, b) => a.step_order - b.step_order);
+    });
+
+    const toggleGroup = (key: string) => {
+        setExpandedGroups(prev =>
+            prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+        );
+    };
+
+    const handleCreateSequence = async () => {
+        if (!newSeqCategory) {
             showError("Selecione uma categoria.");
             return;
         }
+        // Just expands the group basically, or "initializes" visually?
+        // Actually, if no rule exists, we just need to add the first step.
+        // We can just open the "Add Step" UI for this new virtual group.
 
-        if (approvalType === 'USER' && !selectedUserId) {
-             showError("Selecione um usuário.");
-             return;
+        const key = getGroupKey(parseInt(newSeqCategory), newSeqAction);
+        if (groupedWorkflows[key]) {
+            showError("Já existe uma configuração para esta categoria e ação. Adicione passos nela.");
+            return;
+        }
+
+        // Temporarily open the group? Or just directly add?
+        // Since the group doesn't exist in `workflows` yet, we can't "expand" it.
+        // We should just allow adding the first step.
+        setAddingToGroup(key);
+        setNewSeqCategory('');
+        setIsAddingSequence(false);
+    };
+
+    const handleAddStep = async (catId: number, action: string) => {
+        if (!addStepUserId) {
+            showError("Selecione um usuário.");
+            return;
         }
 
         try {
-            const payload: any = {
-                category_id: parseInt(selectedCategory),
-                action_type: selectedAction,
-                step_order: 1
+            const payload = {
+                category_id: catId,
+                action_type: action,
+                required_role: null,
+                required_user_id: parseInt(addStepUserId),
+                // step_order is handled by backend
             };
+            await api.post('/approval-workflows/', payload);
+            showSuccess("Passo adicionado!");
+            setAddStepUserId('');
+            setAddingToGroup(null);
 
-            if (approvalType === 'ROLE') {
-                payload.required_role = selectedRole;
-                payload.required_user_id = null;
-            } else {
-                payload.required_role = null;
-                payload.required_user_id = parseInt(selectedUserId);
+            // Auto expand the group
+            const key = getGroupKey(catId, action);
+            if (!expandedGroups.includes(key)) {
+                setExpandedGroups(prev => [...prev, key]);
             }
 
-            await api.post('/approval-workflows/', payload);
-            showSuccess("Regra adicionada com sucesso!");
             fetchData();
         } catch (error) {
-            console.error("Error adding workflow", error);
-            showError("Erro ao adicionar regra.");
+            console.error("Error adding step", error);
+            showError("Erro ao adicionar passo.");
         }
     };
 
-    const handleDelete = async (id: number) => {
-        if (!confirm("Tem certeza que deseja remover esta regra?")) return;
+    const handleUpdateStep = async (wf: ApprovalWorkflow) => {
+         if (!editUserId) return;
+
+         try {
+             await api.put(`/approval-workflows/${wf.id}`, {
+                 required_user_id: parseInt(editUserId)
+             });
+             showSuccess("Passo atualizado!");
+             setEditingStepId(null);
+             setEditUserId('');
+             fetchData();
+         } catch (error) {
+             console.error("Error updating step", error);
+             showError("Erro ao atualizar passo.");
+         }
+    };
+
+    const handleDeleteStep = async (id: number) => {
+        if (!confirm("Tem certeza que deseja remover este passo?")) return;
         try {
             await api.delete(`/approval-workflows/${id}`);
-            showSuccess("Regra removida.");
-            fetchData(); // Refresh list
+            showSuccess("Passo removido.");
+            fetchData();
         } catch (error) {
             console.error("Error deleting workflow", error);
-            showError("Erro ao remover regra.");
+            showError("Erro ao remover passo.");
         }
     };
 
@@ -131,136 +204,230 @@ const ApprovalWorkflows: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6 animate-fade-in pb-20">
             <div className="flex justify-between items-center bg-white/80 backdrop-blur-md dark:bg-slate-800/80 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
                         <ShieldCheck className="text-indigo-600 dark:text-indigo-400" />
                         Malha de Aprovação
                     </h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-1">Configure quem aprova o quê.</p>
+                    <p className="text-slate-500 dark:text-slate-400 mt-1">Defina a sequência de aprovadores por categoria.</p>
                 </div>
+                <button
+                    onClick={() => setIsAddingSequence(true)}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-indigo-500/20 flex items-center gap-2"
+                >
+                    <Plus size={18} /> Nova Sequência
+                </button>
             </div>
 
-            {/* Add New Rule Card */}
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                    <Plus size={20} className="text-green-600" /> Adicionar Regra
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Categoria</label>
-                        <select
-                            value={selectedCategory}
-                            onChange={e => setSelectedCategory(e.target.value)}
-                            className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                            <option value="">Selecione...</option>
-                            {categories.map(cat => (
-                                <option key={cat.id} value={cat.id}>{cat.name}</option>
-                            ))}
-                        </select>
+            {/* New Sequence Modal/Card */}
+            {isAddingSequence && (
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 animate-slide-in">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Configurar Nova Sequência</h3>
+                        <button onClick={() => setIsAddingSequence(false)} className="text-slate-400 hover:text-red-500"><X size={20}/></button>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Ação</label>
-                        <select
-                            value={selectedAction}
-                            onChange={e => setSelectedAction(e.target.value)}
-                            className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                            <option value="CREATE">Novos Itens</option>
-                            <option value="TRANSFER">Transferência</option>
-                            <option value="WRITE_OFF">Baixa</option>
-                        </select>
-                    </div>
-                    <div>
-                        <div className="flex items-center justify-between mb-1">
-                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Tipo de Aprovador</label>
-                             <div className="flex bg-slate-100 dark:bg-slate-900 rounded p-0.5">
-                                 <button
-                                    onClick={() => setApprovalType('ROLE')}
-                                    className={`text-[10px] px-2 py-0.5 rounded ${approvalType === 'ROLE' ? 'bg-white shadow text-indigo-600' : 'text-slate-400'}`}
-                                 >Cargo</button>
-                                 <button
-                                    onClick={() => setApprovalType('USER')}
-                                    className={`text-[10px] px-2 py-0.5 rounded ${approvalType === 'USER' ? 'bg-white shadow text-indigo-600' : 'text-slate-400'}`}
-                                 >Usuário</button>
-                             </div>
-                        </div>
-
-                        {approvalType === 'ROLE' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Categoria</label>
                             <select
-                                value={selectedRole}
-                                onChange={e => setSelectedRole(e.target.value)}
+                                value={newSeqCategory}
+                                onChange={e => setNewSeqCategory(e.target.value)}
                                 className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                             >
-                                <option value="APPROVER">Aprovador (Padrão)</option>
-                                <option value="ADMIN">Administrador</option>
-                            </select>
-                        ) : (
-                            <select
-                                value={selectedUserId}
-                                onChange={e => setSelectedUserId(e.target.value)}
-                                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-                            >
-                                <option value="">Selecione um usuário...</option>
-                                {users.map(u => (
-                                    <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                                <option value="">Selecione...</option>
+                                {categories.map(cat => (
+                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
                                 ))}
                             </select>
-                        )}
-                    </div>
-                    <button
-                        onClick={handleAdd}
-                        disabled={loading}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
-                    >
-                        <Plus size={18} /> Adicionar
-                    </button>
-                </div>
-            </div>
-
-            {/* List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {workflows.map(wf => (
-                    <div key={wf.id} className="bg-white dark:bg-slate-800 p-5 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col justify-between group hover:border-indigo-200 transition-all">
+                        </div>
                         <div>
-                            <div className="flex justify-between items-start mb-3">
-                                <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                    {wf.category?.name || 'Categoria Desconhecida'}
-                                </span>
-                                <button onClick={() => handleDelete(wf.id)} className="text-slate-400 hover:text-red-500 transition-colors">
-                                    <Trash2 size={16} />
-                                </button>
-                            </div>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Ação</label>
+                            <select
+                                value={newSeqAction}
+                                onChange={e => setNewSeqAction(e.target.value)}
+                                className="w-full p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                <option value="CREATE">Novos Itens</option>
+                                <option value="TRANSFER">Transferência</option>
+                                <option value="WRITE_OFF">Baixa</option>
+                            </select>
+                        </div>
+                        <button
+                            onClick={handleCreateSequence}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                        >
+                            <Plus size={18} /> Iniciar
+                        </button>
+                    </div>
+                </div>
+            )}
 
-                            <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300 text-sm mb-2">
-                                <Layers size={16} className="text-slate-400"/>
-                                <span className="font-medium">{translateAction(wf.action_type)}</span>
-                            </div>
+            {/* Temporary Add Step UI for new groups */}
+            {addingToGroup && !groupedWorkflows[addingToGroup] && (
+                 <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 border-l-4 border-l-green-500">
+                    <h3 className="text-md font-semibold text-slate-800 dark:text-white mb-3">
+                        Adicionando 1º Aprovador: {categories.find(c => c.id === parseInt(addingToGroup.split('-')[0]))?.name} - {translateAction(addingToGroup.split('-')[1])}
+                    </h3>
+                    <div className="flex gap-3">
+                         <select
+                            value={addStepUserId}
+                            onChange={e => setAddStepUserId(e.target.value)}
+                            className="flex-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
+                         >
+                            <option value="">Selecione o Aprovador...</option>
+                            {users.map(u => (
+                                <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                            ))}
+                         </select>
+                         <button
+                            onClick={() => handleAddStep(parseInt(addingToGroup.split('-')[0]), addingToGroup.split('-')[1])}
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+                         >
+                            <Save size={16} /> Salvar
+                         </button>
+                         <button onClick={() => setAddingToGroup(null)} className="text-slate-500 hover:text-slate-700 px-3">Cancelar</button>
+                    </div>
+                 </div>
+            )}
 
-                            <div className="flex items-center gap-2 mt-4 text-sm">
-                                <span className="text-slate-500">Requer:</span>
-                                {wf.required_user ? (
-                                    <span className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-white bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
-                                        <User size={14} className="text-blue-600"/>
-                                        {wf.required_user.name}
-                                    </span>
-                                ) : (
-                                    <span className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-white bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded">
-                                        <ShieldCheck size={14} className="text-green-600"/>
-                                        {wf.required_role === 'APPROVER' ? 'Aprovador' : 'Admin'}
-                                    </span>
-                                )}
+            {/* Grouped Lists */}
+            <div className="grid gap-6">
+                {Object.entries(groupedWorkflows).map(([key, group]) => (
+                    <div key={key} className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+                        {/* Group Header */}
+                        <div
+                            className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                            onClick={() => toggleGroup(key)}
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className={`p-2 rounded-lg ${expandedGroups.includes(key) ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
+                                    {expandedGroups.includes(key) ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-semibold text-slate-800 dark:text-white">
+                                        {group.category_name}
+                                    </h3>
+                                    <p className="text-sm text-slate-500 flex items-center gap-2">
+                                        <Layers size={14} />
+                                        {translateAction(group.action_type)}
+                                        <span className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full text-xs font-medium text-slate-600 dark:text-slate-300">
+                                            {group.steps.length} etapas
+                                        </span>
+                                    </p>
+                                </div>
                             </div>
                         </div>
+
+                        {/* Steps List */}
+                        {expandedGroups.includes(key) && (
+                            <div className="border-t border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 p-4 space-y-3">
+                                {group.steps.map((step, index) => (
+                                    <div key={step.id} className="flex items-center gap-4 bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative">
+                                        {/* Step Number Badge */}
+                                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-sm">
+                                            {index + 1}
+                                        </div>
+
+                                        {/* User Info / Edit Mode */}
+                                        <div className="flex-1">
+                                            {editingStepId === step.id ? (
+                                                <div className="flex gap-2">
+                                                    <select
+                                                        value={editUserId}
+                                                        onChange={e => setEditUserId(e.target.value)}
+                                                        className="flex-1 p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
+                                                    >
+                                                        <option value="">Selecione...</option>
+                                                        {users.map(u => (
+                                                            <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                                                        ))}
+                                                    </select>
+                                                    <button onClick={() => handleUpdateStep(step)} className="text-green-600 p-2 hover:bg-green-50 rounded"><Save size={18}/></button>
+                                                    <button onClick={() => setEditingStepId(null)} className="text-slate-400 p-2 hover:bg-slate-100 rounded"><X size={18}/></button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <User size={16} className="text-slate-400" />
+                                                    <span className="font-medium text-slate-700 dark:text-slate-200">
+                                                        {step.required_user?.name || 'Usuário Desconhecido'}
+                                                    </span>
+                                                    <span className="text-xs text-slate-400">({step.required_user?.email})</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Actions */}
+                                        {!editingStepId && (
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingStepId(step.id);
+                                                        setEditUserId(step.required_user_id?.toString() || '');
+                                                    }}
+                                                    className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                    title="Editar Aprovador"
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteStep(step.id)}
+                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="Remover Passo"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+
+                                {/* Add Step Button for this Group */}
+                                {addingToGroup === key ? (
+                                     <div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-xl border border-indigo-200 border-dashed">
+                                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center font-bold text-sm">
+                                            {group.steps.length + 1}
+                                        </div>
+                                        <select
+                                            value={addStepUserId}
+                                            onChange={e => setAddStepUserId(e.target.value)}
+                                            className="flex-1 p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
+                                        >
+                                            <option value="">Selecione o Próximo Aprovador...</option>
+                                            {users.map(u => (
+                                                <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                                            ))}
+                                        </select>
+                                        <button onClick={() => handleAddStep(group.category_id, group.action_type)} className="bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700"><Save size={18}/></button>
+                                        <button onClick={() => setAddingToGroup(null)} className="text-slate-400 p-2 hover:bg-slate-100 rounded"><X size={18}/></button>
+                                     </div>
+                                ) : (
+                                    <button
+                                        onClick={() => setAddingToGroup(key)}
+                                        className="w-full py-3 flex items-center justify-center gap-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 rounded-xl border border-dashed border-indigo-200 dark:border-indigo-800 transition-colors"
+                                    >
+                                        <Plus size={16} /> Adicionar Próxima Etapa
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 ))}
 
-                {workflows.length === 0 && (
-                    <div className="col-span-full py-12 text-center text-slate-400">
-                        <Layers size={48} className="mx-auto mb-4 opacity-20" />
-                        <p>Nenhuma regra de aprovação configurada.</p>
+                {Object.keys(groupedWorkflows).length === 0 && !isAddingSequence && !addingToGroup && (
+                    <div className="text-center py-16">
+                        <div className="bg-slate-50 dark:bg-slate-800/50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Layers size={32} className="text-slate-300 dark:text-slate-600" />
+                        </div>
+                        <h3 className="text-lg font-medium text-slate-800 dark:text-white mb-2">Nenhuma sequência definida</h3>
+                        <p className="text-slate-500 max-w-sm mx-auto mb-6">Comece criando uma sequência de aprovação para uma categoria.</p>
+                        <button
+                            onClick={() => setIsAddingSequence(true)}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-medium shadow-lg shadow-indigo-500/20"
+                        >
+                            Criar Sequência
+                        </button>
                     </div>
                 )}
             </div>

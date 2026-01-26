@@ -610,7 +610,23 @@ async def get_approval_workflows(db: AsyncSession, category_id: int = None):
     return result.scalars().all()
 
 async def create_approval_workflow(db: AsyncSession, workflow: schemas.ApprovalWorkflowCreate):
+    # Auto-calculate next step order if not provided or to ensure sequence
+    # Find max step_order for this category + action
+    query = select(models.ApprovalWorkflow).where(
+        models.ApprovalWorkflow.category_id == workflow.category_id,
+        models.ApprovalWorkflow.action_type == workflow.action_type
+    ).order_by(models.ApprovalWorkflow.step_order.desc())
+
+    result = await db.execute(query)
+    existing_workflows = result.scalars().all()
+
+    next_step = 1
+    if existing_workflows:
+        next_step = existing_workflows[0].step_order + 1
+
     db_workflow = models.ApprovalWorkflow(**workflow.dict())
+    db_workflow.step_order = next_step # Override input
+
     db.add(db_workflow)
     await db.commit()
     await db.refresh(db_workflow)
@@ -618,6 +634,23 @@ async def create_approval_workflow(db: AsyncSession, workflow: schemas.ApprovalW
     query = select(models.ApprovalWorkflow).where(models.ApprovalWorkflow.id == db_workflow.id).options(selectinload(models.ApprovalWorkflow.category))
     result = await db.execute(query)
     return result.scalars().first()
+
+async def update_approval_workflow(db: AsyncSession, workflow_id: int, workflow_update: schemas.ApprovalWorkflowUpdate):
+    result = await db.execute(select(models.ApprovalWorkflow).where(models.ApprovalWorkflow.id == workflow_id))
+    db_workflow = result.scalars().first()
+    if db_workflow:
+        if workflow_update.required_user_id is not None:
+             db_workflow.required_user_id = workflow_update.required_user_id
+
+        await db.commit()
+        await db.refresh(db_workflow)
+
+        # Reload relation
+        query = select(models.ApprovalWorkflow).where(models.ApprovalWorkflow.id == db_workflow.id).options(selectinload(models.ApprovalWorkflow.category))
+        result = await db.execute(query)
+        db_workflow = result.scalars().first()
+
+    return db_workflow
 
 async def delete_approval_workflow(db: AsyncSession, workflow_id: int):
     result = await db.execute(select(models.ApprovalWorkflow).where(models.ApprovalWorkflow.id == workflow_id))
