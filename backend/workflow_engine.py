@@ -53,6 +53,14 @@ async def get_current_step_approvers(db: AsyncSession, item: models.Item, action
         user = result.scalars().first()
         return [user] if user else []
 
+    elif current_rule.required_group_id:
+        # User Group
+        # Fetch all users in the group
+        from sqlalchemy.orm import selectinload
+        result = await db.execute(select(models.UserGroup).options(selectinload(models.UserGroup.users)).where(models.UserGroup.id == current_rule.required_group_id))
+        group = result.scalars().first()
+        return group.users if group else []
+
     elif current_rule.required_role:
         # Specific Role
         # If required is APPROVER, ADMINs are also implicitly approvers.
