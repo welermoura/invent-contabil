@@ -259,6 +259,7 @@ const AppRoutes = () => {
                     <Route path="/suppliers" element={<Suppliers />} />
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/users" element={<Users />} />
+                    <Route path="/users/groups" element={<UserGroups />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/system-settings" element={<SystemSettings />} />
                     <Route path="/safeguard-settings" element={<SafeguardSettings />} />
