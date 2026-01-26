@@ -44,6 +44,24 @@ class UserResponse(UserBase):
     can_import: bool = False
     branch: Optional["BranchResponse"] = None
     branches: List["BranchResponse"] = []
+    groups: List["UserGroupResponse"] = []
+
+    class Config:
+        from_attributes = True
+
+class UserGroupBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class UserGroupCreate(UserGroupBase):
+    pass
+
+class UserGroupUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+class UserGroupResponse(UserGroupBase):
+    id: int
 
     class Config:
         from_attributes = True
