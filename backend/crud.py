@@ -109,38 +109,6 @@ async def delete_user(db: AsyncSession, user_id: int):
         return True
     return False
 
-# User Groups
-async def get_user_groups(db: AsyncSession, skip: int = 0, limit: int = 100):
-    query = select(models.UserGroup).options(selectinload(models.UserGroup.users))
-    result = await db.execute(query.offset(skip).limit(limit))
-    return result.scalars().all()
-
-async def create_user_group(db: AsyncSession, group: schemas.UserGroupCreate):
-    db_group = models.UserGroup(**group.dict())
-    db.add(db_group)
-    await db.commit()
-    await db.refresh(db_group)
-    return db_group
-
-async def update_user_group(db: AsyncSession, group_id: int, group: schemas.UserGroupUpdate):
-    result = await db.execute(select(models.UserGroup).where(models.UserGroup.id == group_id))
-    db_group = result.scalars().first()
-    if db_group:
-        if group.name: db_group.name = group.name
-        if group.description: db_group.description = group.description
-        await db.commit()
-        await db.refresh(db_group)
-    return db_group
-
-async def delete_user_group(db: AsyncSession, group_id: int):
-    result = await db.execute(select(models.UserGroup).where(models.UserGroup.id == group_id))
-    db_group = result.scalars().first()
-    if db_group:
-        await db.delete(db_group)
-        await db.commit()
-        return True
-    return False
-
 # Branches
 async def get_branches(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
     query = select(models.Branch)

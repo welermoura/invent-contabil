@@ -51,24 +51,18 @@ const ApprovalWorkflows: React.FC = () => {
     // Edit/Add Step State
     const [editingStepId, setEditingStepId] = useState<number | null>(null);
     const [editUserId, setEditUserId] = useState<string>('');
-    const [editGroupId, setEditGroupId] = useState<string>('');
 
     // Add Step to specific group
     const [addingToGroup, setAddingToGroup] = useState<string | null>(null);
     const [addStepUserId, setAddStepUserId] = useState<string>('');
-    const [addStepGroupId, setAddStepGroupId] = useState<string>('');
-    const [stepType, setStepType] = useState<'USER' | 'GROUP'>('USER');
-
-    const [groups, setGroups] = useState<any[]>([]);
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [wfRes, catRes, userRes, groupRes] = await Promise.all([
+            const [wfRes, catRes, userRes] = await Promise.all([
                 api.get('/approval-workflows/'),
                 api.get('/categories/'),
-                api.get('/users/'),
-                api.get('/groups/')
+                api.get('/users/')
             ]);
             setWorkflows(wfRes.data);
             setCategories(catRes.data);
@@ -76,7 +70,6 @@ const ApprovalWorkflows: React.FC = () => {
                 u.role === 'ADMIN' || u.role === 'APPROVER'
             );
             setUsers(approvers);
-            setGroups(groupRes.data);
         } catch (error) {
             console.error("Error fetching data", error);
             showError("Erro ao carregar dados.");
@@ -141,27 +134,22 @@ const ApprovalWorkflows: React.FC = () => {
     };
 
     const handleAddStep = async (catId: number, action: string) => {
-        if (stepType === 'USER' && !addStepUserId) {
+        if (!addStepUserId) {
             showError("Selecione um usuário.");
-            return;
-        }
-        if (stepType === 'GROUP' && !addStepGroupId) {
-            showError("Selecione um grupo.");
             return;
         }
 
         try {
-            const payload: any = {
+            const payload = {
                 category_id: catId,
                 action_type: action,
                 required_role: null,
-                required_user_id: stepType === 'USER' ? parseInt(addStepUserId) : null,
-                required_group_id: stepType === 'GROUP' ? parseInt(addStepGroupId) : null
+                required_user_id: parseInt(addStepUserId),
+                // step_order is handled by backend
             };
             await api.post('/approval-workflows/', payload);
             showSuccess("Passo adicionado!");
             setAddStepUserId('');
-            setAddStepGroupId('');
             setAddingToGroup(null);
 
             // Auto expand the group
@@ -178,23 +166,15 @@ const ApprovalWorkflows: React.FC = () => {
     };
 
     const handleUpdateStep = async (wf: ApprovalWorkflow) => {
-         try {
-             const payload: any = {};
-             if (stepType === 'USER') {
-                 if (!editUserId) return showError("Selecione um usuário");
-                 payload.required_user_id = parseInt(editUserId);
-                 payload.required_group_id = null; // Clear group
-             } else {
-                 if (!editGroupId) return showError("Selecione um grupo");
-                 payload.required_group_id = parseInt(editGroupId);
-                 payload.required_user_id = null; // Clear user
-             }
+         if (!editUserId) return;
 
-             await api.put(`/approval-workflows/${wf.id}`, payload);
+         try {
+             await api.put(`/approval-workflows/${wf.id}`, {
+                 required_user_id: parseInt(editUserId)
+             });
              showSuccess("Passo atualizado!");
              setEditingStepId(null);
              setEditUserId('');
-             setEditGroupId('');
              fetchData();
          } catch (error) {
              console.error("Error updating step", error);
@@ -384,59 +364,27 @@ const ApprovalWorkflows: React.FC = () => {
                                         {/* User Info / Edit Mode */}
                                         <div className="flex-1">
                                             {editingStepId === step.id ? (
-                                                <div className="flex flex-col gap-2">
-                                                    <div className="flex gap-2">
-                                                        <button onClick={() => setStepType('USER')} className={`px-2 py-1 text-xs rounded ${stepType === 'USER' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100'}`}>Usuário</button>
-                                                        <button onClick={() => setStepType('GROUP')} className={`px-2 py-1 text-xs rounded ${stepType === 'GROUP' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100'}`}>Grupo</button>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        {stepType === 'USER' ? (
-                                                            <select
-                                                                value={editUserId}
-                                                                onChange={e => setEditUserId(e.target.value)}
-                                                                className="flex-1 p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
-                                                            >
-                                                                <option value="">Selecione Usuário...</option>
-                                                                {users.map(u => (
-                                                                    <option key={u.id} value={u.id}>{u.name}</option>
-                                                                ))}
-                                                            </select>
-                                                        ) : (
-                                                            <select
-                                                                value={editGroupId}
-                                                                onChange={e => setEditGroupId(e.target.value)}
-                                                                className="flex-1 p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
-                                                            >
-                                                                <option value="">Selecione Grupo...</option>
-                                                                {groups.map(g => (
-                                                                    <option key={g.id} value={g.id}>{g.name}</option>
-                                                                ))}
-                                                            </select>
-                                                        )}
-                                                        <button onClick={() => handleUpdateStep(step)} className="text-green-600 p-2 hover:bg-green-50 rounded"><Save size={18}/></button>
-                                                        <button onClick={() => setEditingStepId(null)} className="text-slate-400 p-2 hover:bg-slate-100 rounded"><X size={18}/></button>
-                                                    </div>
+                                                <div className="flex gap-2">
+                                                    <select
+                                                        value={editUserId}
+                                                        onChange={e => setEditUserId(e.target.value)}
+                                                        className="flex-1 p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
+                                                    >
+                                                        <option value="">Selecione...</option>
+                                                        {users.map(u => (
+                                                            <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                                                        ))}
+                                                    </select>
+                                                    <button onClick={() => handleUpdateStep(step)} className="text-green-600 p-2 hover:bg-green-50 rounded"><Save size={18}/></button>
+                                                    <button onClick={() => setEditingStepId(null)} className="text-slate-400 p-2 hover:bg-slate-100 rounded"><X size={18}/></button>
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center gap-2">
-                                                    {step.required_group_id ? (
-                                                        <>
-                                                            <UsersIcon size={16} className="text-purple-500" />
-                                                            <span className="font-medium text-slate-700 dark:text-slate-200">
-                                                                {/* Frontend might not have group name if not populated in list, but schema fix handles it via required_group object */}
-                                                                {(step as any).required_group?.name || 'Grupo Desconhecido'}
-                                                            </span>
-                                                            <span className="text-xs text-purple-400 bg-purple-50 px-1.5 py-0.5 rounded">Grupo</span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <User size={16} className="text-slate-400" />
-                                                            <span className="font-medium text-slate-700 dark:text-slate-200">
-                                                                {step.required_user?.name || 'Usuário Desconhecido'}
-                                                            </span>
-                                                            <span className="text-xs text-slate-400">({step.required_user?.email})</span>
-                                                        </>
-                                                    )}
+                                                    <User size={16} className="text-slate-400" />
+                                                    <span className="font-medium text-slate-700 dark:text-slate-200">
+                                                        {step.required_user?.name || 'Usuário Desconhecido'}
+                                                    </span>
+                                                    <span className="text-xs text-slate-400">({step.required_user?.email})</span>
                                                 </div>
                                             )}
                                         </div>
@@ -464,13 +412,7 @@ const ApprovalWorkflows: React.FC = () => {
                                                 <button
                                                     onClick={() => {
                                                         setEditingStepId(step.id);
-                                                        if (step.required_group_id) {
-                                                            setStepType('GROUP');
-                                                            setEditGroupId(step.required_group_id.toString());
-                                                        } else {
-                                                            setStepType('USER');
-                                                            setEditUserId(step.required_user_id?.toString() || '');
-                                                        }
+                                                        setEditUserId(step.required_user_id?.toString() || '');
                                                     }}
                                                     className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                                                     title="Editar Aprovador"
@@ -491,54 +433,22 @@ const ApprovalWorkflows: React.FC = () => {
 
                                 {/* Add Step Button for this Group */}
                                 {addingToGroup === key ? (
-                                     <div className="flex flex-col gap-2 bg-white dark:bg-slate-800 p-3 rounded-xl border border-indigo-200 border-dashed">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center font-bold text-sm">
-                                                {group.steps.length + 1}
-                                            </div>
-
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => setStepType('USER')}
-                                                    className={`px-3 py-1 text-xs rounded-full border ${stepType === 'USER' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'}`}
-                                                >
-                                                    Usuário
-                                                </button>
-                                                <button
-                                                    onClick={() => setStepType('GROUP')}
-                                                    className={`px-3 py-1 text-xs rounded-full border ${stepType === 'GROUP' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-600 border-slate-200'}`}
-                                                >
-                                                    Grupo
-                                                </button>
-                                            </div>
-
-                                            {stepType === 'USER' ? (
-                                                <select
-                                                    value={addStepUserId}
-                                                    onChange={e => setAddStepUserId(e.target.value)}
-                                                    className="flex-1 p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
-                                                >
-                                                    <option value="">Selecione o Usuário...</option>
-                                                    {users.map(u => (
-                                                        <option key={u.id} value={u.id}>{u.name}</option>
-                                                    ))}
-                                                </select>
-                                            ) : (
-                                                <select
-                                                    value={addStepGroupId}
-                                                    onChange={e => setAddStepGroupId(e.target.value)}
-                                                    className="flex-1 p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
-                                                >
-                                                    <option value="">Selecione o Grupo...</option>
-                                                    {groups.map(g => (
-                                                        <option key={g.id} value={g.id}>{g.name}</option>
-                                                    ))}
-                                                </select>
-                                            )}
-
-                                            <button onClick={() => handleAddStep(group.category_id, group.action_type)} className="bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700"><Save size={18}/></button>
-                                            <button onClick={() => setAddingToGroup(null)} className="text-slate-400 p-2 hover:bg-slate-100 rounded"><X size={18}/></button>
+                                     <div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-xl border border-indigo-200 border-dashed">
+                                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center font-bold text-sm">
+                                            {group.steps.length + 1}
                                         </div>
+                                        <select
+                                            value={addStepUserId}
+                                            onChange={e => setAddStepUserId(e.target.value)}
+                                            className="flex-1 p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
+                                        >
+                                            <option value="">Selecione o Próximo Aprovador...</option>
+                                            {users.map(u => (
+                                                <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                                            ))}
+                                        </select>
+                                        <button onClick={() => handleAddStep(group.category_id, group.action_type)} className="bg-indigo-600 text-white p-2 rounded hover:bg-indigo-700"><Save size={18}/></button>
+                                        <button onClick={() => setAddingToGroup(null)} className="text-slate-400 p-2 hover:bg-slate-100 rounded"><X size={18}/></button>
                                      </div>
                                 ) : (
                                     <button

@@ -269,7 +269,6 @@ class ApprovalWorkflowBase(BaseModel):
     action_type: ApprovalActionType
     required_role: Optional[UserRole] = None
     required_user_id: Optional[int] = None
-    required_group_id: Optional[int] = None
     step_order: int = 1
 
 class ApprovalWorkflowCreate(ApprovalWorkflowBase):
@@ -280,14 +279,12 @@ class ApprovalWorkflowUpdate(BaseModel):
     action_type: Optional[ApprovalActionType] = None
     required_role: Optional[UserRole] = None
     required_user_id: Optional[int] = None
-    required_group_id: Optional[int] = None
     step_order: Optional[int] = None
 
 class ApprovalWorkflowResponse(ApprovalWorkflowBase):
     id: int
     category: Optional["CategoryResponse"] = None
     required_user: Optional["UserResponse"] = None
-    required_group: Optional["UserGroupResponse"] = None
 
     class Config:
         from_attributes = True
