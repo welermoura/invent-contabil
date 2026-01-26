@@ -147,6 +147,9 @@ const Layout = () => {
                         <NavItem to="/users" icon={UsersIcon} label="Usuários" active={isActive('/users')} />
                     )}
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
+                        <NavItem to="/users/groups" icon={UsersIcon} label="Grupos de Aprovação" active={isActive('/users/groups')} />
+                    )}
+                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
                         <NavItem to="/safeguard-settings" icon={Shield} label="Salva Guarda" active={isActive('/safeguard-settings')} />
                     )}
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
