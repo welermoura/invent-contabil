@@ -13,26 +13,6 @@ user_branches = Table(
     extend_existing=True
 )
 
-# Tabela de associação para User <-> Group (N:N)
-user_group_members = Table(
-    "user_group_members",
-    Base.metadata,
-    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
-    Column("group_id", Integer, ForeignKey("user_groups.id"), primary_key=True),
-    extend_existing=True
-)
-
-class UserGroup(Base):
-    __tablename__ = "user_groups"
-    __table_args__ = {'extend_existing': True}
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True)
-    description = Column(String, nullable=True)
-
-    users = relationship("User", secondary=user_group_members, back_populates="groups", lazy="selectin")
-    approval_workflows = relationship("ApprovalWorkflow", back_populates="required_group")
-
 class UserRole(str, enum.Enum):
     ADMIN = "ADMIN"
     APPROVER = "APPROVER"
@@ -88,9 +68,6 @@ class User(Base):
     branch = relationship("Branch", back_populates="users_legacy")
     # Novo relacionamento (Many-to-Many)
     branches = relationship("Branch", secondary=user_branches, back_populates="users", lazy="selectin")
-
-    # Grupos (Many-to-Many)
-    groups = relationship("UserGroup", secondary=user_group_members, back_populates="users", lazy="selectin")
 
     logs = relationship("Log", back_populates="user")
     items_responsible = relationship("Item", back_populates="responsible")
@@ -196,9 +173,7 @@ class ApprovalWorkflow(Base):
     action_type = Column(Enum(ApprovalActionType))
     required_role = Column(Enum(UserRole), nullable=True)
     required_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    required_group_id = Column(Integer, ForeignKey("user_groups.id"), nullable=True)
     step_order = Column(Integer, default=1)
 
     category = relationship("Category", back_populates="approval_workflows", lazy="selectin")
     required_user = relationship("User", lazy="selectin")
-    required_group = relationship("UserGroup", back_populates="approval_workflows", lazy="selectin")

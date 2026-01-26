@@ -23,7 +23,6 @@ import {
 const Users: React.FC = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
-    const [groups, setGroups] = useState<any[]>([]);
     const { register, handleSubmit, reset, watch } = useForm();
     const [showForm, setShowForm] = useState(false);
     const [editingUser, setEditingUser] = useState<any | null>(null);
@@ -54,19 +53,9 @@ const Users: React.FC = () => {
         }
     };
 
-    const fetchGroups = async () => {
-        try {
-            const response = await api.get('/groups/');
-            setGroups(response.data);
-        } catch (error) {
-            console.error("Erro ao carregar grupos", error);
-        }
-    };
-
     useEffect(() => {
         fetchUsers();
         fetchBranches();
-        fetchGroups();
     }, []);
 
     const onSubmit = async (data: any) => {
@@ -118,8 +107,7 @@ const Users: React.FC = () => {
                  role: u.role,
                  all_branches: u.all_branches || false,
                  can_import: u.can_import || false,
-                 branch_ids: u.branches ? u.branches.map((b: any) => b.id) : (u.branch_id ? [u.branch_id] : []),
-                 group_ids: u.groups ? u.groups.map((g: any) => g.id) : []
+                 branch_ids: u.branches ? u.branches.map((b: any) => b.id) : (u.branch_id ? [u.branch_id] : [])
             });
         }, 0);
     };
@@ -258,21 +246,6 @@ const Users: React.FC = () => {
                                 ))}
                             </select>
                             {watch('all_branches') && <p className="text-xs text-indigo-600 font-medium mt-1">✓ Usuário terá acesso a todas as filiais atuais e futuras.</p>}
-                        </div>
-                        <div className="md:col-span-2 space-y-2">
-                            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                                <UsersIcon className="w-4 h-4 text-gray-400" /> Grupos de Usuários
-                            </label>
-                            <select
-                                {...register('group_ids')}
-                                multiple
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all h-24 bg-white"
-                            >
-                                {groups.map(g => (
-                                    <option key={g.id} value={g.id}>{g.name}</option>
-                                ))}
-                            </select>
-                            <p className="text-xs text-gray-500">Selecione um ou mais grupos (segure Ctrl/Cmd para múltiplos).</p>
                         </div>
                         <div className="md:col-span-2 flex justify-end gap-3 pt-2">
                             <button
