@@ -284,6 +284,7 @@ class ApprovalWorkflowUpdate(BaseModel):
 class ApprovalWorkflowResponse(ApprovalWorkflowBase):
     id: int
     category: Optional["CategoryResponse"] = None
+    required_user: Optional["UserResponse"] = None
 
     class Config:
         from_attributes = True
