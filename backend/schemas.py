@@ -44,7 +44,8 @@ class UserResponse(UserBase):
     can_import: bool = False
     branch: Optional["BranchResponse"] = None
     branches: List["BranchResponse"] = []
-    groups: List["UserGroupResponse"] = []
+    group: Optional["UserGroupResponse"] = None
+    group_id: Optional[int] = None
 
     class Config:
         from_attributes = True

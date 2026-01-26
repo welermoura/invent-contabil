@@ -97,8 +97,44 @@ async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
                 branches = result.scalars().all()
                 db_user.branches = branches
 
+        # Allow setting group_id to None (unassign)
+        # Check if the field was explicitly set in the request
         if user.group_id is not None:
             db_user.group_id = user.group_id
+        # Note: In Pydantic v2/FastAPI, 'None' might be passed if explicitly set to null.
+        # But if we use exclude_unset=True in router (typical), we rely on iteration.
+        # Here we are using Pydantic model directly.
+        # For simplicity in this codebase context where 'None' usually means 'no change',
+        # we need a way to clear it.
+        # If we assume -1 or some sentinel clears it, or if we trust the Pydantic model `group_id`
+        # is strictly Optional and defaults to None.
+        # BUT, the Frontend sends `group_id: ''` or `group_id: '1'`.
+        # The schema `UserUpdate` defines `group_id: Optional[int]`.
+        # If frontend sends null, Pydantic parses as None.
+        # So `if user.group_id is not None` skips the update if null is sent.
+        # FIX: We need to update if it's in the dict, or handle a specific clear logic.
+        # Since `UserUpdate` fields default to None, we can't distinguish "unset" vs "set to null" easily
+        # without `exclude_unset` dict from the router.
+        # However, let's assume if it is NOT None, we update.
+        # Wait, if I want to UNASSIGN, I must send None. But `if user.group_id is not None` prevents that.
+
+        # We need to change the check.
+        # However, `update_user` signature takes `user: schemas.UserUpdate`.
+        # If I change the logic to always update `db_user.group_id = user.group_id`,
+        # then not sending it (default None) will clear existing groups unexpectedly.
+
+        # Solution: Use `user.dict(exclude_unset=True)` logic pattern if possible,
+        # but here we are manual.
+        # Let's rely on a specific value for clearing? Or check `__fields_set__` if Pydantic v1/v2.
+
+        # Pydantic v2 uses `model_dump(exclude_unset=True)`.
+        # backend/schemas.py uses `pydantic.BaseModel`.
+        # Let's use `model_dump` if available or `dict`.
+
+        update_data = user.model_dump(exclude_unset=True) if hasattr(user, 'model_dump') else user.dict(exclude_unset=True)
+
+        if 'group_id' in update_data:
+            db_user.group_id = update_data['group_id']
 
         await db.commit()
         # Reload user to ensure clean state and avoid async refresh issues
@@ -684,8 +720,20 @@ async def update_approval_workflow(db: AsyncSession, workflow_id: int, workflow_
     result = await db.execute(select(models.ApprovalWorkflow).where(models.ApprovalWorkflow.id == workflow_id))
     db_workflow = result.scalars().first()
     if db_workflow:
-        if workflow_update.required_user_id is not None:
-             db_workflow.required_user_id = workflow_update.required_user_id
+        # Handle mutual exclusivity: If setting user, clear group. If setting group, clear user.
+        # Use model_dump to check what was explicitly sent.
+
+        update_data = workflow_update.model_dump(exclude_unset=True) if hasattr(workflow_update, 'model_dump') else workflow_update.dict(exclude_unset=True)
+
+        if 'required_user_id' in update_data:
+             db_workflow.required_user_id = update_data['required_user_id']
+             if db_workflow.required_user_id: # If setting a user (not None), clear group
+                 db_workflow.required_group_id = None
+
+        if 'required_group_id' in update_data:
+             db_workflow.required_group_id = update_data['required_group_id']
+             if db_workflow.required_group_id: # If setting a group, clear user
+                 db_workflow.required_user_id = None
 
         await db.commit()
         await db.refresh(db_workflow)
