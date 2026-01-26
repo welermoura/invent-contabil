@@ -266,7 +266,8 @@ from backend.models import UserRole, ApprovalActionType
 class ApprovalWorkflowBase(BaseModel):
     category_id: int
     action_type: ApprovalActionType
-    required_role: UserRole
+    required_role: Optional[UserRole] = None
+    required_user_id: Optional[int] = None
     step_order: int = 1
 
 class ApprovalWorkflowCreate(ApprovalWorkflowBase):

@@ -170,7 +170,9 @@ class ApprovalWorkflow(Base):
     id = Column(Integer, primary_key=True, index=True)
     category_id = Column(Integer, ForeignKey("categories.id"))
     action_type = Column(Enum(ApprovalActionType))
-    required_role = Column(Enum(UserRole))
+    required_role = Column(Enum(UserRole), nullable=True)
+    required_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     step_order = Column(Integer, default=1)
 
     category = relationship("Category", back_populates="approval_workflows", lazy="selectin")
+    required_user = relationship("User", lazy="selectin")
