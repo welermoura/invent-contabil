@@ -15,7 +15,8 @@ branch_labels = None
 depends_on = None
 
 def upgrade():
-    op.add_column('items', sa.Column('write_off_reason', sa.String(), nullable=True))
+    with op.batch_alter_table('items') as batch_op:
+        batch_op.add_column(sa.Column('write_off_reason', sa.String(), nullable=True))
 
 def downgrade():
     op.drop_column('items', 'write_off_reason')

@@ -18,9 +18,11 @@ depends_on = None
 
 def upgrade() -> None:
     # Add 'MAINTENANCE' and 'IN_STOCK' to itemstatus enum
-    with op.get_context().autocommit_block():
-        op.execute("ALTER TYPE itemstatus ADD VALUE IF NOT EXISTS 'MAINTENANCE'")
-        op.execute("ALTER TYPE itemstatus ADD VALUE IF NOT EXISTS 'IN_STOCK'")
+    bind = op.get_bind()
+    if bind.dialect.name == 'postgresql':
+        with op.get_context().autocommit_block():
+            op.execute("ALTER TYPE itemstatus ADD VALUE IF NOT EXISTS 'MAINTENANCE'")
+            op.execute("ALTER TYPE itemstatus ADD VALUE IF NOT EXISTS 'IN_STOCK'")
 
 
 def downgrade() -> None:

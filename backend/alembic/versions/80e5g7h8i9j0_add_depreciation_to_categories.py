@@ -17,7 +17,9 @@ depends_on = None
 
 def upgrade():
     # Use raw SQL to be safe against model definition mismatches
-    op.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS depreciation_months INTEGER")
+    with op.batch_alter_table('categories') as batch_op:
+        batch_op.add_column(sa.Column('depreciation_months', sa.Integer(), nullable=True))
 
 def downgrade():
-    op.execute("ALTER TABLE categories DROP COLUMN IF EXISTS depreciation_months")
+    with op.batch_alter_table('categories') as batch_op:
+        batch_op.drop_column('depreciation_months')

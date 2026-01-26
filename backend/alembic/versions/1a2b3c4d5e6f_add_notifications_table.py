@@ -17,6 +17,12 @@ depends_on = None
 
 
 def upgrade():
+    bind = op.get_bind()
+    if bind.dialect.name == 'postgresql':
+        created_at_default = sa.text('now()')
+    else:
+        created_at_default = sa.text('CURRENT_TIMESTAMP')
+
     op.create_table(
         'notifications',
         sa.Column('id', sa.Integer(), nullable=False),
@@ -24,7 +30,7 @@ def upgrade():
         sa.Column('title', sa.String(), nullable=True),
         sa.Column('message', sa.String(), nullable=True),
         sa.Column('read', sa.Boolean(), nullable=True, default=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=created_at_default, nullable=True),
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], )
     )

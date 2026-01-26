@@ -19,8 +19,10 @@ depends_on = None
 def upgrade() -> None:
     # Add 'WRITTEN_OFF' to itemstatus enum
     # We must use autocommit block for ALTER TYPE inside a transaction
-    with op.get_context().autocommit_block():
-        op.execute("ALTER TYPE itemstatus ADD VALUE IF NOT EXISTS 'WRITTEN_OFF'")
+    bind = op.get_bind()
+    if bind.dialect.name == 'postgresql':
+        with op.get_context().autocommit_block():
+            op.execute("ALTER TYPE itemstatus ADD VALUE IF NOT EXISTS 'WRITTEN_OFF'")
 
 
 def downgrade() -> None:

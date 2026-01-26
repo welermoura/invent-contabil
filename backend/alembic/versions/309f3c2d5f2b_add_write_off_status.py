@@ -17,7 +17,9 @@ depends_on = None
 
 
 def upgrade():
-    op.execute("ALTER TYPE itemstatus ADD VALUE IF NOT EXISTS 'WRITE_OFF_PENDING'")
+    bind = op.get_bind()
+    if bind.dialect.name == 'postgresql':
+        op.execute("ALTER TYPE itemstatus ADD VALUE IF NOT EXISTS 'WRITE_OFF_PENDING'")
 
 
 def downgrade():
