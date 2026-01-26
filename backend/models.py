@@ -13,15 +13,6 @@ user_branches = Table(
     extend_existing=True
 )
 
-# Tabela de associação para User <-> Group (N:N)
-user_group_members = Table(
-    "user_group_members",
-    Base.metadata,
-    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
-    Column("group_id", Integer, ForeignKey("user_groups.id"), primary_key=True),
-    extend_existing=True
-)
-
 class UserGroup(Base):
     __tablename__ = "user_groups"
     __table_args__ = {'extend_existing': True}
@@ -30,7 +21,7 @@ class UserGroup(Base):
     name = Column(String, unique=True, index=True)
     description = Column(String, nullable=True)
 
-    users = relationship("User", secondary=user_group_members, back_populates="groups", lazy="selectin")
+    users = relationship("User", back_populates="group", lazy="selectin")
     approval_workflows = relationship("ApprovalWorkflow", back_populates="required_group")
 
 class UserRole(str, enum.Enum):
@@ -83,14 +74,15 @@ class User(Base):
     can_import = Column(Boolean, default=False)
     # branch_id mantido para compatibilidade
     branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True)
+    group_id = Column(Integer, ForeignKey("user_groups.id"), nullable=True)
 
     # Relacionamento legado (Many-to-One)
     branch = relationship("Branch", back_populates="users_legacy")
     # Novo relacionamento (Many-to-Many)
     branches = relationship("Branch", secondary=user_branches, back_populates="users", lazy="selectin")
 
-    # Grupos (Many-to-Many)
-    groups = relationship("UserGroup", secondary=user_group_members, back_populates="users", lazy="selectin")
+    # Grupo (Many-to-One)
+    group = relationship("UserGroup", back_populates="users", lazy="selectin")
 
     logs = relationship("Log", back_populates="user")
     items_responsible = relationship("Item", back_populates="responsible")

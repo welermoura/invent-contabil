@@ -37,6 +37,9 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
         branches = result.scalars().all()
         db_user.branches = branches
 
+    if user.group_id is not None:
+        db_user.group_id = user.group_id
+
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
@@ -44,7 +47,11 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
 
 async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
     # Eager load branches for UserResponse
-    query = select(models.User).options(selectinload(models.User.branches), selectinload(models.User.branch))
+    query = select(models.User).options(
+        selectinload(models.User.branches),
+        selectinload(models.User.branch),
+        selectinload(models.User.group)
+    )
     if search:
         search_filter = f"%{search}%"
         query = query.where(
@@ -89,6 +96,9 @@ async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
                 result = await db.execute(select(models.Branch).where(models.Branch.id.in_(user.branch_ids)))
                 branches = result.scalars().all()
                 db_user.branches = branches
+
+        if user.group_id is not None:
+            db_user.group_id = user.group_id
 
         await db.commit()
         # Reload user to ensure clean state and avoid async refresh issues
