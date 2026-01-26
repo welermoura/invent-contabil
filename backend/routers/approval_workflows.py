@@ -44,6 +44,18 @@ async def update_approval_workflow(
         raise HTTPException(status_code=404, detail="Workflow not found")
     return updated
 
+@router.put("/reorder", tags=["approval-workflows"])
+async def reorder_approval_workflows(
+    updates: List[dict],
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    await crud.reorder_approval_workflows(db, updates)
+    return {"message": "Reordered successfully"}
+
 @router.delete("/{workflow_id}")
 async def delete_approval_workflow(
     workflow_id: int,

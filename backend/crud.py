@@ -603,7 +603,10 @@ async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int
 
 # Approval Workflows
 async def get_approval_workflows(db: AsyncSession, category_id: int = None):
-    query = select(models.ApprovalWorkflow).options(selectinload(models.ApprovalWorkflow.category))
+    query = select(models.ApprovalWorkflow).options(
+        selectinload(models.ApprovalWorkflow.category),
+        selectinload(models.ApprovalWorkflow.required_user)
+    )
     if category_id:
         query = query.where(models.ApprovalWorkflow.category_id == category_id)
     result = await db.execute(query)
@@ -660,3 +663,20 @@ async def delete_approval_workflow(db: AsyncSession, workflow_id: int):
         await db.commit()
         return True
     return False
+
+async def reorder_approval_workflows(db: AsyncSession, updates: list[dict]):
+    """
+    Updates the step_order for a list of workflow items.
+    updates format: [{'id': 1, 'step_order': 2}, {'id': 5, 'step_order': 1}]
+    """
+    for update in updates:
+        wf_id = update['id']
+        new_order = update['step_order']
+
+        result = await db.execute(select(models.ApprovalWorkflow).where(models.ApprovalWorkflow.id == wf_id))
+        db_workflow = result.scalars().first()
+        if db_workflow:
+            db_workflow.step_order = new_order
+
+    await db.commit()
+    return True
