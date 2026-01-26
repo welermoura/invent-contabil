@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { useError } from '../hooks/useError';
-import { Plus, Trash2, ShieldCheck, Layers, User, Edit2, ChevronDown, ChevronRight, Save, X } from 'lucide-react';
+import { Plus, Trash2, ShieldCheck, Layers, User, Edit2, ChevronDown, ChevronRight, Save, X, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface ApprovalWorkflow {
     id: number;
@@ -180,6 +180,37 @@ const ApprovalWorkflows: React.FC = () => {
              console.error("Error updating step", error);
              showError("Erro ao atualizar passo.");
          }
+    };
+
+    const handleMoveStep = async (groupKey: string, index: number, direction: 'up' | 'down') => {
+        const group = groupedWorkflows[groupKey];
+        if (!group) return;
+
+        const steps = [...group.steps];
+        if (direction === 'up' && index === 0) return;
+        if (direction === 'down' && index === steps.length - 1) return;
+
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+        // Swap locally for calculating new orders
+        const temp = steps[index];
+        steps[index] = steps[targetIndex];
+        steps[targetIndex] = temp;
+
+        // Prepare payload: reassign step_orders based on new index + 1
+        const updates = steps.map((s, idx) => ({
+            id: s.id,
+            step_order: idx + 1
+        }));
+
+        try {
+            await api.put('/approval-workflows/reorder', updates);
+            // Optimistic update or just fetch
+            fetchData();
+        } catch (error) {
+            console.error("Error reordering", error);
+            showError("Erro ao reordenar passos.");
+        }
     };
 
     const handleDeleteStep = async (id: number) => {
@@ -361,6 +392,23 @@ const ApprovalWorkflows: React.FC = () => {
                                         {/* Actions */}
                                         {!editingStepId && (
                                             <div className="flex items-center gap-1">
+                                                <div className="flex flex-col mr-2">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleMoveStep(key, index, 'up'); }}
+                                                        disabled={index === 0}
+                                                        className={`p-0.5 rounded hover:bg-slate-100 ${index === 0 ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-indigo-600'}`}
+                                                    >
+                                                        <ArrowUp size={14} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleMoveStep(key, index, 'down'); }}
+                                                        disabled={index === group.steps.length - 1}
+                                                        className={`p-0.5 rounded hover:bg-slate-100 ${index === group.steps.length - 1 ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-indigo-600'}`}
+                                                    >
+                                                        <ArrowDown size={14} />
+                                                    </button>
+                                                </div>
+
                                                 <button
                                                     onClick={() => {
                                                         setEditingStepId(step.id);
