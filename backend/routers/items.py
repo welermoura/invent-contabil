@@ -454,8 +454,14 @@ async def bulk_transfer(
     # Notification
     try:
         approvers = await notifications.get_approvers(db)
-        msg = f"Solicitação de Transferência em Lote Criada.\n\n"
-        msg += f"Destino: {target_branch.name}\n"
+
+        origins = sorted(list({item.branch.name for item in items if item.branch}))
+        origin_str = origins[0] if len(origins) == 1 else "Múltiplas Origens"
+
+        msg = "Solicitação de transferência em lote criada.\n"
+        msg += f"Origem: {origin_str}\n"
+        msg += f"Destino: {target_branch.name}\n\n"
+
         msg += f"Solicitante: {current_user.name}\n"
         msg += f"Quantidade: {len(items)}\n"
         msg += f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n\n"
