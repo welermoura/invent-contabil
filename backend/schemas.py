@@ -278,6 +278,7 @@ class ApprovalWorkflowUpdate(BaseModel):
     category_id: Optional[int] = None
     action_type: Optional[ApprovalActionType] = None
     required_role: Optional[UserRole] = None
+    required_user_id: Optional[int] = None
     step_order: Optional[int] = None
 
 class ApprovalWorkflowResponse(ApprovalWorkflowBase):
