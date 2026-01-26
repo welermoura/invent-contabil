@@ -54,7 +54,7 @@ def upgrade() -> None:
     sa.Column('responsible_id', sa.Integer(), nullable=True),
     sa.Column('status', sa.Enum('PENDING', 'APPROVED', 'REJECTED', name='itemstatus'), nullable=True),
     sa.Column('observations', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.current_timestamp(), nullable=True),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['branch_id'], ['branches.id'], ),
     sa.ForeignKeyConstraint(['responsible_id'], ['users.id'], ),
@@ -71,7 +71,7 @@ def upgrade() -> None:
     sa.Column('item_id', sa.Integer(), nullable=True),
     sa.Column('user_id', sa.Integer(), nullable=True),
     sa.Column('action', sa.String(), nullable=True),
-    sa.Column('timestamp', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.Column('timestamp', sa.DateTime(timezone=True), server_default=sa.func.current_timestamp(), nullable=True),
     sa.ForeignKeyConstraint(['item_id'], ['items.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')

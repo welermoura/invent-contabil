@@ -259,3 +259,32 @@ class BulkTransferRequest(BaseModel):
     invoice_number: Optional[str] = None
     invoice_series: Optional[str] = None
     invoice_date: Optional[datetime] = None
+from typing import List, Optional
+from pydantic import BaseModel
+from backend.models import UserRole, ApprovalActionType
+
+class ApprovalWorkflowBase(BaseModel):
+    category_id: int
+    action_type: ApprovalActionType
+    required_role: UserRole
+    step_order: int = 1
+
+class ApprovalWorkflowCreate(ApprovalWorkflowBase):
+    pass
+
+class ApprovalWorkflowUpdate(BaseModel):
+    category_id: Optional[int] = None
+    action_type: Optional[ApprovalActionType] = None
+    required_role: Optional[UserRole] = None
+    step_order: Optional[int] = None
+
+class ApprovalWorkflowResponse(ApprovalWorkflowBase):
+    id: int
+    category: Optional["CategoryResponse"] = None
+
+    class Config:
+        from_attributes = True
+
+from backend.schemas import CategoryResponse # Circular import avoidance if in same file
+# Re-declaring to avoid circular dependency issues if I was editing existing file improperly
+# But since I am editing existing file, I should just append.
