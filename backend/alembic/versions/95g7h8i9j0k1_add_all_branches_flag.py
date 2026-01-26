@@ -17,7 +17,8 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column('users', sa.Column('all_branches', sa.Boolean(), server_default='false', nullable=False))
+    with op.batch_alter_table('users') as batch_op:
+        batch_op.add_column(sa.Column('all_branches', sa.Boolean(), server_default='false', nullable=False))
 
 
 def downgrade():

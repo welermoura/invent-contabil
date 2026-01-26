@@ -24,7 +24,8 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('category_id', sa.Integer(), nullable=True),
     sa.Column('action_type', sa.Enum('CREATE', 'TRANSFER', 'WRITE_OFF', name='approvalactiontype'), nullable=True),
-    sa.Column('required_role', sa.Enum('ADMIN', 'APPROVER', 'OPERATOR', 'AUDITOR', name='userrole'), nullable=True),
+    # userrole type already exists from users table
+    sa.Column('required_role', sa.Enum('ADMIN', 'APPROVER', 'OPERATOR', 'AUDITOR', name='userrole', create_type=False), nullable=True),
     sa.Column('step_order', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['category_id'], ['categories.id'], ),
     sa.PrimaryKeyConstraint('id')

@@ -18,13 +18,16 @@ depends_on = None
 def upgrade():
     # Since I cannot guarantee the state, I will use "checkfirst" logic conceptually,
     # but Alembic commands are declarative.
+    bind = op.get_bind()
     # Adding column transfer_target_branch_id
-    op.add_column('items', sa.Column('transfer_target_branch_id', sa.Integer(), nullable=True))
-    op.create_foreign_key(None, 'items', 'branches', ['transfer_target_branch_id'], ['id'])
+    with op.batch_alter_table('items') as batch_op:
+        batch_op.add_column(sa.Column('transfer_target_branch_id', sa.Integer(), nullable=True))
+        batch_op.create_foreign_key('fk_items_transfer_target', 'branches', ['transfer_target_branch_id'], ['id'])
 
     # Adding 'TRANSFER_PENDING' to enum.
     # Postgres enums are tricky.
-    op.execute("ALTER TYPE itemstatus ADD VALUE IF NOT EXISTS 'TRANSFER_PENDING'")
+    if bind.dialect.name == 'postgresql':
+        op.execute("ALTER TYPE itemstatus ADD VALUE IF NOT EXISTS 'TRANSFER_PENDING'")
 
 def downgrade():
     op.drop_column('items', 'transfer_target_branch_id')

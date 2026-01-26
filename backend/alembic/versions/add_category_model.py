@@ -28,8 +28,9 @@ def upgrade() -> None:
     op.create_index(op.f('ix_categories_id'), 'categories', ['id'], unique=False)
     op.create_index(op.f('ix_categories_name'), 'categories', ['name'], unique=True)
 
-    op.add_column('items', sa.Column('category_id', sa.Integer(), nullable=True))
-    op.create_foreign_key(None, 'items', 'categories', ['category_id'], ['id'])
+    with op.batch_alter_table('items') as batch_op:
+        batch_op.add_column(sa.Column('category_id', sa.Integer(), nullable=True))
+        batch_op.create_foreign_key('fk_items_categories', 'categories', ['category_id'], ['id'])
 
     # Populate categories from existing items (data migration)
     # This is tricky in alembic auto-gen, but simple in raw SQL if we trust uniqueness.

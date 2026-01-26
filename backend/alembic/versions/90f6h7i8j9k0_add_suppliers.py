@@ -31,8 +31,9 @@ def upgrade():
     op.create_index(op.f('ix_suppliers_cnpj'), 'suppliers', ['cnpj'], unique=True)
 
     # Add supplier_id to items
-    op.add_column('items', sa.Column('supplier_id', sa.Integer(), nullable=True))
-    op.create_foreign_key(None, 'items', 'suppliers', ['supplier_id'], ['id'])
+    with op.batch_alter_table('items') as batch_op:
+        batch_op.add_column(sa.Column('supplier_id', sa.Integer(), nullable=True))
+        batch_op.create_foreign_key('fk_items_suppliers', 'suppliers', ['supplier_id'], ['id'])
 
 
 def downgrade():

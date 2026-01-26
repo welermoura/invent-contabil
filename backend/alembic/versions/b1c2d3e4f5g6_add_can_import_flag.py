@@ -17,7 +17,8 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column('users', sa.Column('can_import', sa.Boolean(), nullable=True, server_default='false'))
+    with op.batch_alter_table('users') as batch_op:
+        batch_op.add_column(sa.Column('can_import', sa.Boolean(), nullable=True, server_default='false'))
 
 
 def downgrade():

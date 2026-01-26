@@ -18,8 +18,10 @@ depends_on = None
 
 def upgrade() -> None:
     # Add 'AUDITOR' to userrole enum
-    with op.get_context().autocommit_block():
-        op.execute("ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'AUDITOR'")
+    bind = op.get_bind()
+    if bind.dialect.name == 'postgresql':
+        with op.get_context().autocommit_block():
+            op.execute("ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'AUDITOR'")
 
 
 def downgrade() -> None:
