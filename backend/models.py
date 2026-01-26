@@ -30,6 +30,11 @@ class ItemStatus(str, enum.Enum):
     IN_STOCK = "IN_STOCK"
     IN_TRANSIT = "IN_TRANSIT"
 
+class ApprovalActionType(str, enum.Enum):
+    CREATE = "CREATE"
+    TRANSFER = "TRANSFER"
+    WRITE_OFF = "WRITE_OFF"
+
 class Branch(Base):
     __tablename__ = "branches"
     __table_args__ = {'extend_existing': True}
@@ -78,6 +83,7 @@ class Category(Base):
     depreciation_months = Column(Integer, nullable=True)
 
     items = relationship("Item", back_populates="category_rel", lazy="selectin")
+    approval_workflows = relationship("ApprovalWorkflow", back_populates="category", lazy="selectin")
 
 class Supplier(Base):
     __tablename__ = "suppliers"
@@ -156,3 +162,15 @@ class Notification(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     user = relationship("User", back_populates="notifications")
+
+class ApprovalWorkflow(Base):
+    __tablename__ = "approval_workflows"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer, primary_key=True, index=True)
+    category_id = Column(Integer, ForeignKey("categories.id"))
+    action_type = Column(Enum(ApprovalActionType))
+    required_role = Column(Enum(UserRole))
+    step_order = Column(Integer, default=1)
+
+    category = relationship("Category", back_populates="approval_workflows", lazy="selectin")

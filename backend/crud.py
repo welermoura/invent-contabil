@@ -598,3 +598,30 @@ async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int
         db_item = result.scalars().first()
 
     return db_item
+
+# Approval Workflows
+async def get_approval_workflows(db: AsyncSession, category_id: int = None):
+    query = select(models.ApprovalWorkflow).options(selectinload(models.ApprovalWorkflow.category))
+    if category_id:
+        query = query.where(models.ApprovalWorkflow.category_id == category_id)
+    result = await db.execute(query)
+    return result.scalars().all()
+
+async def create_approval_workflow(db: AsyncSession, workflow: schemas.ApprovalWorkflowCreate):
+    db_workflow = models.ApprovalWorkflow(**workflow.dict())
+    db.add(db_workflow)
+    await db.commit()
+    await db.refresh(db_workflow)
+    # Reload relation
+    query = select(models.ApprovalWorkflow).where(models.ApprovalWorkflow.id == db_workflow.id).options(selectinload(models.ApprovalWorkflow.category))
+    result = await db.execute(query)
+    return result.scalars().first()
+
+async def delete_approval_workflow(db: AsyncSession, workflow_id: int):
+    result = await db.execute(select(models.ApprovalWorkflow).where(models.ApprovalWorkflow.id == workflow_id))
+    db_workflow = result.scalars().first()
+    if db_workflow:
+        await db.delete(db_workflow)
+        await db.commit()
+        return True
+    return False

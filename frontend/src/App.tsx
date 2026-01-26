@@ -13,6 +13,7 @@ import SafeguardSettings from './pages/settings/SafeguardSettings';
 import Setup from './pages/Setup';
 import Reports from './pages/Reports';
 import Suppliers from './pages/Suppliers';
+import ApprovalWorkflows from './pages/ApprovalWorkflows';
 import MacroViewPage from './pages/dashboard/MacroViewPage';
 import { AuthProvider, useAuth } from './AuthContext';
 import { ErrorProvider } from './context/ErrorContext';
@@ -148,6 +149,9 @@ const Layout = () => {
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
                         <NavItem to="/safeguard-settings" icon={Shield} label="Salva Guarda" active={isActive('/safeguard-settings')} />
                     )}
+                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
+                        <NavItem to="/approval-workflows" icon={Shield} label="Malha de Aprovação" active={isActive('/approval-workflows')} />
+                    )}
                     {(user?.role === 'ADMIN') && (
                         <NavItem to="/system-settings" icon={Settings} label="Configurações" active={isActive('/system-settings')} />
                     )}
@@ -255,6 +259,7 @@ const AppRoutes = () => {
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/system-settings" element={<SystemSettings />} />
                     <Route path="/safeguard-settings" element={<SafeguardSettings />} />
+                    <Route path="/approval-workflows" element={<ApprovalWorkflows />} />
                 </Route>
             </Route>
         </Routes>
