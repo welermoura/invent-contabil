@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from backend import schemas, models, crud, auth, notifications
+from backend import schemas, models, crud, auth, notifications, workflow_engine
 from backend.database import get_db
 import shutil
 import os
@@ -56,8 +56,10 @@ def build_item_details(item: models.Item) -> dict:
 async def notify_new_item(db: AsyncSession, item: models.Item):
     """Notify Approvers about new pending item."""
     try:
-        approvers = await notifications.get_approvers(db)
-        msg = f"Um novo item foi cadastrado e aguarda aprovação."
+        # Use Workflow Engine to get specific approvers
+        approvers = await workflow_engine.get_current_step_approvers(db, item, models.ApprovalActionType.CREATE)
+
+        msg = f"Um novo item foi cadastrado e aguarda aprovação (Etapa {item.approval_step})."
 
         details = build_item_details(item)
 
@@ -69,9 +71,11 @@ async def notify_new_item(db: AsyncSession, item: models.Item):
 async def notify_transfer_request(db: AsyncSession, item: models.Item):
     """Notify Approvers about transfer request."""
     try:
-        approvers = await notifications.get_approvers(db)
+        # Use Workflow Engine
+        approvers = await workflow_engine.get_current_step_approvers(db, item, models.ApprovalActionType.TRANSFER)
+
         target_name = item.transfer_target_branch.name if item.transfer_target_branch else "Desconhecida"
-        msg = f"Solicitação de transferência criada.\nOrigem: {item.branch.name}\nDestino: {target_name}"
+        msg = f"Solicitação de transferência criada (Etapa {item.approval_step}).\nOrigem: {item.branch.name}\nDestino: {target_name}"
 
         details = build_item_details(item)
         details["transfer_target"] = target_name # Add extra field specific to this email
@@ -84,9 +88,10 @@ async def notify_transfer_request(db: AsyncSession, item: models.Item):
 async def notify_write_off_request(db: AsyncSession, item: models.Item, reason: str, justification: Optional[str]):
     """Notify Approvers about write-off request."""
     try:
-        approvers = await notifications.get_approvers(db)
+        # Use Workflow Engine
+        approvers = await workflow_engine.get_current_step_approvers(db, item, models.ApprovalActionType.WRITE_OFF)
 
-        msg = "Solicitação de baixa criada.\n\n"
+        msg = f"Solicitação de baixa criada (Etapa {item.approval_step}).\n\n"
         msg += f"Motivo: {reason}\n"
         msg += f"Justificativa: {justification or 'N/A'}"
 
@@ -365,6 +370,7 @@ async def bulk_write_off(
     for item in items:
         # Change to Pending Status
         item.status = models.ItemStatus.WRITE_OFF_PENDING
+        item.approval_step = 1
         item.write_off_reason = request.reason
         # Append justification if provided
         if request.justification:
@@ -382,10 +388,10 @@ async def bulk_write_off(
 
     # 4. Consolidated Notification
     try:
-        approvers = await notifications.get_approvers(db)
+        approvers = await workflow_engine.get_current_step_approvers(db, items[0], models.ApprovalActionType.WRITE_OFF)
         category_name = items[0].category_rel.name if items[0].category_rel else "Desconhecida"
 
-        msg = f"Solicitação de Baixa em Lote Criada.\n\n"
+        msg = f"Solicitação de Baixa em Lote Criada (Etapa 1).\n\n"
         msg += f"Motivo: {request.reason}\n"
         msg += f"Justificativa: {request.justification or 'N/A'}\n\n"
         msg += f"Categoria: {category_name}\n"
@@ -423,6 +429,12 @@ async def bulk_transfer(
     if len(items) != len(request.item_ids):
         raise HTTPException(status_code=404, detail="Alguns itens não foram encontrados")
 
+    # Validation: Same Category
+    first_category_id = items[0].category_id
+    for item in items:
+        if item.category_id != first_category_id:
+            raise HTTPException(status_code=400, detail="Todos os itens da transferência em lote devem pertencer à mesma categoria")
+
     target_branch = await crud.get_branch(db, request.target_branch_id)
     if not target_branch:
         raise HTTPException(status_code=404, detail="Filial de destino não encontrada")
@@ -437,6 +449,7 @@ async def bulk_transfer(
 
         # Update to Pending
         item.status = models.ItemStatus.TRANSFER_PENDING
+        item.approval_step = 1
         item.transfer_target_branch_id = request.target_branch_id
         item.transfer_invoice_number = request.invoice_number
         item.transfer_invoice_series = request.invoice_series
@@ -453,12 +466,12 @@ async def bulk_transfer(
 
     # Notification
     try:
-        approvers = await notifications.get_approvers(db)
+        approvers = await workflow_engine.get_current_step_approvers(db, items[0], models.ApprovalActionType.TRANSFER)
 
         origins = sorted(list({item.branch.name for item in items if item.branch}))
         origin_str = origins[0] if len(origins) == 1 else "Múltiplas Origens"
 
-        msg = "Solicitação de transferência em lote criada.\n"
+        msg = f"Solicitação de transferência em lote criada (Etapa 1).\n"
         msg += f"Origem: {origin_str}\n"
         msg += f"Destino: {target_branch.name}\n\n"
 
@@ -536,6 +549,53 @@ async def update_item_status(
 
     if target_is_operational and not current_is_operational and not is_receipt_confirmation:
          raise HTTPException(status_code=400, detail="O item deve ser aprovado antes de ser movido para Manutenção ou Estoque")
+
+    # --- Workflow Logic ---
+    action_type = None
+    if status_update == models.ItemStatus.APPROVED:
+        if item_obj.status == models.ItemStatus.PENDING:
+             action_type = models.ApprovalActionType.CREATE
+        elif item_obj.status == models.ItemStatus.TRANSFER_PENDING:
+             action_type = models.ApprovalActionType.TRANSFER
+    elif status_update == models.ItemStatus.WRITTEN_OFF and item_obj.status == models.ItemStatus.WRITE_OFF_PENDING:
+         action_type = models.ApprovalActionType.WRITE_OFF
+
+    if action_type:
+        # Check if we should advance step instead of finalizing
+        if await workflow_engine.should_advance_step(db, item_obj, action_type):
+            # Increment Step
+            item_obj.approval_step = (item_obj.approval_step or 1) + 1
+
+            log = models.Log(
+                item_id=item_id,
+                user_id=current_user.id,
+                action=f"Aprovação parcial (Etapa {item_obj.approval_step - 1} concluída). Aguardando próxima etapa."
+            )
+            db.add(log)
+            # Commit the step change
+            db.add(item_obj)
+            await db.commit()
+
+            # Notify Next Approvers
+            next_approvers = await workflow_engine.get_current_step_approvers(db, item_obj, action_type)
+
+            msg = f"Item aguardando sua aprovação (Etapa {item_obj.approval_step})."
+            title = "Ação Necessária: Aprovação Pendente"
+            details = build_item_details(item_obj)
+            html = notifications.generate_html_email(title, msg, item_details=details)
+            await notifications.notify_users(db, next_approvers, title, msg, email_subject=title, email_html=html)
+
+            # Broadcast update
+            from backend.websocket_manager import manager
+            payload = {
+                "message": f"Item {item_obj.description} avançou para etapa {item_obj.approval_step}",
+                "actor_id": current_user.id,
+                "target_roles": ["ADMIN", "APPROVER"],
+                "target_branch_id": item_obj.branch_id
+            }
+            await manager.broadcast(json.dumps(payload))
+
+            return item_obj
 
     updated_item = await crud.update_item_status(db, item_id, status_update, current_user.id, fixed_asset_number, reason)
 
@@ -681,6 +741,8 @@ async def update_item(
         # If status is not explicitly being changed to something else (e.g. via API magic), force PENDING
         if item_update.status is None:
             item_update.status = models.ItemStatus.PENDING
+            existing_item.approval_step = 1
+            db.add(existing_item)
 
     updated_item = await crud.update_item(db, item_id, item_update)
 

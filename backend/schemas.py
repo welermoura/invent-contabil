@@ -151,6 +151,7 @@ class ItemResponse(ItemBase):
     fixed_asset_number: Optional[str] = None
     invoice_file: Optional[str] = None
     supplier_id: Optional[int] = None
+    approval_step: Optional[int] = 1
     created_at: datetime
     updated_at: Optional[datetime] = None
     branch: Optional[BranchResponse] = None
