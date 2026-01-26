@@ -501,6 +501,7 @@ async def request_write_off(db: AsyncSession, item_id: int, justification: str, 
     db_item = result.scalars().first()
     if db_item:
         db_item.status = models.ItemStatus.WRITE_OFF_PENDING
+        db_item.approval_step = 1  # Reset approval step
         if reason:
             db_item.write_off_reason = reason
 
@@ -571,6 +572,7 @@ async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int
     db_item = result.scalars().first()
     if db_item:
         db_item.status = models.ItemStatus.TRANSFER_PENDING
+        db_item.approval_step = 1  # Reset approval step
         db_item.transfer_target_branch_id = target_branch_id
 
         if transfer_invoice_number: db_item.transfer_invoice_number = transfer_invoice_number
