@@ -110,8 +110,8 @@ async def approve_request(
 
         if not frontend_url:
             base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
-            if "localhost" in base_url and ":8001" in base_url:
-                frontend_url = base_url.replace(":8001", ":3000")
+            if ":8001" in base_url:
+                frontend_url = base_url.replace(":8001", ":5173")
             else:
                 frontend_url = base_url.rstrip("/")
 

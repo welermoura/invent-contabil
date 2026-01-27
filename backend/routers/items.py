@@ -514,8 +514,18 @@ async def bulk_write_off(
         # Build list of item details for table
         items_details = [build_item_details(item) for item in items]
 
-        base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
-        frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+        # Determine Frontend URL: Priority 1: Request Origin (Automatic), 2: Env Var, 3: Fallback
+        origin = req_context.headers.get("origin")
+        frontend_url = origin if origin else os.getenv("FRONTEND_URL")
+
+        if not frontend_url:
+            base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+            # Heuristic: Replace backend port 8001 with frontend port 5173 (Vite default) or 3000
+            if ":8001" in base_url:
+                frontend_url = base_url.replace(":8001", ":5173")
+            else:
+                frontend_url = base_url.rstrip("/")
+
         action_url = f"{frontend_url}/pending-approvals?id={new_request.id}"
 
         html = notifications.generate_html_email(
@@ -633,8 +643,17 @@ async def bulk_transfer(
         # Build list of item details for table
         items_details = [build_item_details(item) for item in items]
 
-        base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
-        frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+        # Determine Frontend URL
+        origin = req_context.headers.get("origin")
+        frontend_url = origin if origin else os.getenv("FRONTEND_URL")
+
+        if not frontend_url:
+            base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+            if ":8001" in base_url:
+                frontend_url = base_url.replace(":8001", ":5173")
+            else:
+                frontend_url = base_url.rstrip("/")
+
         action_url = f"{frontend_url}/pending-approvals?id={new_request.id}"
 
         html = notifications.generate_html_email(
