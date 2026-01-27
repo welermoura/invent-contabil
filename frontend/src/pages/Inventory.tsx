@@ -1002,7 +1002,10 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                     <div className="h-4 w-px bg-slate-700"></div>
                     <button
                         onClick={() => {
-                            if (selectionMode === 'TRANSFER') setIsBulkTransferModalOpen(true);
+                            if (selectionMode === 'TRANSFER') {
+                                fetchAllBranches();
+                                setIsBulkTransferModalOpen(true);
+                            }
                             if (selectionMode === 'WRITE_OFF') setIsBulkWriteOffModalOpen(true);
                         }}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg font-medium transition-colors text-sm shadow-lg shadow-blue-500/20"
