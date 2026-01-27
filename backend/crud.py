@@ -331,6 +331,28 @@ async def get_branch(db: AsyncSession, branch_id: int):
     result = await db.execute(select(models.Branch).where(models.Branch.id == branch_id))
     return result.scalars().first()
 
+async def get_pending_action_items(db: AsyncSession, user_id: int, user_branches: list[int]):
+    """
+    Items needing operator action:
+    1. IN_TRANSIT where target branch is in user_branches.
+    2. READY_FOR_WRITE_OFF where responsible is user OR branch in user_branches.
+    """
+    query = select(models.Item).options(
+        selectinload(models.Item.branch),
+        selectinload(models.Item.transfer_target_branch),
+        selectinload(models.Item.category_rel),
+        selectinload(models.Item.responsible)
+    ).where(
+        or_(
+            (models.Item.status == models.ItemStatus.IN_TRANSIT) & (models.Item.transfer_target_branch_id.in_(user_branches)),
+            (models.Item.status == models.ItemStatus.READY_FOR_WRITE_OFF) & (
+                (models.Item.responsible_id == user_id) | (models.Item.branch_id.in_(user_branches))
+            )
+        )
+    )
+    result = await db.execute(query)
+    return result.scalars().all()
+
 async def get_items(
     db: AsyncSession,
     skip: int = 0,

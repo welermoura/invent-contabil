@@ -276,6 +276,21 @@ async def read_my_requests(
 
     return enriched_items
 
+@router.get("/pending-actions", response_model=List[schemas.ItemResponse])
+async def read_pending_actions(
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Returns items that require operator action (Receipt or Finalize Write-off).
+    """
+    allowed_branches = [b.id for b in current_user.branches]
+    if current_user.branch_id and current_user.branch_id not in allowed_branches:
+        allowed_branches.append(current_user.branch_id)
+
+    items = await crud.get_pending_action_items(db, current_user.id, allowed_branches)
+    return items
+
 @router.get("/", response_model=List[schemas.ItemResponse])
 async def read_items(
     skip: int = 0,

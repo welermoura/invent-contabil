@@ -97,6 +97,11 @@ export const getMyRequests = async () => {
     return response.data;
 };
 
+export const getPendingActions = async () => {
+    const response = await api.get<any[]>('/items/pending-actions');
+    return response.data;
+};
+
 export const getPendingRequests = async () => {
     const response = await api.get<RequestData[]>('/requests/pending');
     return response.data;

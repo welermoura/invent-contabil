@@ -135,8 +135,9 @@ async def approve_request(
         req.status = models.RequestStatus.APPROVED
 
         # Update Items
-        final_item_status = models.ItemStatus.WRITTEN_OFF
-        log_action = "Baixa aprovada via Solicitação em Lote"
+        # For Write-off, set to READY_FOR_WRITE_OFF for manual conclusion by operator
+        final_item_status = models.ItemStatus.READY_FOR_WRITE_OFF
+        log_action = "Baixa aprovada (Aguardando Conclusão do Operador)"
 
         if req.type == models.RequestType.TRANSFER:
             final_item_status = models.ItemStatus.IN_TRANSIT

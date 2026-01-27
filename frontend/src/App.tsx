@@ -17,6 +17,7 @@ import Suppliers from './pages/Suppliers';
 import ApprovalWorkflows from './pages/ApprovalWorkflows';
 import MyRequests from './pages/MyRequests';
 import PendingApprovals from './pages/PendingApprovals';
+import MyPendingActions from './pages/MyPendingActions';
 import MacroViewPage from './pages/dashboard/MacroViewPage';
 import { AuthProvider, useAuth } from './AuthContext';
 import { ErrorProvider } from './context/ErrorContext';
@@ -39,7 +40,8 @@ import {
     User,
     Workflow,
     UserCheck,
-    CheckSquare
+    CheckSquare,
+    ClipboardList
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import AdaptiveContrastManager from './components/AdaptiveContrastManager';
@@ -141,6 +143,7 @@ const Layout = () => {
                     <NavItem to="/" icon={LayoutDashboard} label="Painel" active={isActive('/')} />
                     <NavItem to="/inventory" icon={Package} label="Inventário" active={isActive('/inventory')} />
                     <NavItem to="/my-requests" icon={FileText} label="Minhas Solicitações" active={isActive('/my-requests')} />
+                    <NavItem to="/my-pending-actions" icon={ClipboardList} label="Minhas Pendências" active={isActive('/my-pending-actions')} />
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
                         <NavItem to="/pending-approvals" icon={CheckSquare} label="Aprovações Pendentes" active={isActive('/pending-approvals')} />
                     )}
@@ -275,6 +278,7 @@ const AppRoutes = () => {
                     <Route path="/safeguard-settings" element={<SafeguardSettings />} />
                     <Route path="/approval-workflows" element={<ApprovalWorkflows />} />
                     <Route path="/my-requests" element={<MyRequests />} />
+                    <Route path="/my-pending-actions" element={<MyPendingActions />} />
                     <Route path="/pending-approvals" element={<PendingApprovals />} />
                 </Route>
             </Route>
