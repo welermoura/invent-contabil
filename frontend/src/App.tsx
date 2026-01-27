@@ -34,7 +34,9 @@ import {
     Menu as MenuIcon,
     Settings,
     Shield,
-    User
+    User,
+    Workflow,
+    UserCheck
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import AdaptiveContrastManager from './components/AdaptiveContrastManager';
@@ -148,13 +150,13 @@ const Layout = () => {
                         <NavItem to="/users" icon={UsersIcon} label="Usuários" active={isActive('/users')} />
                     )}
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
-                        <NavItem to="/users/groups" icon={UsersIcon} label="Grupos de Aprovação" active={isActive('/users/groups')} />
+                        <NavItem to="/users/groups" icon={UserCheck} label="Grupos de Aprovação" active={isActive('/users/groups')} />
                     )}
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
                         <NavItem to="/safeguard-settings" icon={Shield} label="Salva Guarda" active={isActive('/safeguard-settings')} />
                     )}
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
-                        <NavItem to="/approval-workflows" icon={Shield} label="Malha de Aprovação" active={isActive('/approval-workflows')} />
+                        <NavItem to="/approval-workflows" icon={Workflow} label="Malha de Aprovação" active={isActive('/approval-workflows')} />
                     )}
                     {(user?.role === 'ADMIN') && (
                         <NavItem to="/system-settings" icon={Settings} label="Configurações" active={isActive('/system-settings')} />
