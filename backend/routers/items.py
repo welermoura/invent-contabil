@@ -216,6 +216,66 @@ async def notify_status_change(db: AsyncSession, item: models.Item, old_status: 
 
 # --- Endpoints ---
 
+@router.get("/my-requests", response_model=List[schemas.ItemResponse])
+async def read_my_requests(
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Returns items initiated/responsible by the current user that are in a PENDING state.
+    Enriches the response with 'current_approvers' list.
+    """
+    # Define "Pending" statuses
+    pending_statuses = [
+        models.ItemStatus.PENDING,
+        models.ItemStatus.TRANSFER_PENDING,
+        models.ItemStatus.WRITE_OFF_PENDING
+    ]
+
+    # Fetch items responsible by user AND in pending status
+    from sqlalchemy.future import select
+    query = select(models.Item).options(
+        crud.selectinload(models.Item.branch),
+        crud.selectinload(models.Item.transfer_target_branch),
+        crud.selectinload(models.Item.category_rel),
+        crud.selectinload(models.Item.supplier),
+        crud.selectinload(models.Item.responsible)
+    ).where(
+        models.Item.responsible_id == current_user.id,
+        models.Item.status.in_(pending_statuses)
+    )
+
+    result = await db.execute(query)
+    items = result.scalars().all()
+
+    # Enrich with Current Approvers
+    enriched_items = []
+    for item in items:
+        # Pydantic model conversion happens later, but we need to inject the field.
+        # Since ItemResponse is based on ORM, we can't easily attach a non-mapped attribute
+        # that persists through serialization if not on the object.
+        # However, Pydantic's 'from_attributes' (orm_mode) usually reads attributes.
+        # We can dynamically set the attribute on the instance for this request scope.
+
+        action_type = None
+        if item.status == models.ItemStatus.PENDING:
+            action_type = models.ApprovalActionType.CREATE
+        elif item.status == models.ItemStatus.TRANSFER_PENDING:
+            action_type = models.ApprovalActionType.TRANSFER
+        elif item.status == models.ItemStatus.WRITE_OFF_PENDING:
+            action_type = models.ApprovalActionType.WRITE_OFF
+
+        approver_names = []
+        if action_type:
+            approvers = await workflow_engine.get_current_step_approvers(db, item, action_type)
+            approver_names = [u.name for u in approvers]
+
+        # Monkey-patching the instance for Pydantic serialization
+        item.current_approvers = approver_names
+        enriched_items.append(item)
+
+    return enriched_items
+
 @router.get("/", response_model=List[schemas.ItemResponse])
 async def read_items(
     skip: int = 0,
@@ -404,6 +464,10 @@ async def bulk_write_off(
              if item.branch_id not in allowed:
                  raise HTTPException(status_code=403, detail=f"Sem permissão para o item {item.description}")
 
+        # Status Check
+        if item.status in [models.ItemStatus.PENDING, models.ItemStatus.TRANSFER_PENDING, models.ItemStatus.WRITE_OFF_PENDING]:
+            raise HTTPException(status_code=400, detail=f"Item '{item.description}' já possui uma solicitação pendente.")
+
     # 3. Execution Loop
     for item in items:
         # Change to Pending Status
@@ -472,6 +536,9 @@ async def bulk_transfer(
     for item in items:
         if item.category_id != first_category_id:
             raise HTTPException(status_code=400, detail="Todos os itens da transferência em lote devem pertencer à mesma categoria")
+
+        if item.status in [models.ItemStatus.PENDING, models.ItemStatus.TRANSFER_PENDING, models.ItemStatus.WRITE_OFF_PENDING]:
+            raise HTTPException(status_code=400, detail=f"Item '{item.description}' já possui uma solicitação pendente.")
 
     target_branch = await crud.get_branch(db, request.target_branch_id)
     if not target_branch:
@@ -687,6 +754,10 @@ async def request_transfer(
         if item.branch_id not in allowed_branches:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para transferir este item")
 
+    # Prevent parallel actions
+    if item.status in [models.ItemStatus.PENDING, models.ItemStatus.TRANSFER_PENDING, models.ItemStatus.WRITE_OFF_PENDING]:
+        raise HTTPException(status_code=400, detail="Este item já possui uma solicitação pendente.")
+
     item = await crud.request_transfer(db, item_id, target_branch_id, current_user.id,
                                        transfer_invoice_number, transfer_invoice_series, transfer_invoice_date)
     if not item:
@@ -727,6 +798,10 @@ async def request_write_off(
             allowed_branches.append(current_user.branch_id)
         if item.branch_id not in allowed_branches:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Você não tem permissão para solicitar baixa deste item")
+
+    # Prevent parallel actions
+    if item.status in [models.ItemStatus.PENDING, models.ItemStatus.TRANSFER_PENDING, models.ItemStatus.WRITE_OFF_PENDING]:
+        raise HTTPException(status_code=400, detail="Este item já possui uma solicitação pendente.")
 
     # Combine reason and justification for the log/email message if needed,
     # but store structured data if model supports it.

@@ -186,6 +186,9 @@ class ItemResponse(ItemBase):
     responsible: Optional[UserResponse] = None
     logs: List[LogResponse] = []
 
+    # Dynamic field for pending approvers (not in DB model)
+    current_approvers: List[str] = []
+
     class Config:
         from_attributes = True
 
