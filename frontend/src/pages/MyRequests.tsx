@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { getMyRequests, RequestData } from '../api';
+import { getMyRequests } from '../api';
+import type { RequestData } from '../api';
 import { useError } from '../hooks/useError';
 import {
     FileText,
