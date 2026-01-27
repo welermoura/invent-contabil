@@ -37,7 +37,7 @@ const ApprovalWorkflows: React.FC = () => {
     const [workflows, setWorkflows] = useState<ApprovalWorkflow[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [users, setUsers] = useState<UserData[]>([]);
-    const { showError, showSuccess } = useError();
+    const { showError, showSuccess, showConfirm } = useError();
     const [loading, setLoading] = useState(false);
 
     // Grouping State
@@ -233,16 +233,17 @@ const ApprovalWorkflows: React.FC = () => {
         }
     };
 
-    const handleDeleteStep = async (id: number) => {
-        if (!confirm("Tem certeza que deseja remover este passo?")) return;
-        try {
-            await api.delete(`/approval-workflows/${id}`);
-            showSuccess("Passo removido.");
-            fetchData();
-        } catch (error) {
-            console.error("Error deleting workflow", error);
-            showError("Erro ao remover passo.");
-        }
+    const handleDeleteStep = (id: number) => {
+        showConfirm("Tem certeza que deseja remover este passo?", async () => {
+            try {
+                await api.delete(`/approval-workflows/${id}`);
+                showSuccess("Passo removido.");
+                fetchData();
+            } catch (error) {
+                console.error("Error deleting workflow", error);
+                showError("Erro ao remover passo.");
+            }
+        });
     };
 
     const translateAction = (action: string) => {
