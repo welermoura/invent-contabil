@@ -468,11 +468,21 @@ async def bulk_write_off(
         if item.status in [models.ItemStatus.PENDING, models.ItemStatus.TRANSFER_PENDING, models.ItemStatus.WRITE_OFF_PENDING]:
             raise HTTPException(status_code=400, detail=f"Item '{item.description}' já possui uma solicitação pendente.")
 
-    # 3. Execution Loop
+    # 3. Create Request
+    req_data = schemas.RequestCreate(
+        type=models.RequestType.WRITE_OFF,
+        category_id=first_category_id,
+        requester_id=current_user.id,
+        data={"reason": request.reason, "justification": request.justification}
+    )
+    new_request = await crud.create_request(db, req_data)
+
+    # 4. Execution Loop
     for item in items:
         # Change to Pending Status
         item.status = models.ItemStatus.WRITE_OFF_PENDING
         item.approval_step = 1
+        item.request_id = new_request.id
         item.write_off_reason = request.reason
         # Append justification if provided
         if request.justification:
@@ -482,18 +492,18 @@ async def bulk_write_off(
         log = models.Log(
             item_id=item.id,
             user_id=current_user.id,
-            action=f"Solicitação de Baixa em Lote. Motivo: {request.reason}. {request.justification or ''}"
+            action=f"Solicitação de Baixa em Lote (Request #{new_request.id}). Motivo: {request.reason}. {request.justification or ''}"
         )
         db.add(log)
 
     await db.commit()
 
-    # 4. Consolidated Notification
+    # 5. Consolidated Notification
     try:
-        approvers = await workflow_engine.get_current_step_approvers(db, items[0], models.ApprovalActionType.WRITE_OFF)
+        approvers = await workflow_engine.get_current_step_approvers(db, new_request, models.ApprovalActionType.WRITE_OFF)
         category_name = items[0].category_rel.name if items[0].category_rel else "Desconhecida"
 
-        msg = f"Solicitação de Baixa em Lote Criada (Etapa 1).\n\n"
+        msg = f"Solicitação de Baixa em Lote Criada (Request #{new_request.id} - Etapa {new_request.current_step}).\n\n"
         msg += f"Motivo: {request.reason}\n"
         msg += f"Justificativa: {request.justification or 'N/A'}\n\n"
         msg += f"Categoria: {category_name}\n"
@@ -544,6 +554,20 @@ async def bulk_transfer(
     if not target_branch:
         raise HTTPException(status_code=404, detail="Filial de destino não encontrada")
 
+    # Create Request
+    req_data = schemas.RequestCreate(
+        type=models.RequestType.TRANSFER,
+        category_id=first_category_id,
+        requester_id=current_user.id,
+        data={
+            "target_branch_id": request.target_branch_id,
+            "invoice_number": request.invoice_number,
+            "invoice_series": request.invoice_series,
+            # "invoice_date": request.invoice_date # Serialize date if needed
+        }
+    )
+    new_request = await crud.create_request(db, req_data)
+
     for item in items:
         # Permission check
         if current_user.role == models.UserRole.OPERATOR and not current_user.all_branches:
@@ -555,6 +579,7 @@ async def bulk_transfer(
         # Update to Pending
         item.status = models.ItemStatus.TRANSFER_PENDING
         item.approval_step = 1
+        item.request_id = new_request.id
         item.transfer_target_branch_id = request.target_branch_id
         item.transfer_invoice_number = request.invoice_number
         item.transfer_invoice_series = request.invoice_series
@@ -563,7 +588,7 @@ async def bulk_transfer(
         log = models.Log(
             item_id=item.id,
             user_id=current_user.id,
-            action=f"Solicitação de Transferência em Lote para {target_branch.name}"
+            action=f"Solicitação de Transferência em Lote para {target_branch.name} (Request #{new_request.id})"
         )
         db.add(log)
 
@@ -571,12 +596,12 @@ async def bulk_transfer(
 
     # Notification
     try:
-        approvers = await workflow_engine.get_current_step_approvers(db, items[0], models.ApprovalActionType.TRANSFER)
+        approvers = await workflow_engine.get_current_step_approvers(db, new_request, models.ApprovalActionType.TRANSFER)
 
         origins = sorted(list({item.branch.name for item in items if item.branch}))
         origin_str = origins[0] if len(origins) == 1 else "Múltiplas Origens"
 
-        msg = f"Solicitação de transferência em lote criada (Etapa 1).\n"
+        msg = f"Solicitação de transferência em lote criada (Request #{new_request.id} - Etapa {new_request.current_step}).\n"
         msg += f"Origem: {origin_str}\n"
         msg += f"Destino: {target_branch.name}\n\n"
 

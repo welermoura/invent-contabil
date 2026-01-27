@@ -16,6 +16,7 @@ import Reports from './pages/Reports';
 import Suppliers from './pages/Suppliers';
 import ApprovalWorkflows from './pages/ApprovalWorkflows';
 import MyRequests from './pages/MyRequests';
+import PendingApprovals from './pages/PendingApprovals';
 import MacroViewPage from './pages/dashboard/MacroViewPage';
 import { AuthProvider, useAuth } from './AuthContext';
 import { ErrorProvider } from './context/ErrorContext';
@@ -37,7 +38,8 @@ import {
     Shield,
     User,
     Workflow,
-    UserCheck
+    UserCheck,
+    CheckSquare
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import AdaptiveContrastManager from './components/AdaptiveContrastManager';
@@ -139,6 +141,9 @@ const Layout = () => {
                     <NavItem to="/" icon={LayoutDashboard} label="Painel" active={isActive('/')} />
                     <NavItem to="/inventory" icon={Package} label="Inventário" active={isActive('/inventory')} />
                     <NavItem to="/my-requests" icon={FileText} label="Minhas Solicitações" active={isActive('/my-requests')} />
+                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
+                        <NavItem to="/pending-approvals" icon={CheckSquare} label="Aprovações Pendentes" active={isActive('/pending-approvals')} />
+                    )}
                     <NavItem to="/branches" icon={Building2} label="Filiais" active={isActive('/branches')} />
                     <NavItem to="/suppliers" icon={Truck} label="Fornecedores" active={isActive('/suppliers')} />
 
@@ -270,6 +275,7 @@ const AppRoutes = () => {
                     <Route path="/safeguard-settings" element={<SafeguardSettings />} />
                     <Route path="/approval-workflows" element={<ApprovalWorkflows />} />
                     <Route path="/my-requests" element={<MyRequests />} />
+                    <Route path="/pending-approvals" element={<PendingApprovals />} />
                 </Route>
             </Route>
         </Routes>

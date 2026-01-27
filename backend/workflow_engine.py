@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from backend import models
-from typing import List, Optional
+from typing import List, Optional, Union
 
 async def get_workflow_steps(db: AsyncSession, category_id: int, action_type: models.ApprovalActionType) -> List[models.ApprovalWorkflow]:
     """
@@ -16,26 +16,31 @@ async def get_workflow_steps(db: AsyncSession, category_id: int, action_type: mo
     result = await db.execute(query)
     return result.scalars().all()
 
-async def get_current_step_approvers(db: AsyncSession, item: models.Item, action_type: models.ApprovalActionType) -> List[models.User]:
+async def get_current_step_approvers(db: AsyncSession, entity: Union[models.Item, models.Request], action_type: models.ApprovalActionType) -> List[models.User]:
     """
-    Determines who should approve the item at its current approval_step.
+    Determines who should approve the entity (Item or Request) at its current step.
     Returns a list of User objects.
     """
-    if not item.category_id:
+    category_id = entity.category_id
+    if isinstance(entity, models.Item):
+        current_step_num = entity.approval_step or 1
+    else:
+        current_step_num = entity.current_step or 1
+
+    if not category_id:
         # Fallback: All Approvers if no category (should not happen in valid items)
         from backend.crud import get_users_by_role
         return await get_users_by_role(db, [models.UserRole.ADMIN, models.UserRole.APPROVER])
 
-    steps = await get_workflow_steps(db, item.category_id, action_type)
+    steps = await get_workflow_steps(db, category_id, action_type)
 
     if not steps:
         # No workflow defined -> Default to All Approvers/Admins
         from backend.crud import get_users_by_role
         return await get_users_by_role(db, [models.UserRole.ADMIN, models.UserRole.APPROVER])
 
-    # Steps are mapped to item.approval_step (1-based index)
+    # Steps are mapped to step number (1-based index)
     # Step 1 -> steps[0]
-    current_step_num = item.approval_step or 1
 
     # Safety check
     if current_step_num > len(steps):
@@ -72,18 +77,22 @@ async def get_current_step_approvers(db: AsyncSession, item: models.Item, action
     # Fallback if rule is empty (should not happen)
     return []
 
-async def should_advance_step(db: AsyncSession, item: models.Item, action_type: models.ApprovalActionType) -> bool:
+async def should_advance_step(db: AsyncSession, entity: Union[models.Item, models.Request], action_type: models.ApprovalActionType) -> bool:
     """
     Checks if there is a next step after the current one.
     """
-    if not item.category_id:
+    category_id = entity.category_id
+    if isinstance(entity, models.Item):
+        current_step_num = entity.approval_step or 1
+    else:
+        current_step_num = entity.current_step or 1
+
+    if not category_id:
         return False
 
-    steps = await get_workflow_steps(db, item.category_id, action_type)
+    steps = await get_workflow_steps(db, category_id, action_type)
     if not steps:
         return False
-
-    current_step_num = item.approval_step or 1
 
     # If current step is less than total steps, we can advance.
     return current_step_num < len(steps)
