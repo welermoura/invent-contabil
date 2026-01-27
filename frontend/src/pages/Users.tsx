@@ -76,12 +76,18 @@ const Users: React.FC = () => {
             return;
         }
 
+        // Sanitize group_id: convert empty string to null for backend validation
+        const payload = {
+            ...data,
+            group_id: data.group_id === "" ? null : Number(data.group_id)
+        };
+
         try {
             if (editingUser) {
-                await api.put(`/users/${editingUser.id}`, data);
+                await api.put(`/users/${editingUser.id}`, payload);
                 showSuccess("Usuário atualizado com sucesso.");
             } else {
-                await api.post('/users/', data);
+                await api.post('/users/', payload);
                 showSuccess("Usuário cadastrado com sucesso.");
             }
             reset();
