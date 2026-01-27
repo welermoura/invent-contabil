@@ -10,7 +10,11 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     netcat-openbsd \
     postgresql-client \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
+
+# Configurar Timezone
+ENV TZ=America/Sao_Paulo
 
 # Copiar requirements e instalar dependências Python
 COPY requirements.txt .

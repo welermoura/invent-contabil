@@ -4,6 +4,10 @@ FROM node:22-alpine
 # Definir diretório de trabalho
 WORKDIR /app
 
+# Instalar tzdata para configurar timezone
+RUN apk add --no-cache tzdata
+ENV TZ=America/Sao_Paulo
+
 # Copiar package.json e instalar dependências
 COPY package.json ./
 RUN npm install
