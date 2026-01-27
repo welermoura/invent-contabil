@@ -88,6 +88,17 @@ const PendingApprovals: React.FC = () => {
         return <span className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full text-xs font-bold border border-blue-100"><ArrowRightLeft className="w-3 h-3" /> Transferência</span>;
     };
 
+    const formatCurrency = (value?: number) => {
+        if (value === undefined || value === null) return '-';
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    };
+
+    const calculateTotals = (items: any[]) => {
+        const invoiceTotal = items.reduce((acc, item) => acc + (item.invoice_value || 0), 0);
+        const accountingTotal = items.reduce((acc, item) => acc + (item.accounting_value || 0), 0);
+        return { invoiceTotal, accountingTotal };
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/80 backdrop-blur-md p-4 rounded-xl shadow-sm border border-slate-100/50">
@@ -171,28 +182,95 @@ const PendingApprovals: React.FC = () => {
                                         {expandedRequestId === req.id && (
                                             <tr className="bg-gray-50/50 animate-in fade-in duration-200">
                                                 <td colSpan={6} className="px-6 py-4">
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                                                            <h3 className="font-semibold text-gray-800 mb-2 border-b pb-2">Detalhes</h3>
-                                                            <div className="space-y-2 text-sm">
-                                                                <p><span className="font-medium text-gray-600">Categoria:</span> {req.category?.name}</p>
-                                                                {req.data?.reason && <p><span className="font-medium text-gray-600">Motivo:</span> {req.data.reason}</p>}
-                                                                {req.data?.justification && <p><span className="font-medium text-gray-600">Justificativa:</span> {req.data.justification}</p>}
-                                                                {req.data?.target_branch_id && <p><span className="font-medium text-gray-600">Destino (ID):</span> {req.data.target_branch_id}</p>}
+                                                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm mb-4">
+                                                        <h3 className="font-semibold text-gray-800 mb-3 border-b pb-2 flex justify-between items-center">
+                                                            <span>Resumo da Solicitação</span>
+                                                            <span className="text-xs font-normal text-gray-500">ID: {req.id}</span>
+                                                        </h3>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                                                            <div>
+                                                                <p className="flex justify-between py-1 border-b border-gray-100">
+                                                                    <span className="font-medium text-gray-600">Categoria:</span>
+                                                                    <span>{req.category?.name}</span>
+                                                                </p>
+                                                                {req.type === 'WRITE_OFF' && (
+                                                                    <>
+                                                                        <p className="flex justify-between py-1 border-b border-gray-100">
+                                                                            <span className="font-medium text-gray-600">Motivo:</span>
+                                                                            <span>{req.data?.reason || '-'}</span>
+                                                                        </p>
+                                                                        {req.data?.justification && (
+                                                                            <p className="flex flex-col py-1 border-b border-gray-100">
+                                                                                <span className="font-medium text-gray-600 mb-1">Justificativa:</span>
+                                                                                <span className="italic text-gray-500 bg-gray-50 p-2 rounded">{req.data.justification}</span>
+                                                                            </p>
+                                                                        )}
+                                                                    </>
+                                                                )}
+                                                                {req.type === 'TRANSFER' && (
+                                                                    <>
+                                                                        <p className="flex justify-between py-1 border-b border-gray-100">
+                                                                            <span className="font-medium text-gray-600">Origem:</span>
+                                                                            <span>{req.items?.[0]?.branch?.name || 'Múltiplas'}</span>
+                                                                        </p>
+                                                                        <p className="flex justify-between py-1 border-b border-gray-100">
+                                                                            <span className="font-medium text-gray-600">Destino:</span>
+                                                                            <span className="font-bold text-blue-600">{req.items?.[0]?.transfer_target_branch?.name || `ID: ${req.data?.target_branch_id}`}</span>
+                                                                        </p>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                            <div>
+                                                                {(() => {
+                                                                    const { invoiceTotal, accountingTotal } = calculateTotals(req.items || []);
+                                                                    return (
+                                                                        <>
+                                                                            <p className="flex justify-between py-1 border-b border-gray-100">
+                                                                                <span className="font-medium text-gray-600">Valor Total (Nota):</span>
+                                                                                <span>{formatCurrency(invoiceTotal)}</span>
+                                                                            </p>
+                                                                            <p className="flex justify-between py-1 border-b border-gray-100">
+                                                                                <span className="font-medium text-gray-600">Valor Contábil (Atual):</span>
+                                                                                <span className="font-semibold text-gray-800">{formatCurrency(accountingTotal)}</span>
+                                                                            </p>
+                                                                            <p className="flex justify-between py-1 border-b border-gray-100">
+                                                                                <span className="font-medium text-gray-600">Total de Itens:</span>
+                                                                                <span>{req.items?.length || 0}</span>
+                                                                            </p>
+                                                                        </>
+                                                                    );
+                                                                })()}
                                                             </div>
                                                         </div>
-                                                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                                                            <h3 className="font-semibold text-gray-800 mb-2 border-b pb-2">
-                                                                Itens ({req.items?.length || 0})
-                                                            </h3>
-                                                            <div className="max-h-48 overflow-y-auto space-y-1">
-                                                                {req.items?.map(item => (
-                                                                    <div key={item.id} className="text-sm flex justify-between p-2 hover:bg-gray-50 rounded border border-transparent hover:border-gray-100">
-                                                                        <span className="truncate flex-1">{item.description}</span>
-                                                                        <span className="text-gray-500 text-xs font-mono ml-2">{item.fixed_asset_number}</span>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
+                                                    </div>
+
+                                                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                                                        <h3 className="font-semibold text-gray-800 mb-2 border-b pb-2">
+                                                            Itens da Solicitação
+                                                        </h3>
+                                                        <div className="max-h-64 overflow-y-auto">
+                                                            <table className="min-w-full text-sm">
+                                                                <thead className="bg-gray-50 text-gray-500 font-medium">
+                                                                    <tr>
+                                                                        <th className="px-3 py-2 text-left">Ativo</th>
+                                                                        <th className="px-3 py-2 text-left">Descrição</th>
+                                                                        <th className="px-3 py-2 text-left">Data Compra</th>
+                                                                        <th className="px-3 py-2 text-right">Valor Nota</th>
+                                                                        <th className="px-3 py-2 text-right">Valor Contábil</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-gray-100">
+                                                                    {req.items?.map(item => (
+                                                                        <tr key={item.id} className="hover:bg-gray-50">
+                                                                            <td className="px-3 py-2 font-mono text-xs">{item.fixed_asset_number}</td>
+                                                                            <td className="px-3 py-2 truncate max-w-xs" title={item.description}>{item.description}</td>
+                                                                            <td className="px-3 py-2">{item.purchase_date ? new Date(item.purchase_date).toLocaleDateString() : '-'}</td>
+                                                                            <td className="px-3 py-2 text-right">{formatCurrency(item.invoice_value)}</td>
+                                                                            <td className="px-3 py-2 text-right font-medium">{formatCurrency(item.accounting_value)}</td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
                                                         </div>
                                                     </div>
                                                 </td>
