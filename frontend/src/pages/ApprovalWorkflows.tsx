@@ -321,17 +321,46 @@ const ApprovalWorkflows: React.FC = () => {
                     <h3 className="text-md font-semibold text-slate-800 dark:text-white mb-3">
                         Adicionando 1º Aprovador: {categories.find(c => c.id === parseInt(addingToGroup.split('-')[0]))?.name} - {translateAction(addingToGroup.split('-')[1])}
                     </h3>
-                    <div className="flex gap-3">
-                         <select
-                            value={addStepUserId}
-                            onChange={e => setAddStepUserId(e.target.value)}
-                            className="flex-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
-                         >
-                            <option value="">Selecione o Aprovador...</option>
-                            {users.map(u => (
-                                <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
-                            ))}
-                         </select>
+                    <div className="flex gap-3 items-center">
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setStepType('USER')}
+                                className={`px-3 py-2 text-xs rounded-lg border font-medium transition-colors ${stepType === 'USER' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}
+                            >
+                                Usuário
+                            </button>
+                            <button
+                                onClick={() => setStepType('GROUP')}
+                                className={`px-3 py-2 text-xs rounded-lg border font-medium transition-colors ${stepType === 'GROUP' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}
+                            >
+                                Grupo
+                            </button>
+                        </div>
+
+                         {stepType === 'USER' ? (
+                             <select
+                                value={addStepUserId}
+                                onChange={e => setAddStepUserId(e.target.value)}
+                                className="flex-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
+                             >
+                                <option value="">Selecione o Aprovador...</option>
+                                {users.map(u => (
+                                    <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                                ))}
+                             </select>
+                         ) : (
+                             <select
+                                value={addStepGroupId}
+                                onChange={e => setAddStepGroupId(e.target.value)}
+                                className="flex-1 p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
+                             >
+                                <option value="">Selecione o Grupo...</option>
+                                {groups.map(g => (
+                                    <option key={g.id} value={g.id}>{g.name}</option>
+                                ))}
+                             </select>
+                         )}
+
                          <button
                             onClick={() => handleAddStep(parseInt(addingToGroup.split('-')[0]), addingToGroup.split('-')[1])}
                             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
