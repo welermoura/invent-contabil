@@ -514,7 +514,17 @@ async def bulk_write_off(
         # Build list of item details for table
         items_details = [build_item_details(item) for item in items]
 
-        html = notifications.generate_html_email("Solicitação de Baixa em Lote", msg, item_details=items_details)
+        base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+        frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+        action_url = f"{frontend_url}/pending-approvals?id={new_request.id}"
+
+        html = notifications.generate_html_email(
+            "Solicitação de Baixa em Lote",
+            msg,
+            item_details=items_details,
+            action_url=action_url,
+            action_text="Analisar Solicitação"
+        )
         await notifications.notify_users(db, approvers, "Solicitação de Baixa em Lote", msg, email_subject="Ação Necessária: Aprovar Baixa em Lote", email_html=html)
     except Exception as e:
         print(f"Error sending bulk notification: {e}")
@@ -612,7 +622,17 @@ async def bulk_transfer(
         # Build list of item details for table
         items_details = [build_item_details(item) for item in items]
 
-        html = notifications.generate_html_email("Solicitação de Transferência em Lote", msg, item_details=items_details)
+        base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+        frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+        action_url = f"{frontend_url}/pending-approvals?id={new_request.id}"
+
+        html = notifications.generate_html_email(
+            "Solicitação de Transferência em Lote",
+            msg,
+            item_details=items_details,
+            action_url=action_url,
+            action_text="Analisar Solicitação"
+        )
         await notifications.notify_users(db, approvers, "Solicitação de Transferência em Lote", msg, email_subject="Ação Necessária: Aprovar Transferência em Lote", email_html=html)
     except Exception as e:
         print(f"Error sending bulk notification: {e}")

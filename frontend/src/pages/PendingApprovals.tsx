@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { getPendingRequests, approveRequest, rejectRequest } from '../api';
 import type { RequestData } from '../api';
 import { useError } from '../hooks/useError';
@@ -18,12 +19,24 @@ const PendingApprovals: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [expandedRequestId, setExpandedRequestId] = useState<number | null>(null);
     const { showError, showSuccess, showConfirm } = useError();
+    const location = useLocation();
 
     const fetchRequests = async () => {
         setLoading(true);
         try {
             const data = await getPendingRequests();
             setRequests(data);
+
+            // Check for ID in query params
+            const searchParams = new URLSearchParams(location.search);
+            const idParam = searchParams.get('id');
+            if (idParam) {
+                const id = parseInt(idParam, 10);
+                // Expand if exists
+                if (data.some(r => r.id === id)) {
+                    setExpandedRequestId(id);
+                }
+            }
         } catch (error) {
             console.error("Error fetching pending requests", error);
             showError("Erro ao carregar aprovações pendentes.");
