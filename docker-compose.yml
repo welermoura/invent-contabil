@@ -28,6 +28,7 @@ services:
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
       - SQL_ECHO=${SQL_ECHO:-False}
       - TZ=America/Sao_Paulo
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
     depends_on:
       - db
     restart: unless-stopped

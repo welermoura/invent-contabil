@@ -103,8 +103,15 @@ async def approve_request(
             if 'reason' in req.data: msg += f"\nMotivo: {req.data['reason']}"
             if 'justification' in req.data: msg += f"\nJustificativa: {req.data['justification']}"
 
-        base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
-        frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+        # Determine Frontend URL
+        frontend_url = os.getenv("FRONTEND_URL")
+        if not frontend_url:
+            base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+            if "localhost" in base_url and ":8001" in base_url:
+                frontend_url = base_url.replace(":8001", ":3000")
+            else:
+                frontend_url = base_url.rstrip("/")
+
         action_url = f"{frontend_url}/pending-approvals?id={req.id}"
 
         html = notifications.generate_html_email(
