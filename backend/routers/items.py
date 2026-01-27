@@ -564,6 +564,17 @@ async def bulk_transfer(
     if not target_branch:
         raise HTTPException(status_code=404, detail="Filial de destino não encontrada")
 
+    # Validate Invoice and Series are numeric if provided
+    if request.invoice_number and not request.invoice_number.isdigit():
+        raise HTTPException(status_code=400, detail="O número da nota fiscal deve conter apenas dígitos.")
+    if request.invoice_series and not request.invoice_series.isdigit():
+        raise HTTPException(status_code=400, detail="A série da nota fiscal deve conter apenas dígitos.")
+
+    # Validate Origin != Destination
+    for item in items:
+        if item.branch_id == request.target_branch_id:
+            raise HTTPException(status_code=400, detail=f"O item '{item.description}' já pertence à filial de destino.")
+
     # Create Request
     req_data = schemas.RequestCreate(
         type=models.RequestType.TRANSFER,

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend import schemas, models, crud, auth, notifications, workflow_engine
@@ -58,6 +58,7 @@ async def read_pending_requests(
 @router.post("/{request_id}/approve", response_model=schemas.RequestResponse)
 async def approve_request(
     request_id: int,
+    req_context: Request,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -104,7 +105,9 @@ async def approve_request(
             if 'justification' in req.data: msg += f"\nJustificativa: {req.data['justification']}"
 
         # Determine Frontend URL
-        frontend_url = os.getenv("FRONTEND_URL")
+        origin = req_context.headers.get("origin")
+        frontend_url = origin if origin else os.getenv("FRONTEND_URL")
+
         if not frontend_url:
             base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
             if "localhost" in base_url and ":8001" in base_url:
@@ -162,6 +165,7 @@ async def approve_request(
 @router.post("/{request_id}/reject", response_model=schemas.RequestResponse)
 async def reject_request(
     request_id: int,
+    req_context: Request,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
