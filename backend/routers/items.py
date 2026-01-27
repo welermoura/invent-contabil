@@ -62,8 +62,26 @@ async def notify_new_item(db: AsyncSession, item: models.Item):
         msg = f"Um novo item foi cadastrado e aguarda aprovação (Etapa {item.approval_step})."
 
         details = build_item_details(item)
+        base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+        # Frontend URL is usually on port 3000 or same host if proxied.
+        # Assuming simple mapping for now based on APP_BASE_URL which is backend url.
+        # Ideally we should have FRONTEND_URL env var.
+        # But commonly in this setup APP_BASE_URL might be the public access point.
+        # Let's assume standard frontend path.
+        # If APP_BASE_URL is http://localhost:8001, Frontend is http://localhost:3000 locally.
+        # In production it might be same domain.
+        # Let's try to infer or use relative if strictly same domain, but email needs absolute.
+        # Using a simplistic replacement for dev environment support:
+        frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+        action_url = f"{frontend_url}/dashboard/detalhes/item/{item.id}"
 
-        html = notifications.generate_html_email("Novo Item Aguardando Aprovação", msg, item_details=details)
+        html = notifications.generate_html_email(
+            "Novo Item Aguardando Aprovação",
+            msg,
+            item_details=details,
+            action_url=action_url,
+            action_text="Analisar Solicitação"
+        )
         await notifications.notify_users(db, approvers, "Novo Item Pendente", msg, email_subject="Ação Necessária: Novo Item Cadastrado", email_html=html)
     except Exception as e:
         print(f"Failed to send notification for new item {item.id}: {e}")
@@ -80,7 +98,17 @@ async def notify_transfer_request(db: AsyncSession, item: models.Item):
         details = build_item_details(item)
         details["transfer_target"] = target_name # Add extra field specific to this email
 
-        html = notifications.generate_html_email("Solicitação de Transferência", msg, item_details=details)
+        base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+        frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+        action_url = f"{frontend_url}/dashboard/detalhes/item/{item.id}"
+
+        html = notifications.generate_html_email(
+            "Solicitação de Transferência",
+            msg,
+            item_details=details,
+            action_url=action_url,
+            action_text="Analisar Solicitação"
+        )
         await notifications.notify_users(db, approvers, "Solicitação de Transferência", msg, email_subject="Ação Necessária: Transferência Solicitada", email_html=html)
     except Exception as e:
         print(f"Failed to send notification for transfer request {item.id}: {e}")
@@ -97,7 +125,17 @@ async def notify_write_off_request(db: AsyncSession, item: models.Item, reason: 
 
         details = build_item_details(item)
 
-        html = notifications.generate_html_email("Solicitação de Baixa", msg, item_details=details)
+        base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+        frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+        action_url = f"{frontend_url}/dashboard/detalhes/item/{item.id}"
+
+        html = notifications.generate_html_email(
+            "Solicitação de Baixa",
+            msg,
+            item_details=details,
+            action_url=action_url,
+            action_text="Analisar Solicitação"
+        )
         await notifications.notify_users(db, approvers, "Solicitação de Baixa", msg, email_subject="Ação Necessária: Baixa Solicitada", email_html=html)
     except Exception as e:
         print(f"Failed to send notification for write-off request {item.id}: {e}")
@@ -582,7 +620,18 @@ async def update_item_status(
             msg = f"Item aguardando sua aprovação (Etapa {item_obj.approval_step})."
             title = "Ação Necessária: Aprovação Pendente"
             details = build_item_details(item_obj)
-            html = notifications.generate_html_email(title, msg, item_details=details)
+
+            base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+            frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+            action_url = f"{frontend_url}/dashboard/detalhes/item/{item_obj.id}"
+
+            html = notifications.generate_html_email(
+                title,
+                msg,
+                item_details=details,
+                action_url=action_url,
+                action_text="Analisar Solicitação"
+            )
             await notifications.notify_users(db, next_approvers, title, msg, email_subject=title, email_html=html)
 
             # Broadcast update
