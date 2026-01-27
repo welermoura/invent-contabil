@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, computed_field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime, date
-from backend.models import UserRole, ItemStatus
+from backend.models import UserRole, ItemStatus, ApprovalActionType, RequestStatus
 
 # Token
 class Token(BaseModel):
@@ -13,7 +13,6 @@ class TokenData(BaseModel):
 
 # User
 class UserBase(BaseModel):
-    # Alterado de EmailStr para str para permitir login "admin" simplificado
     email: str
     name: str
     role: UserRole = UserRole.OPERATOR
@@ -238,6 +237,28 @@ class ItemResponse(ItemBase):
         final_value = max(0.0, self.invoice_value * remaining_ratio)
 
         return round(final_value, 2)
+
+# Request
+class RequestBase(BaseModel):
+    type: ApprovalActionType
+    status: RequestStatus = RequestStatus.PENDING
+    current_step: int = 1
+    data: Optional[Dict[str, Any]] = None
+
+class RequestResponse(RequestBase):
+    id: int
+    requester_id: int
+    category_id: Optional[int] = None
+    created_at: datetime
+    requester: Optional[UserResponse] = None
+    category: Optional[CategoryResponse] = None
+    items: List[ItemResponse] = []
+
+    # Dynamic
+    current_approvers: List[str] = []
+
+    class Config:
+        from_attributes = True
 
 # Settings
 class SystemSettingBase(BaseModel):
