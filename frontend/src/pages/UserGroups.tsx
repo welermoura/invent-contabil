@@ -14,7 +14,7 @@ const UserGroups: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingGroup, setEditingGroup] = useState<UserGroup | null>(null);
     const [formData, setFormData] = useState({ name: '', description: '' });
-    const { showError, showSuccess } = useError();
+    const { showError, showSuccess, showConfirm } = useError();
 
     const fetchGroups = async () => {
         try {
@@ -58,16 +58,17 @@ const UserGroups: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const handleDelete = async (id: number) => {
-        if (!confirm("Tem certeza que deseja excluir este grupo?")) return;
-        try {
-            await api.delete(`/groups/${id}`);
-            showSuccess("Grupo excluído.");
-            fetchGroups();
-        } catch (error) {
-            console.error("Error deleting group", error);
-            showError("Erro ao excluir grupo.");
-        }
+    const handleDelete = (id: number) => {
+        showConfirm("Tem certeza que deseja excluir este grupo?", async () => {
+            try {
+                await api.delete(`/groups/${id}`);
+                showSuccess("Grupo excluído.");
+                fetchGroups();
+            } catch (error) {
+                console.error("Error deleting group", error);
+                showError("Erro ao excluir grupo.");
+            }
+        });
     };
 
     const openModal = () => {
