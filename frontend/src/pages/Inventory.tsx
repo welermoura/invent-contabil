@@ -115,6 +115,12 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
     const [bulkTransferInvoiceDate, setBulkTransferInvoiceDate] = useState('');
 
     const toggleSelection = (item: any) => {
+        // Prevent selection of pending items
+        if (['PENDING', 'TRANSFER_PENDING', 'WRITE_OFF_PENDING'].includes(item.status)) {
+            showWarning("Itens com pendências não podem ser selecionados para ações em lote.");
+            return;
+        }
+
         const id = item.id;
         const newSelection = new Set(selectedItems);
 
@@ -841,7 +847,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                                 type="checkbox"
                                                 checked={selectedItems.has(item.id)}
                                                 onChange={() => toggleSelection(item)}
-                                                disabled={lockedCategory !== null && item.category !== lockedCategory}
+                                                disabled={(lockedCategory !== null && item.category !== lockedCategory) || ['PENDING', 'TRANSFER_PENDING', 'WRITE_OFF_PENDING'].includes(item.status)}
                                                 className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                                             />
                                         </td>
@@ -909,11 +915,33 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                             </button>
                                         )}
 
+                                        {/* Actions blocked if item is in a pending state */}
                                         {['APPROVED', 'MAINTENANCE', 'IN_STOCK'].includes(item.status) && user?.role !== 'AUDITOR' && (
                                             <>
-                                                <button onClick={() => openTransferModal(item)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Transferir"><Truck size={18} /></button>
-                                                <button onClick={() => { setSelectedItem(item); setIsChangeStatusModalOpen(true); }} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Alterar Status"><RefreshCw size={18} /></button>
-                                                <button onClick={() => openWriteOffModal(item)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Baixa"><FileWarning size={18} /></button>
+                                                <button
+                                                    onClick={() => openTransferModal(item)}
+                                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    title="Transferir"
+                                                    disabled={['PENDING', 'TRANSFER_PENDING', 'WRITE_OFF_PENDING'].includes(item.status)}
+                                                >
+                                                    <Truck size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => { setSelectedItem(item); setIsChangeStatusModalOpen(true); }}
+                                                    className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    title="Alterar Status"
+                                                    disabled={['PENDING', 'TRANSFER_PENDING', 'WRITE_OFF_PENDING'].includes(item.status)}
+                                                >
+                                                    <RefreshCw size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => openWriteOffModal(item)}
+                                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    title="Baixa"
+                                                    disabled={['PENDING', 'TRANSFER_PENDING', 'WRITE_OFF_PENDING'].includes(item.status)}
+                                                >
+                                                    <FileWarning size={18} />
+                                                </button>
                                             </>
                                         )}
 

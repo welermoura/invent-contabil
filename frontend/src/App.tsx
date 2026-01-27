@@ -15,6 +15,7 @@ import Setup from './pages/Setup';
 import Reports from './pages/Reports';
 import Suppliers from './pages/Suppliers';
 import ApprovalWorkflows from './pages/ApprovalWorkflows';
+import MyRequests from './pages/MyRequests';
 import MacroViewPage from './pages/dashboard/MacroViewPage';
 import { AuthProvider, useAuth } from './AuthContext';
 import { ErrorProvider } from './context/ErrorContext';
@@ -137,6 +138,7 @@ const Layout = () => {
                     <div className={`text-xs font-semibold uppercase tracking-wider mb-2 px-4 mt-2 ${settings.theme_text_color === 'text-white' ? 'text-white/50' : 'text-slate-400'}`}>Menu</div>
                     <NavItem to="/" icon={LayoutDashboard} label="Painel" active={isActive('/')} />
                     <NavItem to="/inventory" icon={Package} label="Inventário" active={isActive('/inventory')} />
+                    <NavItem to="/my-requests" icon={FileText} label="Minhas Solicitações" active={isActive('/my-requests')} />
                     <NavItem to="/branches" icon={Building2} label="Filiais" active={isActive('/branches')} />
                     <NavItem to="/suppliers" icon={Truck} label="Fornecedores" active={isActive('/suppliers')} />
 
@@ -267,6 +269,7 @@ const AppRoutes = () => {
                     <Route path="/system-settings" element={<SystemSettings />} />
                     <Route path="/safeguard-settings" element={<SafeguardSettings />} />
                     <Route path="/approval-workflows" element={<ApprovalWorkflows />} />
+                    <Route path="/my-requests" element={<MyRequests />} />
                 </Route>
             </Route>
         </Routes>
