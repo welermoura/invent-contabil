@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { getPendingRequests, approveRequest, rejectRequest, RequestData } from '../api';
+import { getPendingRequests, approveRequest, rejectRequest } from '../api';
+import type { RequestData } from '../api';
 import { useError } from '../hooks/useError';
 import {
     CheckSquare,
