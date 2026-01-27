@@ -237,7 +237,7 @@ async def get_categories(db: AsyncSession, skip: int = 0, limit: int = 100, sear
     return result.scalars().all()
 
 async def get_category_by_name(db: AsyncSession, name: str):
-    result = await db.execute(select(models.Category).where(models.Category.name == name))
+    result = await db.execute(select(models.Category).where(models.Category.name.ilike(name)))
     return result.scalars().first()
 
 async def create_category(db: AsyncSession, category: schemas.CategoryCreate):

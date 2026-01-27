@@ -63,11 +63,8 @@ async def get_current_step_approvers(db: AsyncSession, item: models.Item, action
 
     elif current_rule.required_role:
         # Specific Role
-        # If required is APPROVER, ADMINs are also implicitly approvers.
+        # Remove implicit Admin addition to ensure strict adherence to the configured role.
         roles = [current_rule.required_role]
-        if current_rule.required_role == models.UserRole.APPROVER:
-            if models.UserRole.ADMIN not in roles:
-                roles.append(models.UserRole.ADMIN)
 
         from backend.crud import get_users_by_role
         return await get_users_by_role(db, roles)
