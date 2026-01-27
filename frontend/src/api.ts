@@ -63,6 +63,23 @@ export interface BulkTransferData {
     invoice_date?: string; // ISO string
 }
 
+// Requests Types
+export interface RequestData {
+    id: number;
+    type: 'WRITE_OFF' | 'TRANSFER';
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    requester_id: number;
+    category_id: number;
+    current_step: number;
+    created_at: string;
+    updated_at?: string;
+    requester?: any;
+    category?: any;
+    items?: any[];
+    current_approvers?: string[];
+    data?: any;
+}
+
 // Helper functions for bulk operations
 export const bulkWriteOff = async (data: BulkWriteOffData) => {
     const response = await api.post('/items/bulk/write-off', data);
@@ -71,6 +88,27 @@ export const bulkWriteOff = async (data: BulkWriteOffData) => {
 
 export const bulkTransfer = async (data: BulkTransferData) => {
     const response = await api.post('/items/bulk/transfer', data);
+    return response.data;
+};
+
+// Requests API
+export const getMyRequests = async () => {
+    const response = await api.get<RequestData[]>('/requests/my-requests');
+    return response.data;
+};
+
+export const getPendingRequests = async () => {
+    const response = await api.get<RequestData[]>('/requests/pending');
+    return response.data;
+};
+
+export const approveRequest = async (id: number) => {
+    const response = await api.post<RequestData>(`/requests/${id}/approve`);
+    return response.data;
+};
+
+export const rejectRequest = async (id: number) => {
+    const response = await api.post<RequestData>(`/requests/${id}/reject`);
     return response.data;
 };
 

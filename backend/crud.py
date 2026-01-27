@@ -779,3 +779,68 @@ async def reorder_approval_workflows(db: AsyncSession, updates: list[dict]):
 
     await db.commit()
     return True
+
+# Requests
+async def create_request(db: AsyncSession, request: schemas.RequestCreate):
+    db_request = models.Request(**request.dict())
+    db.add(db_request)
+    await db.commit()
+    await db.refresh(db_request)
+    return db_request
+
+async def get_request(db: AsyncSession, request_id: int):
+    query = select(models.Request).where(models.Request.id == request_id).options(
+        selectinload(models.Request.requester),
+        selectinload(models.Request.category),
+        selectinload(models.Request.items).options(
+             selectinload(models.Item.branch), # Need deeper loading for item display
+             selectinload(models.Item.transfer_target_branch),
+             selectinload(models.Item.category_rel),
+             selectinload(models.Item.supplier),
+             selectinload(models.Item.responsible)
+        )
+    )
+    result = await db.execute(query)
+    return result.scalars().first()
+
+async def get_requests(db: AsyncSession, skip: int = 0, limit: int = 100,
+                       requester_id: int = None, status: models.RequestStatus = None):
+    query = select(models.Request).options(
+        selectinload(models.Request.requester),
+        selectinload(models.Request.category),
+        selectinload(models.Request.items)
+    )
+    if requester_id:
+        query = query.where(models.Request.requester_id == requester_id)
+    if status:
+        query = query.where(models.Request.status == status)
+
+    query = query.order_by(models.Request.created_at.desc())
+    result = await db.execute(query.offset(skip).limit(limit))
+    return result.scalars().all()
+
+async def update_request(db: AsyncSession, request_id: int, request_update: schemas.RequestUpdate):
+    result = await db.execute(select(models.Request).where(models.Request.id == request_id))
+    db_request = result.scalars().first()
+    if db_request:
+        if request_update.status:
+            db_request.status = request_update.status
+        if request_update.current_step is not None:
+            db_request.current_step = request_update.current_step
+        await db.commit()
+        await db.refresh(db_request)
+        # Reload relationships
+        query = select(models.Request).where(models.Request.id == request_id).options(
+            selectinload(models.Request.requester),
+            selectinload(models.Request.category),
+            selectinload(models.Request.items).options(
+                 selectinload(models.Item.branch),
+                 selectinload(models.Item.transfer_target_branch),
+                 selectinload(models.Item.category_rel),
+                 selectinload(models.Item.supplier),
+                 selectinload(models.Item.responsible)
+            )
+        )
+        result = await db.execute(query)
+        db_request = result.scalars().first()
+    return db_request

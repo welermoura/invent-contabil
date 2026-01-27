@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, computed_field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime, date
-from backend.models import UserRole, ItemStatus
+from backend.models import UserRole, ItemStatus, RequestType, RequestStatus, ApprovalActionType
 
 # Token
 class Token(BaseModel):
@@ -284,10 +284,8 @@ class BulkTransferRequest(BaseModel):
     invoice_number: Optional[str] = None
     invoice_series: Optional[str] = None
     invoice_date: Optional[datetime] = None
-from typing import List, Optional
-from pydantic import BaseModel
-from backend.models import UserRole, ApprovalActionType
 
+# Approval Workflows
 class ApprovalWorkflowBase(BaseModel):
     category_id: Optional[int] = None
     action_type: ApprovalActionType
@@ -316,6 +314,32 @@ class ApprovalWorkflowResponse(ApprovalWorkflowBase):
     class Config:
         from_attributes = True
 
-from backend.schemas import CategoryResponse # Circular import avoidance if in same file
-# Re-declaring to avoid circular dependency issues if I was editing existing file improperly
-# But since I am editing existing file, I should just append.
+# Requests
+class RequestBase(BaseModel):
+    type: RequestType
+    category_id: int
+    data: Optional[Dict[str, Any]] = None
+
+class RequestCreate(RequestBase):
+    requester_id: int
+
+class RequestUpdate(BaseModel):
+    status: Optional[RequestStatus] = None
+    current_step: Optional[int] = None
+
+class RequestResponse(RequestBase):
+    id: int
+    status: RequestStatus
+    requester_id: int
+    current_step: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    requester: Optional[UserResponse] = None
+    category: Optional[CategoryResponse] = None
+    items: List[ItemResponse] = []
+
+    # Dynamic
+    current_approvers: List[str] = []
+
+    class Config:
+        from_attributes = True
