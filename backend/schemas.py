@@ -286,7 +286,7 @@ from pydantic import BaseModel
 from backend.models import UserRole, ApprovalActionType
 
 class ApprovalWorkflowBase(BaseModel):
-    category_id: int
+    category_id: Optional[int] = None
     action_type: ApprovalActionType
     required_role: Optional[UserRole] = None
     required_user_id: Optional[int] = None
