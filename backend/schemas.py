@@ -22,6 +22,7 @@ class UserCreate(UserBase):
     password: str
     branch_id: Optional[int] = None
     branch_ids: Optional[List[int]] = []
+    group_id: Optional[int] = None
     all_branches: Optional[bool] = False
     can_import: Optional[bool] = False
 
@@ -30,6 +31,7 @@ class UserUpdate(BaseModel):
     role: Optional[UserRole] = None
     branch_id: Optional[int] = None
     branch_ids: Optional[List[int]] = None
+    group_id: Optional[int] = None
     all_branches: Optional[bool] = None
     can_import: Optional[bool] = None
     password: Optional[str] = None
