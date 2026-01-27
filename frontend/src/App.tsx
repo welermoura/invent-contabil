@@ -8,6 +8,7 @@ import Inventory from './pages/Inventory';
 import Branches from './pages/Branches';
 import Categories from './pages/Categories';
 import Users from './pages/Users';
+import UserGroups from './pages/UserGroups';
 import SystemSettings from './pages/SystemSettings';
 import SafeguardSettings from './pages/settings/SafeguardSettings';
 import Setup from './pages/Setup';
