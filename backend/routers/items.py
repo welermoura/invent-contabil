@@ -468,47 +468,32 @@ async def bulk_write_off(
         if item.status in [models.ItemStatus.PENDING, models.ItemStatus.TRANSFER_PENDING, models.ItemStatus.WRITE_OFF_PENDING]:
             raise HTTPException(status_code=400, detail=f"Item '{item.description}' já possui uma solicitação pendente.")
 
-    # 3. Create Request Batch
-    request_data = {
-        "reason": request.reason,
-        "justification": request.justification
-    }
-
-    # Create Request (handles locking items via request_id)
-    new_request = await crud.create_request(
-        db,
-        models.ApprovalActionType.WRITE_OFF,
-        current_user.id,
-        first_category_id,
-        request_data,
-        items
-    )
-
-    # 4. Update Items Status & Logging
+    # 3. Execution Loop
     for item in items:
+        # Change to Pending Status
         item.status = models.ItemStatus.WRITE_OFF_PENDING
+        item.approval_step = 1
         item.write_off_reason = request.reason
         # Append justification if provided
         if request.justification:
-             item.observations = f"{item.observations or ''}\n[Solic. Baixa] Justificativa: {request.justification}"
+             item.observations = f"{item.observations or ''}\n[Solic. Baixa em Lote] Justificativa: {request.justification}"
 
         # Log
         log = models.Log(
             item_id=item.id,
             user_id=current_user.id,
-            action=f"Solicitação de Baixa em Lote #{new_request.id}. Motivo: {request.reason}"
+            action=f"Solicitação de Baixa em Lote. Motivo: {request.reason}. {request.justification or ''}"
         )
         db.add(log)
 
     await db.commit()
 
-    # 5. Consolidated Notification
+    # 4. Consolidated Notification
     try:
-        # Use Request for workflow resolution
-        approvers = await workflow_engine.get_current_step_approvers_for_request(db, new_request)
+        approvers = await workflow_engine.get_current_step_approvers(db, items[0], models.ApprovalActionType.WRITE_OFF)
         category_name = items[0].category_rel.name if items[0].category_rel else "Desconhecida"
 
-        msg = f"Solicitação de Baixa em Lote #{new_request.id} (Etapa 1).\n\n"
+        msg = f"Solicitação de Baixa em Lote Criada (Etapa 1).\n\n"
         msg += f"Motivo: {request.reason}\n"
         msg += f"Justificativa: {request.justification or 'N/A'}\n\n"
         msg += f"Categoria: {category_name}\n"
@@ -520,11 +505,11 @@ async def bulk_write_off(
         items_details = [build_item_details(item) for item in items]
 
         html = notifications.generate_html_email("Solicitação de Baixa em Lote", msg, item_details=items_details)
-        await notifications.notify_users(db, approvers, f"Solicitação de Baixa #{new_request.id}", msg, email_subject=f"Aprovação Necessária: Baixa em Lote #{new_request.id}", email_html=html)
+        await notifications.notify_users(db, approvers, "Solicitação de Baixa em Lote", msg, email_subject="Ação Necessária: Aprovar Baixa em Lote", email_html=html)
     except Exception as e:
         print(f"Error sending bulk notification: {e}")
 
-    return {"message": "Solicitação de baixa em lote enviada", "count": len(items), "request_id": new_request.id}
+    return {"message": "Solicitação de baixa em lote enviada", "count": len(items)}
 
 @router.post("/bulk/transfer")
 async def bulk_transfer(
@@ -559,25 +544,6 @@ async def bulk_transfer(
     if not target_branch:
         raise HTTPException(status_code=404, detail="Filial de destino não encontrada")
 
-    # Create Request Batch
-    request_data = {
-        "target_branch_id": request.target_branch_id,
-        "invoice_number": request.invoice_number,
-        "invoice_series": request.invoice_series,
-        "invoice_date": request.invoice_date.isoformat() if request.invoice_date else None
-    }
-
-    first_category_id = items[0].category_id # Validated above
-
-    new_request = await crud.create_request(
-        db,
-        models.ApprovalActionType.TRANSFER,
-        current_user.id,
-        first_category_id,
-        request_data,
-        items
-    )
-
     for item in items:
         # Permission check
         if current_user.role == models.UserRole.OPERATOR and not current_user.all_branches:
@@ -588,6 +554,7 @@ async def bulk_transfer(
 
         # Update to Pending
         item.status = models.ItemStatus.TRANSFER_PENDING
+        item.approval_step = 1
         item.transfer_target_branch_id = request.target_branch_id
         item.transfer_invoice_number = request.invoice_number
         item.transfer_invoice_series = request.invoice_series
@@ -596,7 +563,7 @@ async def bulk_transfer(
         log = models.Log(
             item_id=item.id,
             user_id=current_user.id,
-            action=f"Solicitação de Transferência em Lote #{new_request.id} para {target_branch.name}"
+            action=f"Solicitação de Transferência em Lote para {target_branch.name}"
         )
         db.add(log)
 
@@ -604,12 +571,12 @@ async def bulk_transfer(
 
     # Notification
     try:
-        approvers = await workflow_engine.get_current_step_approvers_for_request(db, new_request)
+        approvers = await workflow_engine.get_current_step_approvers(db, items[0], models.ApprovalActionType.TRANSFER)
 
         origins = sorted(list({item.branch.name for item in items if item.branch}))
         origin_str = origins[0] if len(origins) == 1 else "Múltiplas Origens"
 
-        msg = f"Solicitação de transferência em lote #{new_request.id} (Etapa 1).\n"
+        msg = f"Solicitação de transferência em lote criada (Etapa 1).\n"
         msg += f"Origem: {origin_str}\n"
         msg += f"Destino: {target_branch.name}\n\n"
 
@@ -621,11 +588,11 @@ async def bulk_transfer(
         items_details = [build_item_details(item) for item in items]
 
         html = notifications.generate_html_email("Solicitação de Transferência em Lote", msg, item_details=items_details)
-        await notifications.notify_users(db, approvers, f"Solicitação de Transferência #{new_request.id}", msg, email_subject=f"Aprovação Necessária: Transferência em Lote #{new_request.id}", email_html=html)
+        await notifications.notify_users(db, approvers, "Solicitação de Transferência em Lote", msg, email_subject="Ação Necessária: Aprovar Transferência em Lote", email_html=html)
     except Exception as e:
         print(f"Error sending bulk notification: {e}")
 
-    return {"message": "Solicitação de transferência em lote enviada", "count": len(items), "request_id": new_request.id}
+    return {"message": "Solicitação de transferência em lote enviada", "count": len(items)}
 
 # --- Individual Operations ---
 

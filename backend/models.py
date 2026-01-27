@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey, Text, Enum, Table, JSON
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, ForeignKey, Text, Enum, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -46,11 +46,6 @@ class ApprovalActionType(str, enum.Enum):
     TRANSFER = "TRANSFER"
     WRITE_OFF = "WRITE_OFF"
 
-class RequestStatus(str, enum.Enum):
-    PENDING = "PENDING"
-    APPROVED = "APPROVED"
-    REJECTED = "REJECTED"
-
 class Branch(Base):
     __tablename__ = "branches"
     __table_args__ = {'extend_existing': True}
@@ -93,7 +88,6 @@ class User(Base):
     items_responsible = relationship("Item", back_populates="responsible")
     # Changed from lazy="selectin" to lazy="select" (or default) to avoid performance issues
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
-    requests = relationship("Request", back_populates="requester")
 
 class Category(Base):
     __tablename__ = "categories"
@@ -105,7 +99,6 @@ class Category(Base):
 
     items = relationship("Item", back_populates="category_rel", lazy="selectin")
     approval_workflows = relationship("ApprovalWorkflow", back_populates="category", lazy="selectin")
-    requests = relationship("Request", back_populates="category")
 
 class Supplier(Base):
     __tablename__ = "suppliers"
@@ -116,24 +109,6 @@ class Supplier(Base):
     cnpj = Column(String, unique=True, index=True)
 
     items = relationship("Item", back_populates="supplier", lazy="selectin")
-
-class Request(Base):
-    __tablename__ = "requests"
-    __table_args__ = {'extend_existing': True}
-
-    id = Column(Integer, primary_key=True, index=True)
-    type = Column(Enum(ApprovalActionType))
-    status = Column(Enum(RequestStatus), default=RequestStatus.PENDING)
-    requester_id = Column(Integer, ForeignKey("users.id"))
-    category_id = Column(Integer, ForeignKey("categories.id"), nullable=True)
-    current_step = Column(Integer, default=1)
-    data = Column(JSON, nullable=True) # Stores extra info like target_branch, reason, etc.
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
-    requester = relationship("User", back_populates="requests", lazy="selectin")
-    category = relationship("Category", back_populates="requests", lazy="selectin")
-    items = relationship("Item", back_populates="request", lazy="selectin")
 
 class Item(Base):
     __tablename__ = "items"
@@ -160,8 +135,6 @@ class Item(Base):
     observations = Column(Text, nullable=True)
     write_off_reason = Column(String, nullable=True)
     approval_step = Column(Integer, default=1)
-    # Link to the Request batch
-    request_id = Column(Integer, ForeignKey("requests.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -171,7 +144,6 @@ class Item(Base):
     supplier = relationship("Supplier", back_populates="items", lazy="selectin")
     responsible = relationship("User", back_populates="items_responsible", lazy="selectin")
     logs = relationship("Log", back_populates="item", lazy="selectin")
-    request = relationship("Request", back_populates="items", lazy="selectin")
 
 class Log(Base):
     __tablename__ = "logs"

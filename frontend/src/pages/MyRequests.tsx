@@ -1,30 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { useError } from '../hooks/useError';
-import { FileText, Clock, User, ArrowRight, Activity, AlertCircle, Package, Truck, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileText, Clock, User, ArrowRight, Activity, AlertCircle } from 'lucide-react';
 
-interface Request {
+interface Item {
     id: number;
-    type: string;
+    description: string;
+    category: string;
     status: string;
-    current_step: number;
-    created_at: string;
-    items: any[];
+    approval_step: number;
     current_approvers: string[];
+    updated_at?: string;
+    created_at: string;
 }
 
 const MyRequests: React.FC = () => {
-    const [requests, setRequests] = useState<Request[]>([]);
+    const [items, setItems] = useState<Item[]>([]);
     const [loading, setLoading] = useState(true);
     const { showError } = useError();
-    const [expandedRequest, setExpandedRequest] = useState<number | null>(null);
 
     useEffect(() => {
         const fetchRequests = async () => {
             try {
-                // Now using the requests endpoint instead of items
-                const response = await api.get('/requests/my');
-                setRequests(response.data);
+                const response = await api.get('/items/my-requests');
+                setItems(response.data);
             } catch (error) {
                 console.error("Error fetching requests", error);
                 showError("Erro ao carregar solicitações.");
@@ -37,15 +36,11 @@ const MyRequests: React.FC = () => {
 
     const getStatusLabel = (status: string) => {
         switch (status) {
-            case 'PENDING': return { text: 'Em Análise', color: 'bg-yellow-100 text-yellow-700' };
-            case 'APPROVED': return { text: 'Aprovado', color: 'bg-green-100 text-green-700' };
-            case 'REJECTED': return { text: 'Rejeitado', color: 'bg-red-100 text-red-700' };
+            case 'PENDING': return { text: 'Novo Item', color: 'bg-blue-100 text-blue-700' };
+            case 'TRANSFER_PENDING': return { text: 'Transferência', color: 'bg-purple-100 text-purple-700' };
+            case 'WRITE_OFF_PENDING': return { text: 'Baixa', color: 'bg-red-100 text-red-700' };
             default: return { text: status, color: 'bg-gray-100 text-gray-700' };
         }
-    };
-
-    const toggleExpand = (id: number) => {
-        setExpandedRequest(expandedRequest === id ? null : id);
     };
 
     if (loading) {
@@ -70,91 +65,61 @@ const MyRequests: React.FC = () => {
                 </p>
             </div>
 
-            {requests.length === 0 ? (
+            {items.length === 0 ? (
                 <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
                     <div className="bg-slate-50 dark:bg-slate-900 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Clock size={32} className="text-slate-300 dark:text-slate-600" />
                     </div>
-                    <h3 className="text-lg font-medium text-slate-800 dark:text-white mb-2">Nenhuma solicitação encontrada</h3>
-                    <p className="text-slate-500">Você não tem solicitações recentes.</p>
+                    <h3 className="text-lg font-medium text-slate-800 dark:text-white mb-2">Nenhuma solicitação pendente</h3>
+                    <p className="text-slate-500">Você não tem itens aguardando aprovação no momento.</p>
                 </div>
             ) : (
-                <div className="space-y-4">
-                    {requests.map((req) => {
-                        const statusInfo = getStatusLabel(req.status);
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {items.map((item) => {
+                        const statusInfo = getStatusLabel(item.status);
                         return (
-                            <div key={req.id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden hover:shadow-md transition-shadow">
-                                <div className="p-5 cursor-pointer" onClick={() => toggleExpand(req.id)}>
-                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`p-3 rounded-xl ${req.type === 'WRITE_OFF' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
-                                                {req.type === 'WRITE_OFF' ? <Package size={24}/> : <Truck size={24}/>}
-                                            </div>
-                                            <div>
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="font-bold text-slate-800 dark:text-white">Solicitação #{req.id}</span>
-                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide ${statusInfo.color}`}>
-                                                        {statusInfo.text}
-                                                    </span>
-                                                </div>
-                                                <div className="text-sm text-slate-500 flex items-center gap-3">
-                                                    <span className="flex items-center gap-1"><Clock size={14}/> {new Date(req.created_at).toLocaleDateString()}</span>
-                                                    <span>•</span>
-                                                    <span>{req.items.length} itens</span>
-                                                    <span>•</span>
-                                                    <span>Etapa {req.current_step}</span>
-                                                </div>
-                                            </div>
-                                        </div>
+                            <div key={item.id} className="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-md transition-shadow relative overflow-hidden group">
+                                {/* Status Strip */}
+                                <div className={`absolute top-0 left-0 w-1.5 h-full ${statusInfo.color.replace('text-', 'bg-').split(' ')[0].replace('100', '500')}`}></div>
 
-                                        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                                            {req.status === 'PENDING' && (
-                                                <div className="flex flex-col items-end">
-                                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1 flex items-center gap-1">
-                                                        <Activity size={12} /> Aguardando:
-                                                    </span>
-                                                    <div className="flex -space-x-2">
-                                                        {req.current_approvers && req.current_approvers.length > 0 ? (
-                                                            req.current_approvers.slice(0, 3).map((name, idx) => (
-                                                                <div key={idx} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-700" title={name}>
-                                                                    {name.charAt(0)}
-                                                                </div>
-                                                            ))
-                                                        ) : (
-                                                            <span className="text-xs text-orange-500">Configuração Pendente</span>
-                                                        )}
-                                                        {req.current_approvers && req.current_approvers.length > 3 && (
-                                                            <div className="w-6 h-6 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-500">
-                                                                +{req.current_approvers.length - 3}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {expandedRequest === req.id ? <ChevronUp className="text-slate-400"/> : <ChevronDown className="text-slate-400"/>}
-                                        </div>
-                                    </div>
+                                <div className="flex justify-between items-start mb-3">
+                                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${statusInfo.color}`}>
+                                        {statusInfo.text}
+                                    </span>
+                                    <span className="text-xs text-slate-400 font-medium flex items-center gap-1">
+                                        <Clock size={12} />
+                                        Etapa {item.approval_step || 1}
+                                    </span>
                                 </div>
 
-                                {/* Expanded Details */}
-                                {expandedRequest === req.id && (
-                                    <div className="border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-4 animate-slide-in">
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase mb-3 px-2">Itens Inclusos</h4>
-                                        <div className="grid gap-2">
-                                            {req.items.map((item) => (
-                                                <div key={item.id} className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                                                    <div>
-                                                        <p className="font-medium text-slate-700 dark:text-slate-200 text-sm">{item.description}</p>
-                                                        <p className="text-xs text-slate-500">{item.fixed_asset_number || 'Sem Ativo Fixo'}</p>
+                                <h3 className="font-bold text-slate-800 dark:text-white mb-1 truncate" title={item.description}>
+                                    {item.description}
+                                </h3>
+                                <p className="text-sm text-slate-500 mb-4">{item.category}</p>
+
+                                <div className="border-t border-slate-100 dark:border-slate-700 pt-3 mt-auto">
+                                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                        <Activity size={12} />
+                                        Aguardando Aprovação de:
+                                    </p>
+                                    <div className="space-y-1">
+                                        {item.current_approvers && item.current_approvers.length > 0 ? (
+                                            item.current_approvers.map((name, idx) => (
+                                                <div key={idx} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                                                    <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold">
+                                                        {name.charAt(0)}
                                                     </div>
-                                                    <span className="font-mono text-sm text-slate-600 dark:text-slate-400">
-                                                        R$ {item.invoice_value}
-                                                    </span>
+                                                    {name}
                                                 </div>
-                                            ))}
-                                        </div>
+                                            ))
+                                        ) : (
+                                            <div className="flex items-center gap-2 text-sm text-orange-600 bg-orange-50 px-2 py-1 rounded-lg">
+                                                <AlertCircle size={14} />
+                                                <span>Aguardando Configuração</span>
+                                            </div>
+                                        )}
                                     </div>
-                                )}
+                                </div>
                             </div>
                         );
                     })}
