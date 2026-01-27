@@ -1,0 +1,8 @@
+INFO:     Started server process [14039]
+INFO:     Waiting for application startup.
+INFO:backend.initial_data:Creating default branch...
+INFO:backend.initial_data:Default branch created.
+INFO:backend.initial_data:Creating default admin user (admin/123)...
+INFO:backend.initial_data:Default admin created: admin / 123
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)

@@ -683,7 +683,8 @@ async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int
 async def get_approval_workflows(db: AsyncSession, category_id: int = None):
     query = select(models.ApprovalWorkflow).options(
         selectinload(models.ApprovalWorkflow.category),
-        selectinload(models.ApprovalWorkflow.required_user)
+        selectinload(models.ApprovalWorkflow.required_user),
+        selectinload(models.ApprovalWorkflow.required_group)
     )
     if category_id:
         query = query.where(models.ApprovalWorkflow.category_id == category_id)
@@ -712,7 +713,11 @@ async def create_approval_workflow(db: AsyncSession, workflow: schemas.ApprovalW
     await db.commit()
     await db.refresh(db_workflow)
     # Reload relation
-    query = select(models.ApprovalWorkflow).where(models.ApprovalWorkflow.id == db_workflow.id).options(selectinload(models.ApprovalWorkflow.category))
+    query = select(models.ApprovalWorkflow).where(models.ApprovalWorkflow.id == db_workflow.id).options(
+        selectinload(models.ApprovalWorkflow.category),
+        selectinload(models.ApprovalWorkflow.required_user),
+        selectinload(models.ApprovalWorkflow.required_group)
+    )
     result = await db.execute(query)
     return result.scalars().first()
 
@@ -739,7 +744,11 @@ async def update_approval_workflow(db: AsyncSession, workflow_id: int, workflow_
         await db.refresh(db_workflow)
 
         # Reload relation
-        query = select(models.ApprovalWorkflow).where(models.ApprovalWorkflow.id == db_workflow.id).options(selectinload(models.ApprovalWorkflow.category))
+        query = select(models.ApprovalWorkflow).where(models.ApprovalWorkflow.id == db_workflow.id).options(
+            selectinload(models.ApprovalWorkflow.category),
+            selectinload(models.ApprovalWorkflow.required_user),
+            selectinload(models.ApprovalWorkflow.required_group)
+        )
         result = await db.execute(query)
         db_workflow = result.scalars().first()
 
