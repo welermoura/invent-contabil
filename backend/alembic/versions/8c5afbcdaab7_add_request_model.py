@@ -20,86 +20,127 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Get database connection and inspector
-    conn = op.get_bind()
-    inspector = Inspector.from_engine(conn)
-    existing_tables = inspector.get_table_names()
+    # Use dialect-specific logic for safety
+    bind = op.get_bind()
+    dialect = bind.dialect.name
 
-    # 1. Create System Settings (Check existence first)
-    if 'system_settings' not in existing_tables:
-        op.create_table('system_settings',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('key', sa.String(), nullable=True),
-        sa.Column('value', sa.String(), nullable=True),
-        sa.PrimaryKeyConstraint('id')
-        )
-        op.create_index(op.f('ix_system_settings_id'), 'system_settings', ['id'], unique=False)
-        op.create_index(op.f('ix_system_settings_key'), 'system_settings', ['key'], unique=True)
+    if dialect == 'postgresql':
+        # PostgreSQL: Use IF NOT EXISTS to prevent transaction aborts
+        op.execute("""
+            CREATE TABLE IF NOT EXISTS system_settings (
+                id SERIAL PRIMARY KEY,
+                key VARCHAR,
+                value VARCHAR
+            );
+        """)
+        op.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_system_settings_key ON system_settings (key);")
+        op.execute("CREATE INDEX IF NOT EXISTS ix_system_settings_id ON system_settings (id);")
 
-    # 2. Create Requests Table (Check existence first)
-    if 'requests' not in existing_tables:
-        op.create_table('requests',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('type', sa.Enum('CREATE', 'TRANSFER', 'WRITE_OFF', name='approvalactiontype'), nullable=True),
-        sa.Column('status', sa.Enum('PENDING', 'APPROVED', 'REJECTED', name='requeststatus'), nullable=True),
-        sa.Column('requester_id', sa.Integer(), nullable=True),
-        sa.Column('category_id', sa.Integer(), nullable=True),
-        sa.Column('current_step', sa.Integer(), nullable=True),
-        sa.Column('data', sa.JSON(), nullable=True),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
-        sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-        sa.ForeignKeyConstraint(['category_id'], ['categories.id'], ),
-        sa.ForeignKeyConstraint(['requester_id'], ['users.id'], ),
-        sa.PrimaryKeyConstraint('id')
-        )
-        op.create_index(op.f('ix_requests_id'), 'requests', ['id'], unique=False)
+        op.execute("""
+            CREATE TABLE IF NOT EXISTS requests (
+                id SERIAL PRIMARY KEY,
+                type VARCHAR,
+                status VARCHAR,
+                requester_id INTEGER REFERENCES users(id),
+                category_id INTEGER REFERENCES categories(id),
+                current_step INTEGER,
+                data JSON,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP WITH TIME ZONE
+            );
+        """)
+        op.execute("CREATE INDEX IF NOT EXISTS ix_requests_id ON requests (id);")
 
-    # 3. Modify Items Table (Check column existence)
-    items_columns = [c['name'] for c in inspector.get_columns('items')]
+        # Add column safely
+        op.execute("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='items' AND column_name='request_id') THEN
+                    ALTER TABLE items ADD COLUMN request_id INTEGER REFERENCES requests(id);
+                END IF;
+            END $$;
+        """)
 
-    with op.batch_alter_table('items', schema=None) as batch_op:
-        if 'request_id' not in items_columns:
-            batch_op.add_column(sa.Column('request_id', sa.Integer(), nullable=True))
-            batch_op.create_foreign_key('fk_items_request_id', 'requests', ['request_id'], ['id'])
+        # Update Users safely
+        op.execute("ALTER TABLE users ALTER COLUMN all_branches DROP NOT NULL;")
+        op.execute("ALTER TABLE users ALTER COLUMN all_branches SET DEFAULT false;")
 
-    with op.batch_alter_table('users', schema=None) as batch_op:
-        # Alter column is usually safe to repeat or we can inspect defaults,
-        # but for boolean it's less critical.
-        # Ideally check if default exists, but batch_alter handles it reasonably well on most DBs.
-        batch_op.alter_column('all_branches',
-               existing_type=sa.BOOLEAN(),
-               nullable=True,
-               existing_server_default=sa.text("'false'"))
-    # ### end Alembic commands ###
+    else:
+        # SQLite / Others: Use Inspector (safer on SQLite as transactions aren't strict)
+        inspector = Inspector.from_engine(bind)
+        existing_tables = inspector.get_table_names()
+
+        if 'system_settings' not in existing_tables:
+            op.create_table('system_settings',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('key', sa.String(), nullable=True),
+            sa.Column('value', sa.String(), nullable=True),
+            sa.PrimaryKeyConstraint('id')
+            )
+            op.create_index(op.f('ix_system_settings_id'), 'system_settings', ['id'], unique=False)
+            op.create_index(op.f('ix_system_settings_key'), 'system_settings', ['key'], unique=True)
+
+        if 'requests' not in existing_tables:
+            op.create_table('requests',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('type', sa.Enum('CREATE', 'TRANSFER', 'WRITE_OFF', name='approvalactiontype'), nullable=True),
+            sa.Column('status', sa.Enum('PENDING', 'APPROVED', 'REJECTED', name='requeststatus'), nullable=True),
+            sa.Column('requester_id', sa.Integer(), nullable=True),
+            sa.Column('category_id', sa.Integer(), nullable=True),
+            sa.Column('current_step', sa.Integer(), nullable=True),
+            sa.Column('data', sa.JSON(), nullable=True),
+            sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+            sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+            sa.ForeignKeyConstraint(['category_id'], ['categories.id'], ),
+            sa.ForeignKeyConstraint(['requester_id'], ['users.id'], ),
+            sa.PrimaryKeyConstraint('id')
+            )
+            op.create_index(op.f('ix_requests_id'), 'requests', ['id'], unique=False)
+
+        items_columns = [c['name'] for c in inspector.get_columns('items')]
+        with op.batch_alter_table('items', schema=None) as batch_op:
+            if 'request_id' not in items_columns:
+                batch_op.add_column(sa.Column('request_id', sa.Integer(), nullable=True))
+                batch_op.create_foreign_key('fk_items_request_id', 'requests', ['request_id'], ['id'])
+
+        with op.batch_alter_table('users', schema=None) as batch_op:
+            batch_op.alter_column('all_branches',
+                   existing_type=sa.BOOLEAN(),
+                   nullable=True,
+                   existing_server_default=sa.text("'false'"))
 
 
 def downgrade() -> None:
-    # ### commands auto generated by Alembic - please adjust! ###
-    # Get database connection and inspector for downgrade safety too
-    conn = op.get_bind()
-    inspector = Inspector.from_engine(conn)
-    items_columns = [c['name'] for c in inspector.get_columns('items')]
+    # Downgrade logic simplified for safety
+    bind = op.get_bind()
+    dialect = bind.dialect.name
 
-    with op.batch_alter_table('users', schema=None) as batch_op:
-        batch_op.alter_column('all_branches',
-               existing_type=sa.BOOLEAN(),
-               nullable=False,
-               existing_server_default=sa.text("'false'"))
+    if dialect == 'postgresql':
+        op.execute("ALTER TABLE users ALTER COLUMN all_branches SET NOT NULL;")
+        op.execute("ALTER TABLE items DROP COLUMN IF EXISTS request_id;")
+        op.execute("DROP TABLE IF EXISTS requests;")
+        op.execute("DROP TABLE IF EXISTS system_settings;")
+    else:
+        conn = op.get_bind()
+        inspector = Inspector.from_engine(conn)
+        items_columns = [c['name'] for c in inspector.get_columns('items')]
 
-    with op.batch_alter_table('items', schema=None) as batch_op:
-        if 'request_id' in items_columns:
-            batch_op.drop_constraint('fk_items_request_id', type_='foreignkey')
-            batch_op.drop_column('request_id')
+        with op.batch_alter_table('users', schema=None) as batch_op:
+            batch_op.alter_column('all_branches',
+                   existing_type=sa.BOOLEAN(),
+                   nullable=False,
+                   existing_server_default=sa.text("'false'"))
 
-    if 'requests' in inspector.get_table_names():
-        op.drop_index(op.f('ix_requests_id'), table_name='requests')
-        op.drop_table('requests')
+        with op.batch_alter_table('items', schema=None) as batch_op:
+            if 'request_id' in items_columns:
+                batch_op.drop_constraint('fk_items_request_id', type_='foreignkey')
+                batch_op.drop_column('request_id')
 
-    if 'system_settings' in inspector.get_table_names():
-        try:
+        if 'requests' in inspector.get_table_names():
+            op.drop_index(op.f('ix_requests_id'), table_name='requests')
+            op.drop_table('requests')
+
+        if 'system_settings' in inspector.get_table_names():
             op.drop_index(op.f('ix_system_settings_key'), table_name='system_settings')
             op.drop_index(op.f('ix_system_settings_id'), table_name='system_settings')
             op.drop_table('system_settings')
-        except:
-            pass
-    # ### end Alembic commands ###
