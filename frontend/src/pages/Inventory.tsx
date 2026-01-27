@@ -1558,17 +1558,24 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Filial de Destino</label>
                                 <select value={bulkTransferTargetBranch} onChange={e => setBulkTransferTargetBranch(e.target.value)} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none">
                                     <option value="">Selecione filial...</option>
-                                    {(allBranches.length > 0 ? allBranches : branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                    {/* Filter out common origin branch if all items are from the same branch */}
+                                    {(() => {
+                                        const selectedList = items.filter(i => selectedItems.has(i.id));
+                                        const commonBranchId = selectedList.length > 0 && selectedList.every(i => i.branch_id === selectedList[0].branch_id) ? selectedList[0].branch_id : null;
+                                        return (allBranches.length > 0 ? allBranches : branches)
+                                            .filter(b => b.id !== commonBranchId)
+                                            .map(b => <option key={b.id} value={b.id}>{b.name}</option>);
+                                    })()}
                                 </select>
                             </div>
                             <div>
                                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Nota Fiscal de Transf.</label>
-                                <input type="text" value={bulkTransferInvoiceNumber} onChange={e => setBulkTransferInvoiceNumber(e.target.value)} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" placeholder="Número da NF" />
+                                <input type="text" value={bulkTransferInvoiceNumber} onChange={e => setBulkTransferInvoiceNumber(e.target.value.replace(/\D/g, ''))} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" placeholder="Número da NF (Apenas números)" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Série</label>
-                                    <input type="text" value={bulkTransferInvoiceSeries} onChange={e => setBulkTransferInvoiceSeries(e.target.value)} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" placeholder="Série" />
+                                    <input type="text" value={bulkTransferInvoiceSeries} onChange={e => setBulkTransferInvoiceSeries(e.target.value.replace(/\D/g, ''))} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" placeholder="Série (Apenas números)" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Data Emissão</label>
