@@ -1,8 +1,8 @@
-"""add request model native
+"""add request model
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: 8c5afbcdaab7
 Revises: 3e9d4f69b6dd
-Create Date: 2026-01-27 16:30:00.000000
+Create Date: 2026-01-27 16:04:11.013715
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ from sqlalchemy.engine.reflection import Inspector
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'a1b2c3d4e5f6'
+revision: str = '8c5afbcdaab7'
 down_revision: Union[str, None] = '3e9d4f69b6dd'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
