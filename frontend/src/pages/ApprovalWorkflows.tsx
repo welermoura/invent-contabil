@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { useError } from '../hooks/useError';
-import { Plus, Trash2, ShieldCheck, Layers, User, Edit2, ChevronDown, ChevronRight, Save, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Trash2, ShieldCheck, Layers, User, Users as UsersIcon, Edit2, ChevronDown, ChevronRight, Save, X, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface ApprovalWorkflow {
     id: number;
