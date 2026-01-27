@@ -82,14 +82,43 @@ async def approve_request(
 
         # Notify Next Approvers
         next_approvers = await workflow_engine.get_current_step_approvers(db, req, action_type)
-        msg = f"Solicitação aguardando aprovação (Etapa {req.current_step})."
 
-        # Reuse notification logic? Or custom.
-        # Simple text for now.
+        # Build Message & Details
+        # Reuse build_item_details from items router logic, but we need to import or replicate.
+        # It's cleaner to import if possible, but it's inside items router.
+        # Better to move build_item_details to notifications.py or util?
+        # For speed, I'll use a simplified version here or replicate logic.
+        # Let's import the helper function from items.py? No, circular import risk if items imports requests later.
+        # Let's implement local helper or fetch data.
+
+        # Fetch detailed items for email table
+        # We need to reload items with relationships if not loaded deeply enough in get_request
+        # get_request already loads items.branch, category, responsible.
+
+        from backend.routers.items import build_item_details
+        items_details = [build_item_details(item) for item in req.items]
+
+        msg = f"Solicitação aguardando sua aprovação (Etapa {req.current_step}).\n"
+        if req.data:
+            if 'reason' in req.data: msg += f"\nMotivo: {req.data['reason']}"
+            if 'justification' in req.data: msg += f"\nJustificativa: {req.data['justification']}"
+
+        base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+        frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+        action_url = f"{frontend_url}/pending-approvals?id={req.id}"
+
+        html = notifications.generate_html_email(
+            "Aprovação Pendente",
+            msg,
+            item_details=items_details,
+            action_url=action_url,
+            action_text="Analisar Solicitação"
+        )
+
         try:
-            await notifications.notify_users(db, next_approvers, "Aprovação Pendente", msg)
-        except:
-            pass
+            await notifications.notify_users(db, next_approvers, "Aprovação Pendente", msg, email_subject="Ação Necessária: Aprovação Pendente", email_html=html)
+        except Exception as e:
+            print(f"Error sending notification: {e}")
 
     else:
         # Finalize
