@@ -1,13 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend import schemas, crud, auth, models
 from backend.database import get_db
+from backend.cache import cache_response, invalidate_cache
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
 @router.get("/", response_model=List[schemas.CategoryResponse])
+@cache_response(ttl=300, key_prefix="categories")
 async def read_categories(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
     search: str = None,
@@ -25,7 +28,9 @@ async def create_category(
     if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem criar categorias")
 
-    return await crud.create_category(db, category=category)
+    new_cat = await crud.create_category(db, category=category)
+    await invalidate_cache("categories:*")
+    return new_cat
 
 @router.put("/{category_id}", response_model=schemas.CategoryResponse)
 async def update_category(
@@ -40,6 +45,7 @@ async def update_category(
     updated = await crud.update_category(db, category_id, category)
     if not updated:
          raise HTTPException(status_code=404, detail="Categoria não encontrada")
+    await invalidate_cache("categories:*")
     return updated
 
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -54,4 +60,5 @@ async def delete_category(
     success = await crud.delete_category(db, category_id)
     if not success:
          raise HTTPException(status_code=404, detail="Categoria não encontrada")
+    await invalidate_cache("categories:*")
     return

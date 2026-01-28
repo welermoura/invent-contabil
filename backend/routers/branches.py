@@ -1,13 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend import schemas, crud, auth, models
 from backend.database import get_db
+from backend.cache import cache_response, invalidate_cache
 
 router = APIRouter(prefix="/branches", tags=["branches"])
 
 @router.get("/", response_model=List[schemas.BranchResponse])
+@cache_response(ttl=300, key_prefix="branches")
 async def read_branches(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
     search: str = None,
@@ -40,7 +43,9 @@ async def create_branch(
     if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores e aprovadores podem criar filiais")
 
-    return await crud.create_branch(db, branch=branch)
+    new_branch = await crud.create_branch(db, branch=branch)
+    await invalidate_cache("branches:*")
+    return new_branch
 
 @router.put("/{branch_id}", response_model=schemas.BranchResponse)
 async def update_branch(
@@ -55,6 +60,7 @@ async def update_branch(
     updated = await crud.update_branch(db, branch_id, branch)
     if not updated:
          raise HTTPException(status_code=404, detail="Filial não encontrada")
+    await invalidate_cache("branches:*")
     return updated
 
 @router.delete("/{branch_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -69,4 +75,5 @@ async def delete_branch(
     success = await crud.delete_branch(db, branch_id)
     if not success:
          raise HTTPException(status_code=404, detail="Filial não encontrada")
+    await invalidate_cache("branches:*")
     return
