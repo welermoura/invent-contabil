@@ -71,7 +71,7 @@ const MyPendingActions: React.FC = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                         <ClipboardList className="w-8 h-8 text-indigo-600" />
-                        Minhas Pendências
+                        Confirmações Pendentes
                     </h1>
                     <p className="text-gray-500 mt-1">
                         Itens aguardando sua ação para conclusão (Recebimento ou Baixa).
