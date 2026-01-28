@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status, Request
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend import schemas, models, crud, auth, notifications, workflow_engine
@@ -54,7 +54,7 @@ def build_item_details(item: models.Item) -> dict:
         "responsible": item.responsible.name if item.responsible else 'N/A'
     }
 
-async def notify_new_item(db: AsyncSession, item: models.Item):
+async def notify_new_item(db: AsyncSession, item: models.Item, frontend_url: Optional[str] = None):
     """Notify Approvers about new pending item."""
     try:
         # Use Workflow Engine to get specific approvers
@@ -63,17 +63,11 @@ async def notify_new_item(db: AsyncSession, item: models.Item):
         msg = f"Um novo item foi cadastrado e aguarda aprovação (Etapa {item.approval_step})."
 
         details = build_item_details(item)
-        base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
-        # Frontend URL is usually on port 3000 or same host if proxied.
-        # Assuming simple mapping for now based on APP_BASE_URL which is backend url.
-        # Ideally we should have FRONTEND_URL env var.
-        # But commonly in this setup APP_BASE_URL might be the public access point.
-        # Let's assume standard frontend path.
-        # If APP_BASE_URL is http://localhost:8001, Frontend is http://localhost:3000 locally.
-        # In production it might be same domain.
-        # Let's try to infer or use relative if strictly same domain, but email needs absolute.
-        # Using a simplistic replacement for dev environment support:
-        frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+
+        if not frontend_url:
+            base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+            frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+
         action_url = f"{frontend_url}/dashboard/detalhes/item/{item.id}"
 
         html = notifications.generate_html_email(
@@ -87,7 +81,7 @@ async def notify_new_item(db: AsyncSession, item: models.Item):
     except Exception as e:
         print(f"Failed to send notification for new item {item.id}: {e}")
 
-async def notify_transfer_request(db: AsyncSession, item: models.Item):
+async def notify_transfer_request(db: AsyncSession, item: models.Item, frontend_url: Optional[str] = None):
     """Notify Approvers about transfer request."""
     try:
         # Use Workflow Engine
@@ -99,8 +93,10 @@ async def notify_transfer_request(db: AsyncSession, item: models.Item):
         details = build_item_details(item)
         details["transfer_target"] = target_name # Add extra field specific to this email
 
-        base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
-        frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+        if not frontend_url:
+            base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+            frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+
         action_url = f"{frontend_url}/dashboard/detalhes/item/{item.id}"
 
         html = notifications.generate_html_email(
@@ -114,7 +110,7 @@ async def notify_transfer_request(db: AsyncSession, item: models.Item):
     except Exception as e:
         print(f"Failed to send notification for transfer request {item.id}: {e}")
 
-async def notify_write_off_request(db: AsyncSession, item: models.Item, reason: str, justification: Optional[str]):
+async def notify_write_off_request(db: AsyncSession, item: models.Item, reason: str, justification: Optional[str], frontend_url: Optional[str] = None):
     """Notify Approvers about write-off request."""
     try:
         # Use Workflow Engine
@@ -126,8 +122,10 @@ async def notify_write_off_request(db: AsyncSession, item: models.Item, reason: 
 
         details = build_item_details(item)
 
-        base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
-        frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+        if not frontend_url:
+            base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+            frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+
         action_url = f"{frontend_url}/dashboard/detalhes/item/{item.id}"
 
         html = notifications.generate_html_email(
@@ -349,6 +347,7 @@ async def check_asset(
 
 @router.post("/", response_model=schemas.ItemResponse)
 async def create_item(
+    request: Request,
     description: str = Form(...),
     category: str = Form(...),
     purchase_date: datetime = Form(...),
@@ -436,7 +435,8 @@ async def create_item(
             await manager.broadcast(json.dumps(payload))
 
             # Persistent Notification & Email
-            await notify_new_item(db, db_item)
+            frontend_url = request.headers.get("origin")
+            await notify_new_item(db, db_item, frontend_url=frontend_url)
 
         return db_item
     except Exception as e:
@@ -447,7 +447,8 @@ async def create_item(
 
 @router.post("/bulk/write-off")
 async def bulk_write_off(
-    request: schemas.BulkWriteOffRequest,
+    payload: schemas.BulkWriteOffRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -459,12 +460,12 @@ async def bulk_write_off(
     if current_user.role == models.UserRole.AUDITOR:
         raise HTTPException(status_code=403, detail="Auditores não podem realizar baixas")
 
-    if not request.item_ids:
+    if not payload.item_ids:
         raise HTTPException(status_code=400, detail="Nenhum item selecionado")
 
     # 1. Fetch Items
-    items = await crud.get_items_by_ids(db, request.item_ids)
-    if len(items) != len(request.item_ids):
+    items = await crud.get_items_by_ids(db, payload.item_ids)
+    if len(items) != len(payload.item_ids):
         raise HTTPException(status_code=404, detail="Alguns itens não foram encontrados")
 
     # 2. Validation: Same Category
@@ -489,7 +490,7 @@ async def bulk_write_off(
         type=models.RequestType.WRITE_OFF,
         category_id=first_category_id,
         requester_id=current_user.id,
-        data={"reason": request.reason, "justification": request.justification}
+        data={"reason": payload.reason, "justification": payload.justification}
     )
     new_request = await crud.create_request(db, req_data)
 
@@ -499,16 +500,16 @@ async def bulk_write_off(
         item.status = models.ItemStatus.WRITE_OFF_PENDING
         item.approval_step = 1
         item.request_id = new_request.id
-        item.write_off_reason = request.reason
+        item.write_off_reason = payload.reason
         # Append justification if provided
-        if request.justification:
-             item.observations = f"{item.observations or ''}\n[Solic. Baixa em Lote] Justificativa: {request.justification}"
+        if payload.justification:
+             item.observations = f"{item.observations or ''}\n[Solic. Baixa em Lote] Justificativa: {payload.justification}"
 
         # Log
         log = models.Log(
             item_id=item.id,
             user_id=current_user.id,
-            action=f"Solicitação de Baixa em Lote (Request #{new_request.id}). Motivo: {request.reason}. {request.justification or ''}"
+            action=f"Solicitação de Baixa em Lote (Request #{new_request.id}). Motivo: {payload.reason}. {payload.justification or ''}"
         )
         db.add(log)
 
@@ -520,8 +521,8 @@ async def bulk_write_off(
         category_name = items[0].category_rel.name if items[0].category_rel else "Desconhecida"
 
         msg = f"Solicitação de Baixa em Lote Criada (Request #{new_request.id} - Etapa {new_request.current_step}).\n\n"
-        msg += f"Motivo: {request.reason}\n"
-        msg += f"Justificativa: {request.justification or 'N/A'}\n\n"
+        msg += f"Motivo: {payload.reason}\n"
+        msg += f"Justificativa: {payload.justification or 'N/A'}\n\n"
         msg += f"Categoria: {category_name}\n"
         msg += f"Solicitante: {current_user.name}\n"
         msg += f"Quantidade: {len(items)}\n"
@@ -531,7 +532,7 @@ async def bulk_write_off(
         items_details = [build_item_details(item) for item in items]
 
         # Determine Frontend URL: Priority 1: Request Origin (Automatic), 2: Env Var, 3: Fallback
-        origin = req_context.headers.get("origin")
+        origin = request.headers.get("origin")
         frontend_url = origin if origin else os.getenv("FRONTEND_URL")
 
         if not frontend_url:
@@ -559,7 +560,8 @@ async def bulk_write_off(
 
 @router.post("/bulk/transfer")
 async def bulk_transfer(
-    request: schemas.BulkTransferRequest,
+    payload: schemas.BulkTransferRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
@@ -570,11 +572,11 @@ async def bulk_transfer(
     if current_user.role == models.UserRole.AUDITOR:
         raise HTTPException(status_code=403, detail="Auditores não podem transferir")
 
-    if not request.item_ids:
+    if not payload.item_ids:
         raise HTTPException(status_code=400, detail="Nenhum item selecionado")
 
-    items = await crud.get_items_by_ids(db, request.item_ids)
-    if len(items) != len(request.item_ids):
+    items = await crud.get_items_by_ids(db, payload.item_ids)
+    if len(items) != len(payload.item_ids):
         raise HTTPException(status_code=404, detail="Alguns itens não foram encontrados")
 
     # Validation: Same Category
@@ -586,19 +588,19 @@ async def bulk_transfer(
         if item.status in [models.ItemStatus.PENDING, models.ItemStatus.TRANSFER_PENDING, models.ItemStatus.WRITE_OFF_PENDING]:
             raise HTTPException(status_code=400, detail=f"Item '{item.description}' já possui uma solicitação pendente.")
 
-    target_branch = await crud.get_branch(db, request.target_branch_id)
+    target_branch = await crud.get_branch(db, payload.target_branch_id)
     if not target_branch:
         raise HTTPException(status_code=404, detail="Filial de destino não encontrada")
 
     # Validate Invoice and Series are numeric if provided
-    if request.invoice_number and not request.invoice_number.isdigit():
+    if payload.invoice_number and not payload.invoice_number.isdigit():
         raise HTTPException(status_code=400, detail="O número da nota fiscal deve conter apenas dígitos.")
-    if request.invoice_series and not request.invoice_series.isdigit():
+    if payload.invoice_series and not payload.invoice_series.isdigit():
         raise HTTPException(status_code=400, detail="A série da nota fiscal deve conter apenas dígitos.")
 
     # Validate Origin != Destination
     for item in items:
-        if item.branch_id == request.target_branch_id:
+        if item.branch_id == payload.target_branch_id:
             raise HTTPException(status_code=400, detail=f"O item '{item.description}' já pertence à filial de destino.")
 
     # Create Request
@@ -607,10 +609,10 @@ async def bulk_transfer(
         category_id=first_category_id,
         requester_id=current_user.id,
         data={
-            "target_branch_id": request.target_branch_id,
-            "invoice_number": request.invoice_number,
-            "invoice_series": request.invoice_series,
-            # "invoice_date": request.invoice_date # Serialize date if needed
+            "target_branch_id": payload.target_branch_id,
+            "invoice_number": payload.invoice_number,
+            "invoice_series": payload.invoice_series,
+            # "invoice_date": payload.invoice_date # Serialize date if needed
         }
     )
     new_request = await crud.create_request(db, req_data)
@@ -627,10 +629,10 @@ async def bulk_transfer(
         item.status = models.ItemStatus.TRANSFER_PENDING
         item.approval_step = 1
         item.request_id = new_request.id
-        item.transfer_target_branch_id = request.target_branch_id
-        item.transfer_invoice_number = request.invoice_number
-        item.transfer_invoice_series = request.invoice_series
-        item.transfer_invoice_date = request.invoice_date
+        item.transfer_target_branch_id = payload.target_branch_id
+        item.transfer_invoice_number = payload.invoice_number
+        item.transfer_invoice_series = payload.invoice_series
+        item.transfer_invoice_date = payload.invoice_date
 
         log = models.Log(
             item_id=item.id,
@@ -660,7 +662,7 @@ async def bulk_transfer(
         items_details = [build_item_details(item) for item in items]
 
         # Determine Frontend URL
-        origin = req_context.headers.get("origin")
+        origin = request.headers.get("origin")
         frontend_url = origin if origin else os.getenv("FRONTEND_URL")
 
         if not frontend_url:
@@ -689,6 +691,7 @@ async def bulk_transfer(
 
 @router.put("/{item_id}/status", response_model=schemas.ItemResponse)
 async def update_item_status(
+    request: Request,
     item_id: int,
     status_update: schemas.ItemStatus,
     fixed_asset_number: Optional[str] = None,
@@ -779,8 +782,11 @@ async def update_item_status(
             title = "Ação Necessária: Aprovação Pendente"
             details = build_item_details(item_obj)
 
-            base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
-            frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+            frontend_url = request.headers.get("origin")
+            if not frontend_url:
+                base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+                frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+
             action_url = f"{frontend_url}/dashboard/detalhes/item/{item_obj.id}"
 
             html = notifications.generate_html_email(
@@ -837,6 +843,7 @@ async def update_item_status(
 
 @router.post("/{item_id}/transfer", response_model=schemas.ItemResponse)
 async def request_transfer(
+    request: Request,
     item_id: int,
     target_branch_id: int,
     transfer_invoice_number: Optional[str] = None,
@@ -878,12 +885,14 @@ async def request_transfer(
     await manager.broadcast(json.dumps(payload))
 
     # Notify Approvers
-    await notify_transfer_request(db, item)
+    frontend_url = request.headers.get("origin")
+    await notify_transfer_request(db, item, frontend_url=frontend_url)
 
     return item
 
 @router.post("/{item_id}/write-off", response_model=schemas.ItemResponse)
 async def request_write_off(
+    request: Request,
     item_id: int,
     justification: Optional[str] = Form(None),
     reason: str = Form(...),
@@ -933,12 +942,14 @@ async def request_write_off(
     await manager.broadcast(json.dumps(payload))
 
     # Notify Approvers
-    await notify_write_off_request(db, item, reason, justification)
+    frontend_url = request.headers.get("origin")
+    await notify_write_off_request(db, item, reason, justification, frontend_url=frontend_url)
 
     return item
 
 @router.put("/{item_id}", response_model=schemas.ItemResponse)
 async def update_item(
+    request: Request,
     item_id: int,
     item_update: schemas.ItemUpdate,
     db: AsyncSession = Depends(get_db),
@@ -1001,6 +1012,7 @@ async def update_item(
          }
          await manager.broadcast(json.dumps(payload))
 
-         await notify_new_item(db, updated_item)
+         frontend_url = request.headers.get("origin")
+         await notify_new_item(db, updated_item, frontend_url=frontend_url)
 
     return updated_item
