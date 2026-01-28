@@ -409,56 +409,57 @@ const Reports: React.FC = () => {
                 if (reportId === 'A.1') {
                     data = items.map((i: any) => ({
                         "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Categoria: i.category, Fornecedor: i.supplier?.name, Filial: i.branch?.name,
+                        Setor: i.sector?.name, "Centro de Custo": i.cost_center?.code,
                         Status: translateStatus(i.status), "Vlr. Compra": formatCurrency(i.invoice_value), "Vlr. Contábil": formatCurrency(i.accounting_value),
                         "Data Compra": formatDate(i.purchase_date), NF: i.invoice_number
                     }));
                 } else if (reportId === 'A.2') {
                     data = items.sort((a: any, b: any) => (a.branch?.name || '').localeCompare(b.branch?.name || '')).map((i: any) => ({
-                        Filial: i.branch?.name, "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Categoria: i.category, "Valor Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value)
+                        Filial: i.branch?.name, Setor: i.sector?.name, "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Categoria: i.category, "Valor Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value)
                     }));
                 } else if (reportId === 'A.3') {
                      data = items.sort((a: any, b: any) => (a.category || '').localeCompare(b.category || '')).map((i: any) => ({
-                        Categoria: i.category, "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Filial: i.branch?.name, "Valor Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value)
+                        Categoria: i.category, "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Filial: i.branch?.name, Setor: i.sector?.name, "Valor Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value)
                     }));
                 } else if (reportId === 'A.4') {
                      data = items.filter((i: any) => i.responsible).map((i: any) => ({
-                        Responsável: i.responsible?.name, "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Filial: i.branch?.name, "Valor Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value)
+                        Responsável: i.responsible?.name, "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Filial: i.branch?.name, Setor: i.sector?.name, "Valor Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value)
                     }));
                 } else if (reportId === 'A.5') {
                     const cutoff = new Date();
                     cutoff.setDate(cutoff.getDate() - 30);
                     data = items.filter((i: any) => new Date(i.purchase_date) >= cutoff).map((i: any) => ({
-                        "Data Compra": formatDate(i.purchase_date), "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Fornecedor: i.supplier?.name, "Valor Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value)
+                        "Data Compra": formatDate(i.purchase_date), "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Filial: i.branch?.name, Setor: i.sector?.name, Fornecedor: i.supplier?.name, "Valor Compra": formatCurrency(i.invoice_value), "Valor Contábil": formatCurrency(i.accounting_value)
                     }));
                 } else if (reportId === 'A.7') {
                     data = items.filter((i: any) => i.status === 'TRANSFER_PENDING').map((i: any) => ({
-                        "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Origem: i.branch?.name, "Destino (ID)": i.transfer_target_branch_id
+                        "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Origem: i.branch?.name, Setor: i.sector?.name, "Destino (ID)": i.transfer_target_branch_id
                     }));
                 } else if (reportId === 'A.9') {
                     data = items.filter((i: any) => i.fixed_asset_number).map((i: any) => ({
-                        "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Filial: i.branch?.name
+                        "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Filial: i.branch?.name, Setor: i.sector?.name
                     }));
                 } else if (reportId === 'B.1') {
                     data = items.map((i: any) => ({
-                        "Ativo Fixo": i.fixed_asset_number, Descrição: i.description,
+                        "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Setor: i.sector?.name, "Centro de Custo": i.cost_center?.code,
                         "Vlr. Aquisição": formatCurrency(i.invoice_value), "Vlr. Contábil": formatCurrency(i.accounting_value), "Deprec. Acumulada": formatCurrency(i.invoice_value - (i.accounting_value || 0))
                     }));
                 } else if (reportId === 'B.2') {
                     data = items.map((i: any) => ({
-                        "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, "Data Compra": formatDate(i.purchase_date),
+                        "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Setor: i.sector?.name, "Data Compra": formatDate(i.purchase_date),
                         "Depreciação Total": formatCurrency(i.invoice_value - (i.accounting_value || 0))
                     }));
                 } else if (reportId === 'B.5') {
                     data = items.filter((i: any) => i.accounting_value === 0).map((i: any) => ({
-                        "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, "Data Compra": formatDate(i.purchase_date), "Valor Original": formatCurrency(i.invoice_value)
+                        "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Filial: i.branch?.name, Setor: i.sector?.name, "Data Compra": formatDate(i.purchase_date), "Valor Original": formatCurrency(i.invoice_value)
                     }));
                 } else if (reportId === 'B.7') {
                     data = items.filter((i: any) => i.status === 'WRITTEN_OFF').map((i: any) => ({
-                        "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, "Valor Baixado": formatCurrency(i.accounting_value)
+                        "Ativo Fixo": i.fixed_asset_number, Descrição: i.description, Filial: i.branch?.name, Setor: i.sector?.name, "Valor Baixado": formatCurrency(i.accounting_value)
                     }));
                 } else if (reportId === 'B.9') {
                     data = items.map((i: any) => ({
-                        "Data": formatDate(i.purchase_date), "Valor": formatCurrency(i.invoice_value), Descrição: i.description, Fornecedor: i.supplier?.name, Categoria: i.category
+                        "Data": formatDate(i.purchase_date), "Valor": formatCurrency(i.invoice_value), Descrição: i.description, Setor: i.sector?.name, Fornecedor: i.supplier?.name, Categoria: i.category
                     }));
                 } else if (reportId === 'B.10') {
                     const agg: any = {};
