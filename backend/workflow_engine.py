@@ -28,35 +28,35 @@ async def get_current_step_approvers(db: AsyncSession, entity: Union[models.Item
         current_step_num = entity.current_step or 1
 
     if not category_id:
-        # Fallback: All Approvers if no category (should not happen in valid items)
+        print(f"WORKFLOW DEBUG: No category_id for entity. Fallback to ADMIN.")
         from backend.crud import get_users_by_role
-        return await get_users_by_role(db, [models.UserRole.ADMIN, models.UserRole.APPROVER])
+        return await get_users_by_role(db, [models.UserRole.ADMIN])
 
     steps = await get_workflow_steps(db, category_id, action_type)
 
     if not steps:
-        # No workflow defined -> Default to All Approvers/Admins
+        print(f"WORKFLOW DEBUG: No steps found for Category {category_id} Action {action_type}. Fallback to ADMIN.")
         from backend.crud import get_users_by_role
-        return await get_users_by_role(db, [models.UserRole.ADMIN, models.UserRole.APPROVER])
+        return await get_users_by_role(db, [models.UserRole.ADMIN])
 
     # Steps are mapped to step number (1-based index)
     # Step 1 -> steps[0]
 
     # Safety check
     if current_step_num > len(steps):
-         # We are somehow past the configured steps (maybe workflow changed).
-         # Fallback to Admin to unblock.
+         print(f"WORKFLOW DEBUG: Step {current_step_num} exceeds workflow length {len(steps)}. Fallback to ADMIN.")
          from backend.crud import get_users_by_role
          return await get_users_by_role(db, [models.UserRole.ADMIN])
 
     current_rule = steps[current_step_num - 1]
+    approvers = []
 
     # Resolve Users
     if current_rule.required_user_id:
         # Specific User
         result = await db.execute(select(models.User).where(models.User.id == current_rule.required_user_id))
         user = result.scalars().first()
-        return [user] if user else []
+        if user: approvers = [user]
 
     elif current_rule.required_group_id:
         # User Group
@@ -64,18 +64,20 @@ async def get_current_step_approvers(db: AsyncSession, entity: Union[models.Item
         from sqlalchemy.orm import selectinload
         result = await db.execute(select(models.UserGroup).options(selectinload(models.UserGroup.users)).where(models.UserGroup.id == current_rule.required_group_id))
         group = result.scalars().first()
-        return group.users if group else []
+        if group: approvers = group.users
 
     elif current_rule.required_role:
         # Specific Role
-        # Remove implicit Admin addition to ensure strict adherence to the configured role.
         roles = [current_rule.required_role]
-
         from backend.crud import get_users_by_role
-        return await get_users_by_role(db, roles)
+        approvers = await get_users_by_role(db, roles)
 
-    # Fallback if rule is empty (should not happen)
-    return []
+    if not approvers:
+        print(f"WORKFLOW DEBUG: Rule found but no users resolved. Rule ID: {current_rule.id}. Fallback to ADMIN.")
+        from backend.crud import get_users_by_role
+        return await get_users_by_role(db, [models.UserRole.ADMIN])
+
+    return approvers
 
 async def should_advance_step(db: AsyncSession, entity: Union[models.Item, models.Request], action_type: models.ApprovalActionType) -> bool:
     """
