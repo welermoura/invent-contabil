@@ -110,8 +110,8 @@ async def approve_request(
 
         if not frontend_url:
             base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
-            if "localhost" in base_url and ":8001" in base_url:
-                frontend_url = base_url.replace(":8001", ":3000")
+            if ":8001" in base_url:
+                frontend_url = base_url.replace(":8001", ":5173")
             else:
                 frontend_url = base_url.rstrip("/")
 
@@ -135,8 +135,9 @@ async def approve_request(
         req.status = models.RequestStatus.APPROVED
 
         # Update Items
-        final_item_status = models.ItemStatus.WRITTEN_OFF
-        log_action = "Baixa aprovada via Solicitação em Lote"
+        # For Write-off, set to READY_FOR_WRITE_OFF for manual conclusion by operator
+        final_item_status = models.ItemStatus.READY_FOR_WRITE_OFF
+        log_action = "Baixa aprovada (Aguardando Conclusão do Operador)"
 
         if req.type == models.RequestType.TRANSFER:
             final_item_status = models.ItemStatus.IN_TRANSIT

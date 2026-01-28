@@ -276,6 +276,21 @@ async def read_my_requests(
 
     return enriched_items
 
+@router.get("/pending-actions", response_model=List[schemas.ItemResponse])
+async def read_pending_actions(
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """
+    Returns items that require operator action (Receipt or Finalize Write-off).
+    """
+    allowed_branches = [b.id for b in current_user.branches]
+    if current_user.branch_id and current_user.branch_id not in allowed_branches:
+        allowed_branches.append(current_user.branch_id)
+
+    items = await crud.get_pending_action_items(db, current_user.id, allowed_branches)
+    return items
+
 @router.get("/", response_model=List[schemas.ItemResponse])
 async def read_items(
     skip: int = 0,
@@ -514,8 +529,18 @@ async def bulk_write_off(
         # Build list of item details for table
         items_details = [build_item_details(item) for item in items]
 
-        base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
-        frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+        # Determine Frontend URL: Priority 1: Request Origin (Automatic), 2: Env Var, 3: Fallback
+        origin = req_context.headers.get("origin")
+        frontend_url = origin if origin else os.getenv("FRONTEND_URL")
+
+        if not frontend_url:
+            base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+            # Heuristic: Replace backend port 8001 with frontend port 5173 (Vite default) or 3000
+            if ":8001" in base_url:
+                frontend_url = base_url.replace(":8001", ":5173")
+            else:
+                frontend_url = base_url.rstrip("/")
+
         action_url = f"{frontend_url}/pending-approvals?id={new_request.id}"
 
         html = notifications.generate_html_email(
@@ -633,8 +658,17 @@ async def bulk_transfer(
         # Build list of item details for table
         items_details = [build_item_details(item) for item in items]
 
-        base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
-        frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+        # Determine Frontend URL
+        origin = req_context.headers.get("origin")
+        frontend_url = origin if origin else os.getenv("FRONTEND_URL")
+
+        if not frontend_url:
+            base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+            if ":8001" in base_url:
+                frontend_url = base_url.replace(":8001", ":5173")
+            else:
+                frontend_url = base_url.rstrip("/")
+
         action_url = f"{frontend_url}/pending-approvals?id={new_request.id}"
 
         html = notifications.generate_html_email(

@@ -1294,12 +1294,12 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Nota Fiscal de Transf.</label>
-                                    <input type="text" value={transferInvoiceNumber} onChange={e => setTransferInvoiceNumber(e.target.value)} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" placeholder="Número da NF" />
+                                    <input type="text" value={transferInvoiceNumber} onChange={e => setTransferInvoiceNumber(e.target.value.replace(/\D/g, ''))} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" placeholder="Número da NF (Apenas números)" />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Série</label>
-                                        <input type="text" value={transferInvoiceSeries} onChange={e => setTransferInvoiceSeries(e.target.value)} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" placeholder="Série" />
+                                        <input type="text" value={transferInvoiceSeries} onChange={e => setTransferInvoiceSeries(e.target.value.replace(/\D/g, ''))} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none" placeholder="Série (Apenas números)" />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Data Emissão</label>
