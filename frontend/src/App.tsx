@@ -7,6 +7,8 @@ import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import Branches from './pages/Branches';
 import Categories from './pages/Categories';
+import CostCenters from './pages/CostCenters';
+import Sectors from './pages/Sectors';
 import Users from './pages/Users';
 import UserGroups from './pages/UserGroups';
 import SystemSettings from './pages/SystemSettings';
@@ -41,7 +43,9 @@ import {
     Workflow,
     UserCheck,
     CheckSquare,
-    ClipboardList
+    ClipboardList,
+    Briefcase,
+    MapPin
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import AdaptiveContrastManager from './components/AdaptiveContrastManager';
@@ -157,6 +161,10 @@ const Layout = () => {
                         <NavItem to="/categories" icon={Tags} label="Categorias" active={isActive('/categories')} />
                     )}
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
+                        <NavItem to="/cost-centers" icon={Briefcase} label="Centros de Custo" active={isActive('/cost-centers')} />
+                    )}
+                    <NavItem to="/sectors" icon={MapPin} label="Setores" active={isActive('/sectors')} />
+                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
                         <NavItem to="/users" icon={UsersIcon} label="Usuários" active={isActive('/users')} />
                     )}
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
@@ -269,6 +277,8 @@ const AppRoutes = () => {
                     <Route path="/inventory" element={<Inventory />} />
                     <Route path="/branches" element={<Branches />} />
                     <Route path="/categories" element={<Categories />} />
+                    <Route path="/cost-centers" element={<CostCenters />} />
+                    <Route path="/sectors" element={<Sectors />} />
                     <Route path="/suppliers" element={<Suppliers />} />
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/users" element={<Users />} />

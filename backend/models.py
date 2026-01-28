@@ -122,6 +122,28 @@ class Supplier(Base):
 
     items = relationship("Item", back_populates="supplier", lazy="selectin")
 
+class CostCenter(Base):
+    __tablename__ = "cost_centers"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, index=True)
+    name = Column(String)
+    description = Column(String, nullable=True)
+
+    items = relationship("Item", back_populates="cost_center", lazy="selectin")
+
+class Sector(Base):
+    __tablename__ = "sectors"
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    branch_id = Column(Integer, ForeignKey("branches.id"), nullable=True) # Null = Global, Value = Specific Branch
+
+    branch = relationship("Branch", lazy="selectin")
+    items = relationship("Item", back_populates="sector", lazy="selectin")
+
 class Request(Base):
     __tablename__ = "requests"
     __table_args__ = {'extend_existing': True}
@@ -166,6 +188,8 @@ class Item(Base):
     write_off_reason = Column(String, nullable=True)
     approval_step = Column(Integer, default=1)
     request_id = Column(Integer, ForeignKey("requests.id"), nullable=True)
+    cost_center_id = Column(Integer, ForeignKey("cost_centers.id"), nullable=True)
+    sector_id = Column(Integer, ForeignKey("sectors.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -176,6 +200,8 @@ class Item(Base):
     responsible = relationship("User", back_populates="items_responsible", lazy="selectin")
     logs = relationship("Log", back_populates="item", lazy="selectin")
     request = relationship("Request", back_populates="items", lazy="selectin")
+    cost_center = relationship("CostCenter", back_populates="items", lazy="selectin")
+    sector = relationship("Sector", back_populates="items", lazy="selectin")
 
 class Log(Base):
     __tablename__ = "logs"

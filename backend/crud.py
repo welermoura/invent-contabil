@@ -228,6 +228,85 @@ async def delete_branch(db: AsyncSession, branch_id: int):
         return True
     return False
 
+# Cost Centers
+async def get_cost_centers(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
+    query = select(models.CostCenter)
+    if search:
+        search_filter = f"%{search}%"
+        query = query.where(
+            or_(
+                models.CostCenter.name.ilike(search_filter),
+                models.CostCenter.code.ilike(search_filter)
+            )
+        )
+    result = await db.execute(query.offset(skip).limit(limit))
+    return result.scalars().all()
+
+async def create_cost_center(db: AsyncSession, cost_center: schemas.CostCenterCreate):
+    db_cc = models.CostCenter(**cost_center.dict())
+    db.add(db_cc)
+    await db.commit()
+    await db.refresh(db_cc)
+    return db_cc
+
+async def update_cost_center(db: AsyncSession, cost_center_id: int, cost_center: schemas.CostCenterUpdate):
+    result = await db.execute(select(models.CostCenter).where(models.CostCenter.id == cost_center_id))
+    db_cc = result.scalars().first()
+    if db_cc:
+        update_data = cost_center.model_dump(exclude_unset=True) if hasattr(cost_center, 'model_dump') else cost_center.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_cc, key, value)
+        await db.commit()
+        await db.refresh(db_cc)
+    return db_cc
+
+async def delete_cost_center(db: AsyncSession, cost_center_id: int):
+    result = await db.execute(select(models.CostCenter).where(models.CostCenter.id == cost_center_id))
+    db_cc = result.scalars().first()
+    if db_cc:
+        await db.delete(db_cc)
+        await db.commit()
+        return True
+    return False
+
+# Sectors
+async def get_sectors(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None, branch_id: int = None):
+    query = select(models.Sector).options(selectinload(models.Sector.branch))
+    if branch_id:
+        query = query.where(or_(models.Sector.branch_id == branch_id, models.Sector.branch_id == None))
+    if search:
+        query = query.where(models.Sector.name.ilike(f"%{search}%"))
+
+    result = await db.execute(query.offset(skip).limit(limit))
+    return result.scalars().all()
+
+async def create_sector(db: AsyncSession, sector: schemas.SectorCreate):
+    db_sector = models.Sector(**sector.dict())
+    db.add(db_sector)
+    await db.commit()
+    await db.refresh(db_sector)
+    return db_sector
+
+async def update_sector(db: AsyncSession, sector_id: int, sector: schemas.SectorUpdate):
+    result = await db.execute(select(models.Sector).where(models.Sector.id == sector_id))
+    db_sector = result.scalars().first()
+    if db_sector:
+        update_data = sector.model_dump(exclude_unset=True) if hasattr(sector, 'model_dump') else sector.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_sector, key, value)
+        await db.commit()
+        await db.refresh(db_sector)
+    return db_sector
+
+async def delete_sector(db: AsyncSession, sector_id: int):
+    result = await db.execute(select(models.Sector).where(models.Sector.id == sector_id))
+    db_sector = result.scalars().first()
+    if db_sector:
+        await db.delete(db_sector)
+        await db.commit()
+        return True
+    return False
+
 # Categories
 async def get_categories(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
     query = select(models.Category)
@@ -322,7 +401,9 @@ async def get_items_by_ids(db: AsyncSession, item_ids: list[int]):
         selectinload(models.Item.transfer_target_branch),
         selectinload(models.Item.category_rel),
         selectinload(models.Item.supplier),
-        selectinload(models.Item.responsible)
+        selectinload(models.Item.responsible),
+        selectinload(models.Item.cost_center),
+        selectinload(models.Item.sector)
     ).where(models.Item.id.in_(item_ids))
     result = await db.execute(query)
     return result.scalars().all()
@@ -341,7 +422,9 @@ async def get_pending_action_items(db: AsyncSession, user_id: int, user_branches
         selectinload(models.Item.branch),
         selectinload(models.Item.transfer_target_branch),
         selectinload(models.Item.category_rel),
-        selectinload(models.Item.responsible)
+        selectinload(models.Item.responsible),
+        selectinload(models.Item.cost_center),
+        selectinload(models.Item.sector)
     ).where(
         or_(
             (models.Item.status == models.ItemStatus.IN_TRANSIT) & (models.Item.transfer_target_branch_id.in_(user_branches)),
@@ -371,7 +454,9 @@ async def get_items(
         selectinload(models.Item.transfer_target_branch),
         selectinload(models.Item.category_rel),
         selectinload(models.Item.supplier),
-        selectinload(models.Item.responsible)
+        selectinload(models.Item.responsible),
+        selectinload(models.Item.cost_center),
+        selectinload(models.Item.sector)
     )
     if status:
         query = query.where(models.Item.status == status)
@@ -382,22 +467,9 @@ async def get_items(
 
     # Filter by Allowed Branches AND Incoming Transfers for those branches
     if allowed_branch_ids is not None:
-        # User sees:
-        # 1. Items physically in their branches (branch_id in allowed)
-        # 2. Items IN TRANSIT *towards* their branches (transfer_target_branch_id in allowed AND status == IN_TRANSIT)
-
-        # If specific branch_id filter was already applied above, this OR condition logic might need adjustment if users filter specifically for "incoming".
-        # However, the `branch_id` argument is typically for strict filtering (e.g. looking at a specific branch inventory).
-        # If `branch_id` is None, we show everything the user is allowed to see.
-
         if branch_id:
-            # If strictly filtering by a branch, we assume we only want items currently there.
-            # But what if we want to see incoming items FOR that branch?
-            # Usually users select "All Branches" view to see everything.
-            # Let's keep strict branch_id filter if provided.
             pass
         else:
-            # No specific branch selected, show all accessible items + incoming
             query = query.where(
                 or_(
                     models.Item.branch_id.in_(allowed_branch_ids),
@@ -431,7 +503,9 @@ async def get_item(db: AsyncSession, item_id: int):
         selectinload(models.Item.transfer_target_branch),
         selectinload(models.Item.category_rel),
         selectinload(models.Item.supplier),
-        selectinload(models.Item.responsible)
+        selectinload(models.Item.responsible),
+        selectinload(models.Item.cost_center),
+        selectinload(models.Item.sector)
     )
     result = await db.execute(query)
     return result.scalars().first()
@@ -445,7 +519,8 @@ STATUS_TRANSLATION = {
     models.ItemStatus.WRITTEN_OFF: "Baixado",
     models.ItemStatus.MAINTENANCE: "Manutenção",
     models.ItemStatus.IN_STOCK: "Estoque",
-    models.ItemStatus.IN_TRANSIT: "Em Trânsito"
+    models.ItemStatus.IN_TRANSIT: "Em Trânsito",
+    models.ItemStatus.READY_FOR_WRITE_OFF: "Aguardando Baixa"
 }
 
 async def create_item(db: AsyncSession, item: schemas.ItemCreate, action_log: str = None):
@@ -466,7 +541,9 @@ async def create_item(db: AsyncSession, item: schemas.ItemCreate, action_log: st
         selectinload(models.Item.branch),
         selectinload(models.Item.category_rel),
         selectinload(models.Item.supplier),
-        selectinload(models.Item.responsible)
+        selectinload(models.Item.responsible),
+        selectinload(models.Item.cost_center),
+        selectinload(models.Item.sector)
     )
     result = await db.execute(query)
     return result.scalars().first()
@@ -481,7 +558,9 @@ async def get_item_by_fixed_asset(db: AsyncSession, fixed_asset_number: str, exc
         selectinload(models.Item.branch),
         selectinload(models.Item.category_rel),
         selectinload(models.Item.supplier),
-        selectinload(models.Item.responsible)
+        selectinload(models.Item.responsible),
+        selectinload(models.Item.cost_center),
+        selectinload(models.Item.sector)
     )
     result = await db.execute(query)
     return result.scalars().first()
@@ -561,7 +640,9 @@ async def update_item_status(db: AsyncSession, item_id: int, status: models.Item
             selectinload(models.Item.transfer_target_branch),
             selectinload(models.Item.category_rel),
             selectinload(models.Item.supplier),
-            selectinload(models.Item.responsible)
+            selectinload(models.Item.responsible),
+            selectinload(models.Item.cost_center),
+            selectinload(models.Item.sector)
         )
         result = await db.execute(query)
         db_item = result.scalars().first()
@@ -615,7 +696,9 @@ async def request_write_off(db: AsyncSession, item_id: int, justification: str, 
             selectinload(models.Item.transfer_target_branch),
             selectinload(models.Item.category_rel),
             selectinload(models.Item.supplier),
-            selectinload(models.Item.responsible)
+            selectinload(models.Item.responsible),
+            selectinload(models.Item.cost_center),
+            selectinload(models.Item.sector)
         )
         result = await db.execute(query)
         db_item = result.scalars().first()
@@ -649,6 +732,10 @@ async def update_item(db: AsyncSession, item_id: int, item: schemas.ItemUpdate):
             db_item.observations = item.observations
         if item.supplier_id is not None:
             db_item.supplier_id = item.supplier_id
+        if item.cost_center_id is not None:
+            db_item.cost_center_id = item.cost_center_id
+        if item.sector_id is not None:
+            db_item.sector_id = item.sector_id
 
         await db.commit()
 
@@ -658,7 +745,9 @@ async def update_item(db: AsyncSession, item_id: int, item: schemas.ItemUpdate):
             selectinload(models.Item.transfer_target_branch),
             selectinload(models.Item.category_rel),
             selectinload(models.Item.supplier),
-            selectinload(models.Item.responsible)
+            selectinload(models.Item.responsible),
+            selectinload(models.Item.cost_center),
+            selectinload(models.Item.sector)
         )
         result = await db.execute(query)
         db_item = result.scalars().first()
@@ -694,7 +783,9 @@ async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int
             selectinload(models.Item.transfer_target_branch),
             selectinload(models.Item.category_rel),
             selectinload(models.Item.supplier),
-            selectinload(models.Item.responsible)
+            selectinload(models.Item.responsible),
+            selectinload(models.Item.cost_center),
+            selectinload(models.Item.sector)
         )
         result = await db.execute(query)
         db_item = result.scalars().first()
@@ -819,7 +910,9 @@ async def get_request(db: AsyncSession, request_id: int):
              selectinload(models.Item.transfer_target_branch),
              selectinload(models.Item.category_rel),
              selectinload(models.Item.supplier),
-             selectinload(models.Item.responsible)
+             selectinload(models.Item.responsible),
+             selectinload(models.Item.cost_center),
+             selectinload(models.Item.sector)
         )
     )
     result = await db.execute(query)

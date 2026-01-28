@@ -40,12 +40,15 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
     const [items, setItems] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
+    const [costCenters, setCostCenters] = useState<any[]>([]);
+    const [sectors, setSectors] = useState<any[]>([]);
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     const LIMIT = 50;
 
-    const { register, handleSubmit, reset, setValue } = useForm();
+    const { register, handleSubmit, reset, setValue, watch } = useForm();
     const { user } = useAuth();
+    const watchBranchId = watch('branch_id');
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [searchParams] = useSearchParams();
     const [invoiceValueDisplay, setInvoiceValueDisplay] = useState('');
@@ -352,6 +355,24 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
         }
     }
 
+    const fetchCostCenters = async () => {
+        try {
+            const response = await api.get('/cost-centers/');
+            setCostCenters(response.data);
+        } catch (error) {
+            console.error("Erro ao carregar centros de custo", error);
+        }
+    }
+
+    const fetchSectors = async () => {
+        try {
+            const response = await api.get('/sectors/');
+            setSectors(response.data);
+        } catch (error) {
+            console.error("Erro ao carregar setores", error);
+        }
+    }
+
     const fetchSettings = async () => {
         try {
             const response = await api.get('/settings/');
@@ -376,6 +397,8 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
         // Initial load
         fetchBranches();
         fetchCategories();
+        fetchCostCenters();
+        fetchSectors();
         fetchSettings();
     }, []);
 
@@ -499,6 +522,8 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
         if (data.serial_number) formData.append('serial_number', data.serial_number);
         if (data.fixed_asset_number) formData.append('fixed_asset_number', data.fixed_asset_number);
         if (data.observations) formData.append('observations', data.observations);
+        if (data.cost_center_id) formData.append('cost_center_id', data.cost_center_id);
+        if (data.sector_id) formData.append('sector_id', data.sector_id);
         if (data.file && data.file[0]) formData.append('file', data.file[0]);
 
         try {
@@ -612,6 +637,8 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
         setValue('serial_number', item.serial_number);
         setValue('fixed_asset_number', item.fixed_asset_number);
         setValue('branch_id', item.branch_id);
+        setValue('cost_center_id', item.cost_center_id || '');
+        setValue('sector_id', item.sector_id || '');
         setValue('observations', item.observations);
 
         if (item.supplier) {
@@ -811,6 +838,8 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                         <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterPurchaseDate} onChange={e => setFilterPurchaseDate(e.target.value)} />
                                     </div>
                                 </th>
+                                <th className="px-6 py-4">Setor</th>
+                                <th className="px-6 py-4">C. Custo</th>
                                 <th className="px-6 py-4">Valor Compra</th>
                                 <th className="px-6 py-4">Valor Contábil</th>
                                 <th className="px-6 py-4 min-w-[130px]">
@@ -870,6 +899,12 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                         ) : '-'}
                                     </td>
                                     <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '-'}</td>
+                                    <td className="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs">
+                                        {item.sector?.name || '-'}
+                                    </td>
+                                    <td className="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs font-mono">
+                                        {item.cost_center?.code ? <span title={item.cost_center.name}>{item.cost_center.code}</span> : '-'}
+                                    </td>
                                     <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">
                                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.invoice_value)}
                                     </td>
@@ -1074,6 +1109,23 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                 </select>
                             </div>
                             <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Centro de Custo</label>
+                                <select {...register('cost_center_id')} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
+                                    <option value="">Selecione...</option>
+                                    {costCenters.map(cc => <option key={cc.id} value={cc.id}>{cc.code} - {cc.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Setor</label>
+                                <select {...register('sector_id')} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all">
+                                    <option value="">Selecione...</option>
+                                    {sectors
+                                        .filter(s => !s.branch_id || (watchBranchId && s.branch_id === parseInt(watchBranchId)))
+                                        .map(s => <option key={s.id} value={s.id}>{s.name}</option>)
+                                    }
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
                                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Nota Fiscal (Arquivo)</label>
                                 <input type="file" {...register('file')} className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all text-sm text-slate-500" disabled={!!editingItem} />
                             </div>
@@ -1180,6 +1232,8 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                 <div><span className="block text-xs font-bold text-slate-400 uppercase">Categoria</span><p className="text-slate-700">{selectedItem.category}</p></div>
                                 <div><span className="block text-xs font-bold text-slate-400 uppercase">Fornecedor</span><p className="text-slate-700">{selectedItem.supplier?.name || '-'}</p></div>
                                 <div><span className="block text-xs font-bold text-slate-400 uppercase">Filial</span><p className="text-slate-700">{selectedItem.branch?.name}</p></div>
+                                <div><span className="block text-xs font-bold text-slate-400 uppercase">Centro de Custo</span><p className="text-slate-700">{selectedItem.cost_center ? `${selectedItem.cost_center.code} - ${selectedItem.cost_center.name}` : '-'}</p></div>
+                                <div><span className="block text-xs font-bold text-slate-400 uppercase">Setor</span><p className="text-slate-700">{selectedItem.sector?.name || '-'}</p></div>
                                 {selectedItem.transfer_target_branch && (
                                     <div className='bg-blue-50 p-2 rounded border border-blue-100'>
                                         <span className="block text-xs font-bold text-blue-600 uppercase">Transferência para</span>

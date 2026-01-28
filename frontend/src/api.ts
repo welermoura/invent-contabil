@@ -117,4 +117,7 @@ export const rejectRequest = async (id: number) => {
     return response.data;
 };
 
+// New entities: CostCenter and Sector (Generic API access is enough usually, but can type if needed)
+// Using direct api.get/post in components for CRUD
+
 export default api;
