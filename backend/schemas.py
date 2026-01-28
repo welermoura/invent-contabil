@@ -160,7 +160,7 @@ class ItemSummary(BaseModel):
 
 class LogResponse(BaseModel):
     id: int
-    item_id: int
+    item_id: Optional[int] = None
     user_id: Optional[int] = None
     action: str
     timestamp: datetime
