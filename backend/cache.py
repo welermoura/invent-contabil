@@ -3,6 +3,7 @@ from functools import wraps
 from typing import Optional, Any
 from backend.redis_client import get_redis_cache
 from fastapi import Request, Response
+from fastapi.encoders import jsonable_encoder
 
 DEFAULT_TTL = 3600  # 1 hour
 
@@ -50,21 +51,9 @@ def cache_response(ttl: int = DEFAULT_TTL, key_prefix: str = ""):
 
             # Write to Cache
             try:
-                # Serialize response_data (Pydantic models need .dict() or .json())
-                # If it's a list of models:
-                if isinstance(response_data, list):
-                    # Check if items are Pydantic models
-                    serialized = [
-                        item.model_dump(mode='json') if hasattr(item, 'model_dump') else
-                        (item.dict() if hasattr(item, 'dict') else item)
-                        for item in response_data
-                    ]
-                elif hasattr(response_data, 'model_dump'):
-                    serialized = response_data.model_dump(mode='json')
-                elif hasattr(response_data, 'dict'):
-                    serialized = response_data.dict()
-                else:
-                    serialized = response_data
+                # jsonable_encoder handles SQLAlchemy models, Pydantic models, and basic types
+                # converting them to JSON-compatible dicts/lists.
+                serialized = jsonable_encoder(response_data)
 
                 redis = await get_redis_cache()
                 await redis.set(cache_key, json.dumps(serialized), ex=ttl)
