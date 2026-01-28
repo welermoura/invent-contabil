@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import api from '../api';
 import { useError } from '../hooks/useError';
-import { Settings, Save, Image as ImageIcon, Type, Mail, Server, Shield, User, Key, Send } from 'lucide-react';
+import { Settings, Save, Image as ImageIcon, Type, Mail, Server, Shield, User, Key, Send, Workflow } from 'lucide-react';
 import BackupMigration from '../components/BackupMigration';
 import { useAuth } from '../AuthContext';
 
@@ -15,10 +15,21 @@ const SystemSettings: React.FC = () => {
     const [currentFavicon, setCurrentFavicon] = useState<string | null>(null);
     const [currentLogo, setCurrentLogo] = useState<string | null>(null);
     const [currentBackground, setCurrentBackground] = useState<string | null>(null);
+    const [groups, setGroups] = useState<any[]>([]);
 
     useEffect(() => {
         loadSettings();
+        fetchGroups();
     }, []);
+
+    const fetchGroups = async () => {
+        try {
+            const response = await api.get('/groups/');
+            setGroups(response.data);
+        } catch (error) {
+            console.error("Erro ao carregar grupos", error);
+        }
+    };
 
     const loadSettings = async () => {
         try {
@@ -36,6 +47,7 @@ const SystemSettings: React.FC = () => {
             if (settings.smtp_password) setValue('smtp_password', settings.smtp_password);
             if (settings.smtp_from_email) setValue('smtp_from_email', settings.smtp_from_email);
             if (settings.smtp_security) setValue('smtp_security', settings.smtp_security);
+            if (settings.workflow_fallback_group_id) setValue('workflow_fallback_group_id', settings.workflow_fallback_group_id);
 
         } catch (error) {
             console.error("Erro ao carregar configurações", error);
@@ -80,7 +92,8 @@ const SystemSettings: React.FC = () => {
                 smtp_username: data.smtp_username,
                 smtp_password: data.smtp_password,
                 smtp_from_email: data.smtp_from_email,
-                smtp_security: data.smtp_security
+                smtp_security: data.smtp_security,
+                workflow_fallback_group_id: data.workflow_fallback_group_id
             };
 
             await api.put('/settings/', settingsPayload);
@@ -233,6 +246,34 @@ const SystemSettings: React.FC = () => {
                                     <p className="text-xs text-slate-500 mt-1">A imagem será otimizada automaticamente para carregamento rápido.</p>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Workflow Config */}
+                <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-sm border border-slate-200/50 p-6">
+                    <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                        <Workflow className="text-blue-600" size={20} />
+                        Workflow & Aprovação
+                    </h2>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                                <Shield className="w-4 h-4 text-slate-400" />
+                                Grupo de Fallback (Segurança)
+                            </label>
+                            <select
+                                {...register('workflow_fallback_group_id')}
+                                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white/50"
+                            >
+                                <option value="">Administradores (Padrão)</option>
+                                {groups.map(g => (
+                                    <option key={g.id} value={g.id}>{g.name}</option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-slate-500">
+                                Este grupo receberá as solicitações caso não haja um fluxo de aprovação configurado para a categoria do item ou se ocorrer um erro na resolução dos aprovadores.
+                            </p>
                         </div>
                     </div>
                 </div>
