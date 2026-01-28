@@ -23,10 +23,23 @@ const Sectors: React.FC = () => {
     const [showForm, setShowForm] = useState(false);
     const [editingSector, setEditingSector] = useState<any>(null);
     const [loading, setLoading] = useState(false);
+    const [currentUserFull, setCurrentUserFull] = useState<any>(null);
 
     // Permission: Operators can manage if allowed, but backend handles strict check.
     // Frontend UI: Allow everyone to see list, create/edit button visible to all (backend validates).
     // Actually, user said "filial poderá cadastrar", so Operator should see buttons.
+
+    useEffect(() => {
+        const fetchMe = async () => {
+            try {
+                const response = await api.get('/users/me');
+                setCurrentUserFull(response.data);
+            } catch (error) {
+                console.error("Erro ao carregar usuário", error);
+            }
+        };
+        fetchMe();
+    }, []);
 
     const fetchSectors = async (search?: string) => {
         setLoading(true);
@@ -55,6 +68,16 @@ const Sectors: React.FC = () => {
         fetchSectors();
         fetchBranches();
     }, []);
+
+    // Auto-select and hide logic for Operator
+    useEffect(() => {
+        if (showForm && !editingSector && currentUserFull?.role === 'OPERATOR') {
+            // Force primary branch
+            if (currentUserFull.branch_id) {
+                setValue('branch_id', currentUserFull.branch_id);
+            }
+        }
+    }, [showForm, editingSector, currentUserFull, setValue]);
 
     const onSubmit = async (data: any) => {
         // Prepare payload: convert empty branch_id to null
@@ -165,22 +188,26 @@ const Sectors: React.FC = () => {
                                 placeholder="Ex: Financeiro"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700">Vincular à Filial</label>
-                            <div className="relative">
-                                <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                <select
-                                    {...register('branch_id')}
-                                    className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white"
-                                >
-                                    <option value="">(Global / Todas)</option>
-                                    {branches.map(b => (
-                                        <option key={b.id} value={b.id}>{b.name}</option>
-                                    ))}
-                                </select>
+                        {currentUserFull?.role !== 'OPERATOR' ? (
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Vincular à Filial</label>
+                                <div className="relative">
+                                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <select
+                                        {...register('branch_id')}
+                                        className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white"
+                                    >
+                                        <option value="">(Global / Todas)</option>
+                                        {branches.map(b => (
+                                            <option key={b.id} value={b.id}>{b.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <p className="text-xs text-gray-500">Se selecionado, o setor será exclusivo desta filial.</p>
                             </div>
-                            <p className="text-xs text-gray-500">Se selecionado, o setor será exclusivo desta filial.</p>
-                        </div>
+                        ) : (
+                            <input type="hidden" {...register('branch_id', { required: true })} />
+                        )}
                         <div className="md:col-span-2 flex justify-end gap-3 pt-2">
                             <button
                                 type="button"
