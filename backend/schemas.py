@@ -84,6 +84,43 @@ class BranchResponse(BranchBase):
     class Config:
         from_attributes = True
 
+# Cost Center
+class CostCenterBase(BaseModel):
+    code: str
+    name: str
+    description: Optional[str] = None
+
+class CostCenterCreate(CostCenterBase):
+    pass
+
+class CostCenterUpdate(BaseModel):
+    code: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+class CostCenterResponse(CostCenterBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+# Sector
+class SectorBase(BaseModel):
+    name: str
+    branch_id: Optional[int] = None
+
+class SectorCreate(SectorBase):
+    pass
+
+class SectorUpdate(BaseModel):
+    name: Optional[str] = None
+    branch_id: Optional[int] = None
+
+class SectorResponse(SectorBase):
+    id: int
+    branch: Optional[BranchResponse] = None
+    class Config:
+        from_attributes = True
+
 # Category
 class CategoryBase(BaseModel):
     name: str
@@ -145,6 +182,8 @@ class ItemBase(BaseModel):
     responsible_id: Optional[int] = None
     observations: Optional[str] = None
     supplier_id: Optional[int] = None
+    cost_center_id: Optional[int] = None
+    sector_id: Optional[int] = None
 
 class ItemCreate(ItemBase):
     category_id: Optional[int] = None
@@ -159,6 +198,8 @@ class ItemUpdate(BaseModel):
     fixed_asset_number: Optional[str] = None
     observations: Optional[str] = None
     supplier_id: Optional[int] = None
+    cost_center_id: Optional[int] = None
+    sector_id: Optional[int] = None
 
 class ItemResponse(ItemBase):
     id: int
@@ -184,6 +225,8 @@ class ItemResponse(ItemBase):
     category_rel: Optional[CategoryResponse] = None
     supplier: Optional[SupplierResponse] = None
     responsible: Optional[UserResponse] = None
+    cost_center: Optional[CostCenterResponse] = None
+    sector: Optional[SectorResponse] = None
     logs: List[LogResponse] = []
 
     # Dynamic field for pending approvers (not in DB model)
