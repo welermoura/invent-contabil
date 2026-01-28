@@ -13,6 +13,12 @@ services:
     # Access only via internal network (backend)
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: inventory_redis
+    restart: unless-stopped
+    # Port not exposed to host for security, only backend uses it
+
   backend:
     build: ./backend
     container_name: inventory_backend
@@ -23,6 +29,7 @@ services:
       - "8001:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY}
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
@@ -32,6 +39,7 @@ services:
       - APP_BASE_URL=${APP_BASE_URL:-http://localhost:8001}
     depends_on:
       - db
+      - redis
     restart: unless-stopped
 
   frontend:
@@ -50,6 +58,22 @@ services:
       - TZ=America/Sao_Paulo
     depends_on:
       - backend
+    restart: unless-stopped
+
+  worker:
+    build: ./backend
+    container_name: inventory_worker
+    command: arq backend.worker.WorkerSettings
+    volumes:
+      - ./backend:/app/backend
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
+      - TZ=America/Sao_Paulo
+    depends_on:
+      - db
+      - redis
     restart: unless-stopped
 
 volumes:

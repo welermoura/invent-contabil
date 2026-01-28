@@ -5,6 +5,7 @@ from sqlalchemy import or_, cast, String
 from backend import models, schemas
 from backend.auth import get_password_hash
 from datetime import datetime
+from backend.audit import calculate_diff
 
 # Users
 async def get_user_by_email(db: AsyncSession, email: str):
@@ -533,7 +534,12 @@ async def create_item(db: AsyncSession, item: schemas.ItemCreate, action_log: st
     status_pt = STATUS_TRANSLATION.get(db_item.status, str(db_item.status))
     log_message = action_log if action_log else f"Item cadastrado. Status: {status_pt}"
 
-    log = models.Log(item_id=db_item.id, user_id=item.responsible_id, action=log_message)
+    # Calculate initial diff (from empty to created state) using None as old_obj
+    # Actually for creation, we might just dump the whole object to changes if needed,
+    # but typically creation log is enough. Let's add details.
+    changes = calculate_diff(db_item, item.dict(), exclude=[]) # Effectively new values
+
+    log = models.Log(item_id=db_item.id, user_id=item.responsible_id, action=log_message, changes=changes)
     db.add(log)
     await db.commit()
     # Eager load relationships for Pydantic serialization

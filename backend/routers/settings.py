@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend import schemas, models, crud, auth
 from backend.database import get_db
+from backend.cache import cache_response, invalidate_cache
 from typing import Dict, Tuple, Optional
 import os
 import shutil
@@ -16,7 +17,8 @@ import asyncio
 router = APIRouter(prefix="/settings", tags=["settings"])
 
 @router.get("/", response_model=Dict[str, str])
-async def read_settings(db: AsyncSession = Depends(get_db)):
+@cache_response(ttl=300, key_prefix="settings")
+async def read_settings(request: Request, db: AsyncSession = Depends(get_db)):
     # Public access allowed for title/favicon on login screen
     settings_list = await crud.get_system_settings(db)
     return {s.key: s.value for s in settings_list}
@@ -40,6 +42,8 @@ async def update_settings(
     for key, value in settings.items():
         s = await crud.update_system_setting(db, key, value)
         updated[s.key] = s.value
+
+    await invalidate_cache("settings:*")
     return updated
 
 @router.post("/favicon")
@@ -65,6 +69,7 @@ async def upload_favicon(
     # Relative path for frontend serving
     url = f"uploads/settings/{filename}"
     await crud.update_system_setting(db, "favicon_url", url)
+    await invalidate_cache("settings:*")
 
     return {"url": url}
 
@@ -104,6 +109,7 @@ async def upload_logo(
 
     url = f"uploads/settings/{filename}"
     await crud.update_system_setting(db, "logo_url", url)
+    await invalidate_cache("settings:*")
 
     return {"url": url}
 
@@ -190,6 +196,7 @@ async def upload_background(
     if theme_text:
         await crud.update_system_setting(db, "theme_text_color", theme_text)
 
+    await invalidate_cache("settings:*")
     return {"url": url, "theme_primary_color": theme_color, "theme_text_color": theme_text}
 
 @router.post("/smtp/test")

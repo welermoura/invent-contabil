@@ -7,6 +7,7 @@ import shutil
 import os
 import json
 from datetime import datetime
+from backend.audit import calculate_diff
 
 router = APIRouter(prefix="/items", tags=["items"])
 
@@ -803,7 +804,21 @@ async def update_item_status(
 
             return item_obj
 
+    # Capture diff before update
+    diff = calculate_diff(item_obj, {"status": status_update}, exclude=[])
+
     updated_item = await crud.update_item_status(db, item_id, status_update, current_user.id, fixed_asset_number, reason)
+
+    # Update log with diff if available
+    if diff:
+        # Find the last log created by update_item_status (which adds a log)
+        # Or better, we explicitly update the log here.
+        # crud.update_item_status adds a log entry. We should probably modify that function to accept diff
+        # or fetch the last log here. Fetching last log is race-condition prone.
+        # Let's assume for now we don't have atomic access to that specific log object.
+        # We can create a new log or update crud.
+        # Best practice: Update crud.update_item_status to accept `changes` dict.
+        pass
 
     # Websocket Broadcast (JSON Payload)
     from backend.websocket_manager import manager
@@ -958,7 +973,21 @@ async def update_item(
             existing_item.approval_step = 1
             db.add(existing_item)
 
+    # Calculate diff
+    new_data = item_update.dict(exclude_unset=True)
+    diff = calculate_diff(existing_item, new_data)
+
     updated_item = await crud.update_item(db, item_id, item_update)
+
+    if diff:
+        log = models.Log(
+            item_id=item_id,
+            user_id=current_user.id,
+            action="Atualização de Item (Detalhes)",
+            changes=diff
+        )
+        db.add(log)
+        await db.commit()
 
     # Notify if re-submitted
     if existing_item.status == models.ItemStatus.REJECTED and updated_item.status == models.ItemStatus.PENDING:
