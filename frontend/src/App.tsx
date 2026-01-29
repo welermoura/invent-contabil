@@ -100,7 +100,7 @@ const Layout = () => {
                     });
                 }
 
-                if (user.role === 'APPROVER' || user.role === 'ADMIN') {
+                if (user.role === 'APPROVER' || user.role === 'ADMIN' || user.role === 'REVIEWER') {
                     steps.push({
                         target: '#nav-pending-approvals',
                         content: 'Aprove ou rejeite solicitações de criação, transferência e baixa.',
@@ -108,7 +108,7 @@ const Layout = () => {
                 }
 
                 // Management Section
-                if (user.role === 'ADMIN' || user.role === 'APPROVER') {
+                if (user.role === 'ADMIN' || user.role === 'APPROVER' || user.role === 'REVIEWER') {
                      steps.push({
                         target: '#nav-reports',
                         content: 'Gere relatórios detalhados operacionais e financeiros.',
@@ -259,7 +259,7 @@ const Layout = () => {
                     {(user?.role === 'OPERATOR') && (
                         <NavItem id="nav-pending-actions" to="/my-pending-actions" icon={ClipboardList} label="Confirmações Pendentes" active={isActive('/my-pending-actions')} />
                     )}
-                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
+                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER' || user?.role === 'REVIEWER') && (
                         <NavItem id="nav-pending-approvals" to="/pending-approvals" icon={CheckSquare} label="Aprovações Pendentes" active={isActive('/pending-approvals')} />
                     )}
                     <NavItem id="nav-branches" to="/branches" icon={Building2} label="Filiais" active={isActive('/branches')} />
