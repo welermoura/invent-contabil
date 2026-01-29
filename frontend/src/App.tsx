@@ -289,7 +289,9 @@ const Layout = () => {
                 </div>
 
                 <div className="p-4 space-y-1 overflow-y-auto h-[calc(100vh-4rem)]">
-                    <div className={`text-xs font-semibold uppercase tracking-wider mb-2 px-4 mt-2 ${settings.theme_text_color === 'text-white' ? 'text-white/50' : 'text-slate-400'}`}>Menu</div>
+
+                    {/* Principal */}
+                    <div className={`text-xs font-semibold uppercase tracking-wider mb-2 px-4 mt-2 ${settings.theme_text_color === 'text-white' ? 'text-white/50' : 'text-slate-400'}`}>Principal</div>
                     <NavItem id="nav-dashboard" to="/" icon={LayoutDashboard} label="Painel" active={isActive('/')} />
                     <NavItem id="nav-inventory" to="/inventory" icon={Package} label="Inventário" active={isActive('/inventory')} />
                     {(user?.role === 'OPERATOR') && (
@@ -301,34 +303,36 @@ const Layout = () => {
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER' || user?.role === 'REVIEWER') && (
                         <NavItem id="nav-pending-approvals" to="/pending-approvals" icon={CheckSquare} label="Aprovações Pendentes" active={isActive('/pending-approvals')} />
                     )}
+
+                    {/* Cadastros */}
+                    <div className={`text-xs font-semibold uppercase tracking-wider mb-2 px-4 mt-6 ${settings.theme_text_color === 'text-white' ? 'text-white/50' : 'text-slate-400'}`}>Cadastros</div>
                     <NavItem id="nav-branches" to="/branches" icon={Building2} label="Filiais" active={isActive('/branches')} />
-                    <NavItem id="nav-suppliers" to="/suppliers" icon={Truck} label="Fornecedores" active={isActive('/suppliers')} />
-
-                    <div className={`text-xs font-semibold uppercase tracking-wider mb-2 px-4 mt-6 ${settings.theme_text_color === 'text-white' ? 'text-white/50' : 'text-slate-400'}`}>Gestão</div>
-                    <NavItem id="nav-reports" to="/reports" icon={FileText} label="Relatórios" active={isActive('/reports')} />
-
+                    <NavItem id="nav-sectors" to="/sectors" icon={MapPin} label="Setores" active={isActive('/sectors')} />
                     {user?.role !== 'OPERATOR' && (
                         <NavItem id="nav-categories" to="/categories" icon={Tags} label="Categorias" active={isActive('/categories')} />
                     )}
+                    <NavItem id="nav-suppliers" to="/suppliers" icon={Truck} label="Fornecedores" active={isActive('/suppliers')} />
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
                         <NavItem id="nav-cost-centers" to="/cost-centers" icon={Briefcase} label="Centros de Custo" active={isActive('/cost-centers')} />
                     )}
-                    <NavItem id="nav-sectors" to="/sectors" icon={MapPin} label="Setores" active={isActive('/sectors')} />
+
+                    {/* Administração (Apenas Admin/Aprovador) */}
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
-                        <NavItem id="nav-users" to="/users" icon={UsersIcon} label="Usuários" active={isActive('/users')} />
+                        <>
+                            <div className={`text-xs font-semibold uppercase tracking-wider mb-2 px-4 mt-6 ${settings.theme_text_color === 'text-white' ? 'text-white/50' : 'text-slate-400'}`}>Administração</div>
+                            <NavItem id="nav-users" to="/users" icon={UsersIcon} label="Usuários" active={isActive('/users')} />
+                            <NavItem id="nav-user-groups" to="/users/groups" icon={UserCheck} label="Grupos de Aprovação" active={isActive('/users/groups')} />
+                            <NavItem id="nav-approval-workflows" to="/approval-workflows" icon={Workflow} label="Malha de Aprovação" active={isActive('/approval-workflows')} />
+                            <NavItem id="nav-safeguard" to="/safeguard-settings" icon={Shield} label="Salva Guarda" active={isActive('/safeguard-settings')} />
+                            {(user?.role === 'ADMIN') && (
+                                <NavItem id="nav-system-settings" to="/system-settings" icon={Settings} label="Configurações" active={isActive('/system-settings')} />
+                            )}
+                        </>
                     )}
-                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
-                        <NavItem id="nav-user-groups" to="/users/groups" icon={UserCheck} label="Grupos de Aprovação" active={isActive('/users/groups')} />
-                    )}
-                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
-                        <NavItem id="nav-safeguard" to="/safeguard-settings" icon={Shield} label="Salva Guarda" active={isActive('/safeguard-settings')} />
-                    )}
-                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
-                        <NavItem id="nav-approval-workflows" to="/approval-workflows" icon={Workflow} label="Malha de Aprovação" active={isActive('/approval-workflows')} />
-                    )}
-                    {(user?.role === 'ADMIN') && (
-                        <NavItem id="nav-system-settings" to="/system-settings" icon={Settings} label="Configurações" active={isActive('/system-settings')} />
-                    )}
+
+                    {/* Relatórios */}
+                    <div className={`text-xs font-semibold uppercase tracking-wider mb-2 px-4 mt-6 ${settings.theme_text_color === 'text-white' ? 'text-white/50' : 'text-slate-400'}`}>Relatórios</div>
+                    <NavItem id="nav-reports" to="/reports" icon={FileText} label="Relatórios" active={isActive('/reports')} />
 
                 </div>
             </aside>
