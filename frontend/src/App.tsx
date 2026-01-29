@@ -49,6 +49,7 @@ import {
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import AdaptiveContrastManager from './components/AdaptiveContrastManager';
+import Joyride, { CallBackProps, STATUS, Step } from 'react-joyride';
 
 const PrivateRoute = () => {
     const { isAuthenticated } = useAuth();
@@ -62,6 +63,86 @@ const Layout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
     const profileMenuRef = useRef<HTMLDivElement>(null);
+
+    // Tour State
+    const [runTour, setRunTour] = useState(false);
+    const [tourSteps, setTourSteps] = useState<Step[]>([]);
+
+    useEffect(() => {
+        if (user) {
+            const hasSeenTour = localStorage.getItem(`tour_completed_${user.role}`);
+            if (!hasSeenTour) {
+                const steps: Step[] = [];
+
+                // Common Steps
+                steps.push({
+                    target: '#nav-dashboard',
+                    content: 'Aqui você tem uma visão geral dos indicadores e movimentações recentes.',
+                    disableBeacon: true,
+                });
+
+                steps.push({
+                    target: '#nav-inventory',
+                    content: 'Gerencie todos os itens do inventário, adicione novos bens e realize transferências.',
+                });
+
+                // Role Specific
+                if (user.role === 'OPERATOR') {
+                    steps.push({
+                        target: '#nav-my-requests',
+                        content: 'Acompanhe as solicitações que você criou.',
+                    });
+                    steps.push({
+                        target: '#nav-pending-actions',
+                        content: 'Confirme recebimentos de transferências e finalize baixas de itens.',
+                    });
+                }
+
+                if (user.role === 'APPROVER' || user.role === 'ADMIN') {
+                    steps.push({
+                        target: '#nav-pending-approvals',
+                        content: 'Aprove ou rejeite solicitações de criação, transferência e baixa.',
+                    });
+                }
+
+                // Management Section
+                if (user.role === 'ADMIN' || user.role === 'APPROVER') {
+                     steps.push({
+                        target: '#nav-reports',
+                        content: 'Gere relatórios detalhados operacionais e financeiros.',
+                    });
+                    steps.push({
+                        target: '#nav-users',
+                        content: 'Gerencie os usuários do sistema e seus acessos.',
+                    });
+                    steps.push({
+                        target: '#nav-approval-workflows',
+                        content: 'Configure as regras e fluxos de aprovação por categoria.',
+                    });
+                }
+
+                if (user.role === 'ADMIN') {
+                    steps.push({
+                        target: '#nav-system-settings',
+                        content: 'Configure a aparência, e-mail (SMTP) e opções globais do sistema.',
+                    });
+                }
+
+                setTourSteps(steps);
+                setRunTour(true);
+            }
+        }
+    }, [user]);
+
+    const handleJoyrideCallback = (data: CallBackProps) => {
+        const { status } = data;
+        if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
+            setRunTour(false);
+            if (user) {
+                localStorage.setItem(`tour_completed_${user.role}`, 'true');
+            }
+        }
+    };
 
     const isActive = (path: string) => location.pathname === path;
 
@@ -94,9 +175,10 @@ const Layout = () => {
         ? 'bg-white/20 text-white shadow-md shadow-black/10'
         : 'bg-blue-600 text-white shadow-md shadow-blue-500/20';
 
-    const NavItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, label: string, active: boolean }) => (
+    const NavItem = ({ to, icon: Icon, label, active, id }: { to: string, icon: any, label: string, active: boolean, id?: string }) => (
         <Link
             to={to}
+            id={id}
             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group
                 ${active
                     ? activeItemClass
@@ -111,6 +193,27 @@ const Layout = () => {
     return (
         <div className="flex h-screen font-sans text-slate-800 bg-transparent">
             <Notifications />
+            <Joyride
+                steps={tourSteps}
+                run={runTour}
+                continuous
+                showProgress
+                showSkipButton
+                callback={handleJoyrideCallback}
+                locale={{
+                    back: 'Anterior',
+                    close: 'Fechar',
+                    last: 'Finalizar',
+                    next: 'Próximo',
+                    skip: 'Pular',
+                }}
+                styles={{
+                    options: {
+                        primaryColor: '#2563eb',
+                        zIndex: 10000,
+                    }
+                }}
+            />
 
             {/* Sidebar */}
             <aside
@@ -144,44 +247,44 @@ const Layout = () => {
 
                 <div className="p-4 space-y-1 overflow-y-auto h-[calc(100vh-4rem)]">
                     <div className={`text-xs font-semibold uppercase tracking-wider mb-2 px-4 mt-2 ${settings.theme_text_color === 'text-white' ? 'text-white/50' : 'text-slate-400'}`}>Menu</div>
-                    <NavItem to="/" icon={LayoutDashboard} label="Painel" active={isActive('/')} />
-                    <NavItem to="/inventory" icon={Package} label="Inventário" active={isActive('/inventory')} />
+                    <NavItem id="nav-dashboard" to="/" icon={LayoutDashboard} label="Painel" active={isActive('/')} />
+                    <NavItem id="nav-inventory" to="/inventory" icon={Package} label="Inventário" active={isActive('/inventory')} />
                     {(user?.role === 'OPERATOR') && (
-                        <NavItem to="/my-requests" icon={FileText} label="Minhas Solicitações" active={isActive('/my-requests')} />
+                        <NavItem id="nav-my-requests" to="/my-requests" icon={FileText} label="Minhas Solicitações" active={isActive('/my-requests')} />
                     )}
                     {(user?.role === 'OPERATOR') && (
-                        <NavItem to="/my-pending-actions" icon={ClipboardList} label="Confirmações Pendentes" active={isActive('/my-pending-actions')} />
+                        <NavItem id="nav-pending-actions" to="/my-pending-actions" icon={ClipboardList} label="Confirmações Pendentes" active={isActive('/my-pending-actions')} />
                     )}
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
-                        <NavItem to="/pending-approvals" icon={CheckSquare} label="Aprovações Pendentes" active={isActive('/pending-approvals')} />
+                        <NavItem id="nav-pending-approvals" to="/pending-approvals" icon={CheckSquare} label="Aprovações Pendentes" active={isActive('/pending-approvals')} />
                     )}
-                    <NavItem to="/branches" icon={Building2} label="Filiais" active={isActive('/branches')} />
-                    <NavItem to="/suppliers" icon={Truck} label="Fornecedores" active={isActive('/suppliers')} />
+                    <NavItem id="nav-branches" to="/branches" icon={Building2} label="Filiais" active={isActive('/branches')} />
+                    <NavItem id="nav-suppliers" to="/suppliers" icon={Truck} label="Fornecedores" active={isActive('/suppliers')} />
 
                     <div className={`text-xs font-semibold uppercase tracking-wider mb-2 px-4 mt-6 ${settings.theme_text_color === 'text-white' ? 'text-white/50' : 'text-slate-400'}`}>Gestão</div>
-                    <NavItem to="/reports" icon={FileText} label="Relatórios" active={isActive('/reports')} />
+                    <NavItem id="nav-reports" to="/reports" icon={FileText} label="Relatórios" active={isActive('/reports')} />
 
                     {user?.role !== 'OPERATOR' && (
-                        <NavItem to="/categories" icon={Tags} label="Categorias" active={isActive('/categories')} />
+                        <NavItem id="nav-categories" to="/categories" icon={Tags} label="Categorias" active={isActive('/categories')} />
                     )}
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
-                        <NavItem to="/cost-centers" icon={Briefcase} label="Centros de Custo" active={isActive('/cost-centers')} />
+                        <NavItem id="nav-cost-centers" to="/cost-centers" icon={Briefcase} label="Centros de Custo" active={isActive('/cost-centers')} />
                     )}
-                    <NavItem to="/sectors" icon={MapPin} label="Setores" active={isActive('/sectors')} />
+                    <NavItem id="nav-sectors" to="/sectors" icon={MapPin} label="Setores" active={isActive('/sectors')} />
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
-                        <NavItem to="/users" icon={UsersIcon} label="Usuários" active={isActive('/users')} />
-                    )}
-                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
-                        <NavItem to="/users/groups" icon={UserCheck} label="Grupos de Aprovação" active={isActive('/users/groups')} />
+                        <NavItem id="nav-users" to="/users" icon={UsersIcon} label="Usuários" active={isActive('/users')} />
                     )}
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
-                        <NavItem to="/safeguard-settings" icon={Shield} label="Salva Guarda" active={isActive('/safeguard-settings')} />
+                        <NavItem id="nav-user-groups" to="/users/groups" icon={UserCheck} label="Grupos de Aprovação" active={isActive('/users/groups')} />
                     )}
                     {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
-                        <NavItem to="/approval-workflows" icon={Workflow} label="Malha de Aprovação" active={isActive('/approval-workflows')} />
+                        <NavItem id="nav-safeguard" to="/safeguard-settings" icon={Shield} label="Salva Guarda" active={isActive('/safeguard-settings')} />
+                    )}
+                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
+                        <NavItem id="nav-approval-workflows" to="/approval-workflows" icon={Workflow} label="Malha de Aprovação" active={isActive('/approval-workflows')} />
                     )}
                     {(user?.role === 'ADMIN') && (
-                        <NavItem to="/system-settings" icon={Settings} label="Configurações" active={isActive('/system-settings')} />
+                        <NavItem id="nav-system-settings" to="/system-settings" icon={Settings} label="Configurações" active={isActive('/system-settings')} />
                     )}
 
                 </div>
