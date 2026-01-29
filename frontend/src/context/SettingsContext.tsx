@@ -8,6 +8,7 @@ interface SystemSettings {
     background_url?: string;
     theme_primary_color?: string;
     theme_text_color?: string;
+    theme_background_color?: string;
 }
 
 interface SettingsContextType {
