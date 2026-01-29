@@ -30,23 +30,28 @@ def upgrade() -> None:
     else:
         approval_action_type = sa.Enum('CREATE', 'TRANSFER', 'WRITE_OFF', name='approvalactiontype')
 
-    op.create_table('approval_workflows',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('category_id', sa.Integer(), nullable=True),
-        # Pass create_type=False to avoid attempting to create it again inside create_table
-        # We reuse the same object or define it identically to ensure SQLAlchemy knows it's the same type
-        sa.Column('action_type', approval_action_type if bind.dialect.name != 'postgresql' else postgresql.ENUM('CREATE', 'TRANSFER', 'WRITE_OFF', name='approvalactiontype', create_type=False), nullable=True),
-        # userrole type already exists, so we define as String first to avoid duplicate type error
-        sa.Column('required_role', sa.String(), nullable=True),
-        sa.Column('step_order', sa.Integer(), nullable=True),
-        sa.ForeignKeyConstraint(['category_id'], ['categories.id'], ),
-        sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_approval_workflows_id'), 'approval_workflows', ['id'], unique=False)
+    # Check if table exists to avoid DuplicateTableError on re-runs
+    inspector = sa.inspect(bind)
+    tables = inspector.get_table_names()
 
-    # Manually cast to existing Enum type for PostgreSQL
-    if bind.dialect.name == 'postgresql':
-        op.execute("ALTER TABLE approval_workflows ALTER COLUMN required_role TYPE userrole USING required_role::userrole")
+    if 'approval_workflows' not in tables:
+        op.create_table('approval_workflows',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('category_id', sa.Integer(), nullable=True),
+            # Pass create_type=False to avoid attempting to create it again inside create_table
+            # We reuse the same object or define it identically to ensure SQLAlchemy knows it's the same type
+            sa.Column('action_type', approval_action_type if bind.dialect.name != 'postgresql' else postgresql.ENUM('CREATE', 'TRANSFER', 'WRITE_OFF', name='approvalactiontype', create_type=False), nullable=True),
+            # userrole type already exists, so we define as String first to avoid duplicate type error
+            sa.Column('required_role', sa.String(), nullable=True),
+            sa.Column('step_order', sa.Integer(), nullable=True),
+            sa.ForeignKeyConstraint(['category_id'], ['categories.id'], ),
+            sa.PrimaryKeyConstraint('id')
+        )
+        op.create_index(op.f('ix_approval_workflows_id'), 'approval_workflows', ['id'], unique=False)
+
+        # Manually cast to existing Enum type for PostgreSQL
+        if bind.dialect.name == 'postgresql':
+            op.execute("ALTER TABLE approval_workflows ALTER COLUMN required_role TYPE userrole USING required_role::userrole")
     # ### end Alembic commands ###
 
 
