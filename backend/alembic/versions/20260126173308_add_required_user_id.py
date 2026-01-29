@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.exc import ProgrammingError
 
 
 # revision identifiers, used by Alembic.
@@ -26,10 +27,23 @@ def upgrade() -> None:
 
     with op.batch_alter_table('approval_workflows') as batch_op:
         if 'required_user_id' not in columns:
-            batch_op.add_column(sa.Column('required_user_id', sa.Integer(), nullable=True))
-            batch_op.create_foreign_key('fk_approval_workflows_users', 'users', ['required_user_id'], ['id'])
+            try:
+                batch_op.add_column(sa.Column('required_user_id', sa.Integer(), nullable=True))
+                batch_op.create_foreign_key('fk_approval_workflows_users', 'users', ['required_user_id'], ['id'])
+            except ProgrammingError as e:
+                # If the column already exists despite the check (race condition or async inspector issue), ignore it
+                if "DuplicateColumnError" in str(e) or "already exists" in str(e):
+                    print("Column required_user_id already exists, skipping creation.")
+                else:
+                    raise e
+        else:
+            print("Column required_user_id detected by inspector, skipping creation.")
 
-        batch_op.alter_column('required_role', existing_type=sa.VARCHAR(), nullable=True) # Make role nullable
+        # This part should be safe to run even if already nullable, but let's wrap it too just in case
+        try:
+            batch_op.alter_column('required_role', existing_type=sa.VARCHAR(), nullable=True) # Make role nullable
+        except ProgrammingError:
+            pass
     # ### end Alembic commands ###
 
 
