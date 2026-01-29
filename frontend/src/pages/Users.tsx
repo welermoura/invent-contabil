@@ -141,6 +141,7 @@ const Users: React.FC = () => {
         switch (role) {
             case 'ADMIN': return <span className="flex items-center gap-1 bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full text-xs font-bold"><Shield className="w-3 h-3" /> {translated}</span>;
             case 'APPROVER': return <span className="flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs font-bold"><UserCheck className="w-3 h-3" /> {translated}</span>;
+            case 'REVIEWER': return <span className="flex items-center gap-1 bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full text-xs font-bold"><UserCheck className="w-3 h-3" /> {translated}</span>;
             case 'AUDITOR': return <span className="flex items-center gap-1 bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full text-xs font-bold"><Eye className="w-3 h-3" /> {translated}</span>;
             default: return <span className="flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs font-bold"><User className="w-3 h-3" /> {translated}</span>;
         }
@@ -221,6 +222,7 @@ const Users: React.FC = () => {
                                 <select {...register('role')} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white">
                                     <option value="OPERATOR">Operador (Básico)</option>
                                     <option value="APPROVER">Aprovador (Gestor)</option>
+                                    <option value="REVIEWER">Revisor (Avançado)</option>
                                     <option value="AUDITOR">Auditor (Leitura)</option>
                                     <option value="ADMIN">Administrador (Total)</option>
                                 </select>
