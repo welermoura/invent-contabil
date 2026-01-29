@@ -243,6 +243,10 @@ async def get_cost_centers(db: AsyncSession, skip: int = 0, limit: int = 100, se
     result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
+async def get_cost_center_by_code(db: AsyncSession, code: str):
+    result = await db.execute(select(models.CostCenter).where(models.CostCenter.code == code))
+    return result.scalars().first()
+
 async def create_cost_center(db: AsyncSession, cost_center: schemas.CostCenterCreate):
     db_cc = models.CostCenter(**cost_center.dict())
     db.add(db_cc)
