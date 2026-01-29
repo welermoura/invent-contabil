@@ -6,8 +6,11 @@ import { Settings, Save, Image as ImageIcon, Type, Mail, Server, Shield, User, K
 import BackupMigration from '../components/BackupMigration';
 import { useAuth } from '../AuthContext';
 
+import { useNavigate } from 'react-router-dom';
+
 const SystemSettings: React.FC = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const { register, handleSubmit, setValue, getValues } = useForm();
     const { showSuccess, showError } = useError();
     const [loading, setLoading] = useState(false);
@@ -18,9 +21,13 @@ const SystemSettings: React.FC = () => {
     const [groups, setGroups] = useState<any[]>([]);
 
     useEffect(() => {
+        if (user && user.role !== 'ADMIN') {
+            navigate('/');
+            return;
+        }
         loadSettings();
         fetchGroups();
-    }, []);
+    }, [user, navigate]);
 
     const fetchGroups = async () => {
         try {
