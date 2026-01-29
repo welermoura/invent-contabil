@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.engine.reflection import Inspector
 
 
 # revision identifiers, used by Alembic.
@@ -19,13 +20,21 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # 1. Add group_id to users table
-    with op.batch_alter_table('users', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('group_id', sa.Integer(), nullable=True))
-        batch_op.create_foreign_key('fk_users_group', 'user_groups', ['group_id'], ['id'])
+    # 1. Add group_id to users table safely
+    op.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS group_id INTEGER")
 
-    # 2. Drop the N:N association table
-    op.drop_table('user_group_members')
+    # 2. Add foreign key safely using DO block to prevent transaction abortion
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_users_group') THEN
+                ALTER TABLE users ADD CONSTRAINT fk_users_group FOREIGN KEY (group_id) REFERENCES user_groups(id);
+            END IF;
+        END $$;
+    """)
+
+    # 3. Drop the N:N association table IF EXISTS
+    op.execute("DROP TABLE IF EXISTS user_group_members")
 
 
 def downgrade() -> None:
