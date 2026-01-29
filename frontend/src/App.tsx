@@ -305,15 +305,21 @@ const MainLayout = () => {
     const backgroundUrl = settings.background_url
         ? `${api.defaults.baseURL}/${settings.background_url}?t=${new Date().getTime()}`
         : null;
+    const backgroundColor = settings.theme_background_color || null;
+
+    const containerStyle: React.CSSProperties = {};
+    if (backgroundUrl) {
+        containerStyle.backgroundImage = `url(${backgroundUrl})`;
+        containerStyle.backgroundSize = 'cover';
+        containerStyle.backgroundPosition = 'center';
+        containerStyle.backgroundAttachment = 'fixed';
+    } else if (backgroundColor) {
+        containerStyle.backgroundColor = backgroundColor;
+    }
 
     return (
-        <div className={`relative min-h-screen ${!backgroundUrl ? "bg-slate-50" : ""}`} style={backgroundUrl ? {
-            backgroundImage: `url(${backgroundUrl})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundAttachment: 'fixed',
-        } : {}}>
-             <AdaptiveContrastManager imageUrl={backgroundUrl} />
+        <div className={`relative min-h-screen ${!backgroundUrl && !backgroundColor ? "bg-slate-50" : ""}`} style={containerStyle}>
+             {backgroundUrl && <AdaptiveContrastManager imageUrl={backgroundUrl} />}
 
              <div className="relative z-10">
                 <AppRoutes />
