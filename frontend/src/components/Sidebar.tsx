@@ -31,41 +31,23 @@ import { useState } from 'react';
 interface SidebarProps {
     sidebarOpen: boolean;
     setSidebarOpen: (open: boolean) => void;
+    openSections: Record<string, boolean>;
+    toggleSection: (section: string) => void;
+    isCollapsed: boolean;
+    setIsCollapsed: (collapsed: boolean) => void;
 }
 
-export default function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
+export default function Sidebar({
+    sidebarOpen,
+    setSidebarOpen,
+    openSections,
+    toggleSection,
+    isCollapsed,
+    setIsCollapsed
+}: SidebarProps) {
     const { user } = useAuth();
     const { settings } = useSettings();
     const location = useLocation();
-
-    // Estado para o modo Mini Sidebar (Desktop)
-    const [isCollapsed, setIsCollapsed] = useState(false);
-
-    // Estado para as seções (Accordion)
-    const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-        principal: true,
-        cadastros: false,
-        administracao: false,
-        relatorios: false
-    });
-
-    const toggleSection = (section: string) => {
-        if (isCollapsed) return; // Não faz nada se estiver colapsado
-
-        setOpenSections(prev => {
-            // Se quiser comportamento "Sanfona" estrito (fecha os outros):
-            const newState = {
-                principal: false,
-                cadastros: false,
-                administracao: false,
-                relatorios: false
-            };
-            return {
-                ...newState,
-                [section]: !prev[section]
-            };
-        });
-    };
 
     const toggleSidebar = () => {
         setIsCollapsed(!isCollapsed);

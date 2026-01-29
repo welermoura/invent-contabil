@@ -54,95 +54,128 @@ const Layout = () => {
     const [runTour, setRunTour] = useState(false);
     const [tourSteps, setTourSteps] = useState<Step[]>([]);
 
+    // Sidebar Control State (Lifted from Sidebar)
+    const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+        principal: true,
+        cadastros: false,
+        administracao: false,
+        relatorios: false
+    });
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+    const toggleSection = (section: string) => {
+        if (isSidebarCollapsed) return;
+        setOpenSections(prev => {
+            const newState = {
+                principal: false,
+                cadastros: false,
+                administracao: false,
+                relatorios: false
+            };
+            return {
+                ...newState,
+                [section]: !prev[section]
+            };
+        });
+    };
+
     useEffect(() => {
         if (user) {
             const hasSeenTour = localStorage.getItem(`tour_completed_${user.role}`);
             if (!hasSeenTour) {
                 const steps: Step[] = [];
 
-                // Common Steps
+                // 1. Principal
                 steps.push({
                     target: '#nav-dashboard',
                     content: 'Painel de Controle: Visualize KPIs, gráficos de movimentação e resumos operacionais em tempo real.',
                     disableBeacon: true,
+                    data: { section: 'principal' }
                 });
 
                 steps.push({
                     target: '#nav-inventory',
                     content: 'Inventário Geral: Consulte todos os itens, filtre por status/filial e inicie ações como transferências ou baixas.',
+                    data: { section: 'principal' }
                 });
 
-                // Operator Specific
                 if (user.role === 'OPERATOR') {
                     steps.push({
                         target: '#nav-my-requests',
                         content: 'Minhas Solicitações: Acompanhe o status (pendente, aprovado, rejeitado) de tudo que você solicitou.',
+                        data: { section: 'principal' }
                     });
                     steps.push({
                         target: '#nav-pending-actions',
                         content: 'Confirmações Pendentes: Realize ações operacionais que dependem de você, como confirmar o recebimento de itens transferidos.',
+                        data: { section: 'principal' }
                     });
                 }
 
-                // Approver / Reviewer / Admin Specific
                 if (user.role === 'APPROVER' || user.role === 'ADMIN' || user.role === 'REVIEWER') {
                     steps.push({
                         target: '#nav-pending-approvals',
                         content: 'Aprovações Pendentes: Central de decisão. Analise, aprove ou rejeite solicitações de novos itens, transferências e baixas.',
+                        data: { section: 'principal' }
                     });
                 }
 
-                // Common Management
+                // 2. Cadastros
                 steps.push({
                     target: '#nav-branches',
                     content: 'Filiais: Visualize e gerencie as unidades físicas e seus endereços.',
-                });
-                steps.push({
-                    target: '#nav-suppliers',
-                    content: 'Fornecedores: Cadastro de parceiros comerciais e seus dados (CNPJ, Contato).',
+                    data: { section: 'cadastros' }
                 });
 
-                // Management Section
                 steps.push({
-                    target: '#nav-reports',
-                    content: 'Relatórios: Gere e exporte relatórios gerenciais, financeiros e operacionais (PDF/Excel).',
+                    target: '#nav-sectors',
+                    content: 'Setores: Mapeie os locais físicos ou departamentos dentro de cada filial.',
+                    data: { section: 'cadastros' }
                 });
 
                 if (user.role !== 'OPERATOR') {
                     steps.push({
                         target: '#nav-categories',
                         content: 'Categorias: Organize os itens em grupos lógicos e defina regras de depreciação.',
+                        data: { section: 'cadastros' }
                     });
                 }
+
+                steps.push({
+                    target: '#nav-suppliers',
+                    content: 'Fornecedores: Cadastro de parceiros comerciais e seus dados (CNPJ, Contato).',
+                    data: { section: 'cadastros' }
+                });
 
                 if (user.role === 'ADMIN' || user.role === 'APPROVER') {
                     steps.push({
                         target: '#nav-cost-centers',
                         content: 'Centros de Custo: Gerencie os centros para alocação financeira dos ativos.',
+                        data: { section: 'cadastros' }
                     });
                 }
 
-                steps.push({
-                    target: '#nav-sectors',
-                    content: 'Setores: Mapeie os locais físicos ou departamentos dentro de cada filial.',
-                });
-
+                // 3. Administração
                 if (user.role === 'ADMIN' || user.role === 'APPROVER') {
                     steps.push({
                         target: '#nav-users',
                         content: 'Usuários: Controle total sobre contas, redefinição de senhas e atribuição de funções.',
+                        data: { section: 'administracao' }
                     });
                     steps.push({
                         target: '#nav-user-groups',
                         content: 'Grupos de Aprovação: Crie grupos de usuários para fluxos de aprovação coletiva.',
-                    });
-                    steps.push({
-                        target: '#nav-safeguard',
-                        content: 'Salva Guarda: Defina limites de valor (R$) que exigem aprovação especial de nível superior.',
+                        data: { section: 'administracao' }
                     });
                     steps.push({
                         target: '#nav-approval-workflows',
                         content: 'Malha de Aprovação: Configure visualmente quem deve aprovar o quê, baseado em categoria e tipo de ação.',
+                        data: { section: 'administracao' }
+                    });
+                    steps.push({
+                        target: '#nav-safeguard',
+                        content: 'Salva Guarda: Defina limites de valor (R$) que exigem aprovação especial de nível superior.',
+                        data: { section: 'administracao' }
                     });
                 }
 
@@ -150,17 +183,42 @@ const Layout = () => {
                     steps.push({
                         target: '#nav-system-settings',
                         content: 'Configurações: Personalize a aparência (Logo, Cores), configure o envio de e-mails (SMTP) e faça backups.',
+                        data: { section: 'administracao' }
                     });
                 }
 
+                // 4. Relatórios
+                steps.push({
+                    target: '#nav-reports',
+                    content: 'Relatórios: Gere e exporte relatórios gerenciais, financeiros e operacionais (PDF/Excel).',
+                    data: { section: 'relatorios' }
+                });
+
                 setTourSteps(steps);
+                // Ensure Sidebar is open and not collapsed for the tour
+                setSidebarOpen(true);
+                setIsSidebarCollapsed(false);
                 setRunTour(true);
             }
         }
     }, [user]);
 
     const handleJoyrideCallback = (data: CallBackProps) => {
-        const { status } = data;
+        const { status, type, step } = data;
+
+        // Auto-expand Sidebar sections based on step metadata
+        if (type === 'step:before' || type === 'tour:start') {
+            const section = step.data?.section;
+            if (section) {
+                setOpenSections(prev => ({
+                    principal: section === 'principal',
+                    cadastros: section === 'cadastros',
+                    administracao: section === 'administracao',
+                    relatorios: section === 'relatorios'
+                }));
+            }
+        }
+
         if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
             setRunTour(false);
             if (user) {
@@ -210,7 +268,14 @@ const Layout = () => {
             />
 
             {/* Sidebar Component */}
-            <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+            <Sidebar
+                sidebarOpen={sidebarOpen}
+                setSidebarOpen={setSidebarOpen}
+                openSections={openSections}
+                toggleSection={toggleSection}
+                isCollapsed={isSidebarCollapsed}
+                setIsCollapsed={setIsSidebarCollapsed}
+            />
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
