@@ -32,7 +32,7 @@ def upgrade() -> None:
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('category_id', sa.Integer(), nullable=True),
         # Pass create_type=False to avoid attempting to create it again inside create_table
-        sa.Column('action_type', sa.Enum('CREATE', 'TRANSFER', 'WRITE_OFF', name='approvalactiontype', create_type=False), nullable=True),
+        sa.Column('action_type', postgresql.ENUM('CREATE', 'TRANSFER', 'WRITE_OFF', name='approvalactiontype', create_type=False), nullable=True),
         # userrole type already exists, so we define as String first to avoid duplicate type error
         sa.Column('required_role', sa.String(), nullable=True),
         sa.Column('step_order', sa.Integer(), nullable=True),
