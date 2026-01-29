@@ -19,29 +19,37 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    tables = inspector.get_table_names()
+
     # 1. Create User Groups Table
-    op.create_table('user_groups',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('name', sa.String(), nullable=True),
-        sa.Column('description', sa.String(), nullable=True),
-        sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_user_groups_id'), 'user_groups', ['id'], unique=False)
-    op.create_index(op.f('ix_user_groups_name'), 'user_groups', ['name'], unique=True)
+    if 'user_groups' not in tables:
+        op.create_table('user_groups',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('name', sa.String(), nullable=True),
+            sa.Column('description', sa.String(), nullable=True),
+            sa.PrimaryKeyConstraint('id')
+        )
+        op.create_index(op.f('ix_user_groups_id'), 'user_groups', ['id'], unique=False)
+        op.create_index(op.f('ix_user_groups_name'), 'user_groups', ['name'], unique=True)
 
     # 2. Create Association Table
-    op.create_table('user_group_members',
-        sa.Column('user_id', sa.Integer(), nullable=False),
-        sa.Column('group_id', sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(['group_id'], ['user_groups.id'], ),
-        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-        sa.PrimaryKeyConstraint('user_id', 'group_id')
-    )
+    if 'user_group_members' not in tables:
+        op.create_table('user_group_members',
+            sa.Column('user_id', sa.Integer(), nullable=False),
+            sa.Column('group_id', sa.Integer(), nullable=False),
+            sa.ForeignKeyConstraint(['group_id'], ['user_groups.id'], ),
+            sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+            sa.PrimaryKeyConstraint('user_id', 'group_id')
+        )
 
     # 3. Add required_group_id to ApprovalWorkflow
+    columns = [c['name'] for c in inspector.get_columns('approval_workflows')]
     with op.batch_alter_table('approval_workflows', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('required_group_id', sa.Integer(), nullable=True))
-        batch_op.create_foreign_key('fk_approval_workflows_group', 'user_groups', ['required_group_id'], ['id'])
+        if 'required_group_id' not in columns:
+            batch_op.add_column(sa.Column('required_group_id', sa.Integer(), nullable=True))
+            batch_op.create_foreign_key('fk_approval_workflows_group', 'user_groups', ['required_group_id'], ['id'])
 
 
 def downgrade() -> None:
