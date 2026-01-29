@@ -1,5 +1,5 @@
 
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, Link } from 'react-router-dom';
 import Login from './pages/Login';
 import ResetPassword from './pages/ResetPassword';
 import Profile from './pages/Profile';
@@ -26,26 +26,12 @@ import { ErrorProvider } from './context/ErrorContext';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
 import Notifications from './components/Notifications';
 import { NotificationCenter } from './components/NotificationCenter';
+import Sidebar from './components/Sidebar';
 import api from './api';
 import {
-    LayoutDashboard,
-    Package,
-    Building2,
-    Truck,
-    FileText,
-    Tags,
-    Users as UsersIcon,
     LogOut,
     Menu as MenuIcon,
-    Settings,
-    Shield,
-    User,
-    Workflow,
-    UserCheck,
-    CheckSquare,
-    ClipboardList,
-    Briefcase,
-    MapPin
+    User
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import AdaptiveContrastManager from './components/AdaptiveContrastManager';
@@ -60,8 +46,6 @@ const PrivateRoute = () => {
 
 const Layout = () => {
     const { logout, user } = useAuth();
-    const { settings } = useSettings();
-    const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
     const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -177,15 +161,13 @@ const Layout = () => {
 
     const handleJoyrideCallback = (data: CallBackProps) => {
         const { status } = data;
-        if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
+        if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
             setRunTour(false);
             if (user) {
                 localStorage.setItem(`tour_completed_${user.role}`, 'true');
             }
         }
     };
-
-    const isActive = (path: string) => location.pathname === path;
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -199,37 +181,6 @@ const Layout = () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     }, []);
-
-    // Dynamic Sidebar Styles
-    const sidebarBgStyle = settings.theme_primary_color ? {
-        backgroundColor: settings.theme_primary_color + (settings.theme_primary_color.length === 7 ? 'E6' : ''), // 90% opacity
-    } : {};
-
-    // Determine text color class based on setting or default
-    const sidebarTextColorClass = settings.theme_text_color || 'text-slate-600';
-    const sidebarHeaderColorClass = settings.theme_text_color === 'text-white' ? 'text-white' : 'text-slate-800';
-    const navItemHoverClass = settings.theme_text_color === 'text-white'
-        ? 'hover:bg-white/10 hover:text-white'
-        : 'hover:bg-slate-100 hover:text-blue-600';
-
-    const activeItemClass = settings.theme_text_color === 'text-white'
-        ? 'bg-white/20 text-white shadow-md shadow-black/10'
-        : 'bg-blue-600 text-white shadow-md shadow-blue-500/20';
-
-    const NavItem = ({ to, icon: Icon, label, active, id }: { to: string, icon: any, label: string, active: boolean, id?: string }) => (
-        <Link
-            to={to}
-            id={id}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group
-                ${active
-                    ? activeItemClass
-                    : `${sidebarTextColorClass} ${navItemHoverClass}`
-                }`}
-        >
-            <Icon size={20} className={active ? 'text-white' : (settings.theme_text_color === 'text-white' ? 'text-white/70 group-hover:text-white' : 'text-slate-400 group-hover:text-blue-600')} />
-            <span className="font-medium">{label}</span>
-        </Link>
-    );
 
     return (
         <div className="flex h-screen font-sans text-slate-800 bg-transparent">
@@ -258,92 +209,8 @@ const Layout = () => {
                 }}
             />
 
-            {/* Sidebar */}
-            <aside
-                style={sidebarBgStyle}
-                className={`fixed inset-y-0 left-0 z-50 ${!settings.theme_primary_color ? 'bg-white/90' : ''} backdrop-blur-md border-r border-slate-200/50 w-64 transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto
-                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
-            >
-                <div className={`flex items-center justify-between h-16 px-6 border-b ${settings.theme_text_color === 'text-white' ? 'border-white/10' : 'border-slate-100'}`}>
-                    <div className="flex items-center gap-2">
-                        {settings.logo_url ? (
-                             <img
-                                src={`${api.defaults.baseURL}/${settings.logo_url}`}
-                                alt="Logo"
-                                className="h-10 w-auto object-contain"
-                             />
-                        ) : (
-                            <>
-                                <div className="bg-blue-600 p-1.5 rounded-lg">
-                                    <Package className="text-white" size={20} />
-                                </div>
-                                <span className={`text-xl font-bold ${settings.theme_primary_color ? sidebarHeaderColorClass : 'bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent'}`}>
-                                    Inventário
-                                </span>
-                            </>
-                        )}
-                    </div>
-                    <button onClick={() => setSidebarOpen(false)} className={`lg:hidden ${settings.theme_text_color === 'text-white' ? 'text-white/70 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
-                        ×
-                    </button>
-                </div>
-
-                <div className="p-4 space-y-1 overflow-y-auto h-[calc(100vh-4rem)]">
-
-                    {/* Principal */}
-                    <div className={`text-xs font-semibold uppercase tracking-wider mb-2 px-4 mt-2 ${settings.theme_text_color === 'text-white' ? 'text-white/50' : 'text-slate-400'}`}>Principal</div>
-                    <NavItem id="nav-dashboard" to="/" icon={LayoutDashboard} label="Painel" active={isActive('/')} />
-                    <NavItem id="nav-inventory" to="/inventory" icon={Package} label="Inventário" active={isActive('/inventory')} />
-                    {(user?.role === 'OPERATOR') && (
-                        <NavItem id="nav-my-requests" to="/my-requests" icon={FileText} label="Minhas Solicitações" active={isActive('/my-requests')} />
-                    )}
-                    {(user?.role === 'OPERATOR') && (
-                        <NavItem id="nav-pending-actions" to="/my-pending-actions" icon={ClipboardList} label="Confirmações Pendentes" active={isActive('/my-pending-actions')} />
-                    )}
-                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER' || user?.role === 'REVIEWER') && (
-                        <NavItem id="nav-pending-approvals" to="/pending-approvals" icon={CheckSquare} label="Aprovações Pendentes" active={isActive('/pending-approvals')} />
-                    )}
-
-                    {/* Cadastros */}
-                    <div className={`text-xs font-semibold uppercase tracking-wider mb-2 px-4 mt-6 ${settings.theme_text_color === 'text-white' ? 'text-white/50' : 'text-slate-400'}`}>Cadastros</div>
-                    <NavItem id="nav-branches" to="/branches" icon={Building2} label="Filiais" active={isActive('/branches')} />
-                    <NavItem id="nav-sectors" to="/sectors" icon={MapPin} label="Setores" active={isActive('/sectors')} />
-                    {user?.role !== 'OPERATOR' && (
-                        <NavItem id="nav-categories" to="/categories" icon={Tags} label="Categorias" active={isActive('/categories')} />
-                    )}
-                    <NavItem id="nav-suppliers" to="/suppliers" icon={Truck} label="Fornecedores" active={isActive('/suppliers')} />
-                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
-                        <NavItem id="nav-cost-centers" to="/cost-centers" icon={Briefcase} label="Centros de Custo" active={isActive('/cost-centers')} />
-                    )}
-
-                    {/* Administração (Apenas Admin/Aprovador) */}
-                    {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && (
-                        <>
-                            <div className={`text-xs font-semibold uppercase tracking-wider mb-2 px-4 mt-6 ${settings.theme_text_color === 'text-white' ? 'text-white/50' : 'text-slate-400'}`}>Administração</div>
-                            <NavItem id="nav-users" to="/users" icon={UsersIcon} label="Usuários" active={isActive('/users')} />
-                            <NavItem id="nav-user-groups" to="/users/groups" icon={UserCheck} label="Grupos de Aprovação" active={isActive('/users/groups')} />
-                            <NavItem id="nav-approval-workflows" to="/approval-workflows" icon={Workflow} label="Malha de Aprovação" active={isActive('/approval-workflows')} />
-                            <NavItem id="nav-safeguard" to="/safeguard-settings" icon={Shield} label="Salva Guarda" active={isActive('/safeguard-settings')} />
-                            {(user?.role === 'ADMIN') && (
-                                <NavItem id="nav-system-settings" to="/system-settings" icon={Settings} label="Configurações" active={isActive('/system-settings')} />
-                            )}
-                        </>
-                    )}
-
-                    {/* Relatórios */}
-                    <div className={`text-xs font-semibold uppercase tracking-wider mb-2 px-4 mt-6 ${settings.theme_text_color === 'text-white' ? 'text-white/50' : 'text-slate-400'}`}>Relatórios</div>
-                    <NavItem id="nav-reports" to="/reports" icon={FileText} label="Relatórios" active={isActive('/reports')} />
-
-                </div>
-            </aside>
-
-            {/* Mobile Overlay */}
-            {sidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black/20 z-40 lg:hidden backdrop-blur-sm"
-                    onClick={() => setSidebarOpen(false)}
-                ></div>
-            )}
+            {/* Sidebar Component */}
+            <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
             {/* Main Content */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
