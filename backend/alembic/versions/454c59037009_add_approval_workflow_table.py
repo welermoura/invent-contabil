@@ -27,12 +27,15 @@ def upgrade() -> None:
     if bind.dialect.name == 'postgresql':
         approval_action_type = postgresql.ENUM('CREATE', 'TRANSFER', 'WRITE_OFF', name='approvalactiontype')
         approval_action_type.create(bind, checkfirst=True)
+    else:
+        approval_action_type = sa.Enum('CREATE', 'TRANSFER', 'WRITE_OFF', name='approvalactiontype')
 
     op.create_table('approval_workflows',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('category_id', sa.Integer(), nullable=True),
         # Pass create_type=False to avoid attempting to create it again inside create_table
-        sa.Column('action_type', sa.Enum('CREATE', 'TRANSFER', 'WRITE_OFF', name='approvalactiontype', create_type=False), nullable=True),
+        # We reuse the same object or define it identically to ensure SQLAlchemy knows it's the same type
+        sa.Column('action_type', approval_action_type if bind.dialect.name != 'postgresql' else postgresql.ENUM('CREATE', 'TRANSFER', 'WRITE_OFF', name='approvalactiontype', create_type=False), nullable=True),
         # userrole type already exists, so we define as String first to avoid duplicate type error
         sa.Column('required_role', sa.String(), nullable=True),
         sa.Column('step_order', sa.Integer(), nullable=True),
