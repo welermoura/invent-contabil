@@ -51,6 +51,7 @@ import { useState, useRef, useEffect } from 'react';
 import AdaptiveContrastManager from './components/AdaptiveContrastManager';
 import Joyride, { STATUS } from 'react-joyride';
 import type { CallBackProps, Step } from 'react-joyride';
+import { TutorialTooltip } from './components/TutorialTooltip';
 
 const PrivateRoute = () => {
     const { isAuthenticated } = useAuth();
@@ -198,20 +199,22 @@ const Layout = () => {
                 steps={tourSteps}
                 run={runTour}
                 continuous
-                showProgress
+                showProgress={false}
                 showSkipButton
                 callback={handleJoyrideCallback}
-                locale={{
-                    back: 'Anterior',
-                    close: 'Fechar',
-                    last: 'Finalizar',
-                    next: 'Próximo',
-                    skip: 'Pular',
-                }}
+                tooltipComponent={TutorialTooltip}
                 styles={{
                     options: {
                         primaryColor: '#2563eb',
                         zIndex: 10000,
+                    }
+                }}
+                floaterProps={{
+                    hideArrow: false,
+                    styles: {
+                        floater: {
+                            filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))',
+                        }
                     }
                 }}
             />
