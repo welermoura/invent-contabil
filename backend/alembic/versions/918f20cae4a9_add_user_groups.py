@@ -19,37 +19,33 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
-    tables = inspector.get_table_names()
+    # 1. Create User Groups Table safely
+    op.execute("CREATE TABLE IF NOT EXISTS user_groups (id SERIAL PRIMARY KEY, name VARCHAR, description VARCHAR)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_user_groups_id ON user_groups (id)")
+    op.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_user_groups_name ON user_groups (name)")
 
-    # 1. Create User Groups Table
-    if 'user_groups' not in tables:
-        op.create_table('user_groups',
-            sa.Column('id', sa.Integer(), nullable=False),
-            sa.Column('name', sa.String(), nullable=True),
-            sa.Column('description', sa.String(), nullable=True),
-            sa.PrimaryKeyConstraint('id')
+    # 2. Create Association Table safely
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS user_group_members (
+            user_id INTEGER NOT NULL,
+            group_id INTEGER NOT NULL,
+            PRIMARY KEY (user_id, group_id),
+            FOREIGN KEY(group_id) REFERENCES user_groups (id),
+            FOREIGN KEY(user_id) REFERENCES users (id)
         )
-        op.create_index(op.f('ix_user_groups_id'), 'user_groups', ['id'], unique=False)
-        op.create_index(op.f('ix_user_groups_name'), 'user_groups', ['name'], unique=True)
+    """)
 
-    # 2. Create Association Table
-    if 'user_group_members' not in tables:
-        op.create_table('user_group_members',
-            sa.Column('user_id', sa.Integer(), nullable=False),
-            sa.Column('group_id', sa.Integer(), nullable=False),
-            sa.ForeignKeyConstraint(['group_id'], ['user_groups.id'], ),
-            sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-            sa.PrimaryKeyConstraint('user_id', 'group_id')
-        )
+    # 3. Add required_group_id to ApprovalWorkflow safely
+    op.execute("ALTER TABLE approval_workflows ADD COLUMN IF NOT EXISTS required_group_id INTEGER")
 
-    # 3. Add required_group_id to ApprovalWorkflow
-    columns = [c['name'] for c in inspector.get_columns('approval_workflows')]
-    with op.batch_alter_table('approval_workflows', schema=None) as batch_op:
-        if 'required_group_id' not in columns:
-            batch_op.add_column(sa.Column('required_group_id', sa.Integer(), nullable=True))
-            batch_op.create_foreign_key('fk_approval_workflows_group', 'user_groups', ['required_group_id'], ['id'])
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_approval_workflows_group') THEN
+                ALTER TABLE approval_workflows ADD CONSTRAINT fk_approval_workflows_group FOREIGN KEY (required_group_id) REFERENCES user_groups(id);
+            END IF;
+        END $$;
+    """)
 
 
 def downgrade() -> None:

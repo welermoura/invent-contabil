@@ -19,14 +19,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Use batch_alter_table for SQLite compatibility
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
-    columns = [c['name'] for c in inspector.get_columns('items')]
-
-    with op.batch_alter_table('items', schema=None) as batch_op:
-        if 'approval_step' not in columns:
-            batch_op.add_column(sa.Column('approval_step', sa.Integer(), server_default='1', nullable=True))
+    # Robust fix: Use raw SQL for idempotency
+    op.execute("ALTER TABLE items ADD COLUMN IF NOT EXISTS approval_step INTEGER DEFAULT 1")
 
 
 def downgrade() -> None:
