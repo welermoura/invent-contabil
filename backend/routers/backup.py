@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database import get_db, DATABASE_URL
 from backend.auth import get_current_user
 from backend.models import User, UserRole, Log
+from backend.cache import invalidate_cache
 
 router = APIRouter(
     prefix="/backup",
@@ -318,6 +319,12 @@ async def import_backup(
              )
         except Exception as e:
              print(f"Erro ao salvar log de restore: {e}")
+
+        # Limpar caches para garantir que as novas configurações sejam carregadas
+        print("Invalidando caches após restore...")
+        await invalidate_cache("settings:*")
+        await invalidate_cache("branches:*")
+        await invalidate_cache("categories:*")
 
         return {"message": "Restauração concluída com sucesso. Por favor, faça login novamente se necessário."}
 
