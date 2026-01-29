@@ -305,7 +305,7 @@ async def read_items(
     current_user: models.User = Depends(auth.get_current_user)
 ):
     # Enforce branch filtering for non-admins (Approvers and Auditors can see all)
-    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER, models.UserRole.AUDITOR] and not current_user.all_branches:
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER, models.UserRole.AUDITOR, models.UserRole.REVIEWER] and not current_user.all_branches:
         allowed_branches = [b.id for b in current_user.branches]
         if current_user.branch_id and current_user.branch_id not in allowed_branches:
             allowed_branches.append(current_user.branch_id)
@@ -705,7 +705,7 @@ async def update_item_status(
 
     old_status = item_obj.status # Capture old status before update
 
-    is_admin_approver = current_user.role in [models.UserRole.ADMIN, models.UserRole.APPROVER]
+    is_admin_approver = current_user.role in [models.UserRole.ADMIN, models.UserRole.APPROVER, models.UserRole.REVIEWER]
     is_operator = current_user.role == models.UserRole.OPERATOR
 
     # Allow Operators to confirm receipt (status IN_TRANSIT -> IN_STOCK)
@@ -960,7 +960,7 @@ async def update_item(
         raise HTTPException(status_code=404, detail="Item não encontrado")
 
     # Permission Logic
-    is_admin_approver = current_user.role in [models.UserRole.ADMIN, models.UserRole.APPROVER]
+    is_admin_approver = current_user.role in [models.UserRole.ADMIN, models.UserRole.APPROVER, models.UserRole.REVIEWER]
     is_operator = current_user.role == models.UserRole.OPERATOR
 
     if not is_admin_approver:
