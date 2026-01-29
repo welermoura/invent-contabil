@@ -319,7 +319,7 @@ const MainLayout = () => {
 
     return (
         <div className={`relative min-h-screen ${!backgroundUrl && !backgroundColor ? "bg-slate-50" : ""}`} style={containerStyle}>
-             {backgroundUrl && <AdaptiveContrastManager imageUrl={backgroundUrl} />}
+             <AdaptiveContrastManager imageUrl={backgroundUrl} backgroundColor={backgroundColor} />
 
              <div className="relative z-10">
                 <AppRoutes />
