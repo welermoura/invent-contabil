@@ -110,6 +110,17 @@ async def export_backup(
             zipf.write(dump_path, dump_filename)
             zipf.write(metadata_path, "metadata.json")
 
+            # Include uploads directory (images)
+            uploads_dir = "/app/uploads"
+            if os.path.exists(uploads_dir):
+                for root, dirs, files in os.walk(uploads_dir):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        # Archive name should be relative to allow restoration
+                        # e.g., 'uploads/image.png'
+                        arcname = os.path.relpath(file_path, start="/app")
+                        zipf.write(file_path, arcname)
+
         # Log action (Asynchronously write to DB log)
         # Note: We are using async session, so we need to be careful inside the route
         # create_log is synchronous or async? Let's check crud.py usually it is async if using AsyncSession
@@ -174,6 +185,30 @@ async def import_backup(
         # Check files
         if not os.path.exists(os.path.join(temp_dir, "database.dump")):
              raise HTTPException(status_code=400, detail="Arquivo inválido: database.dump não encontrado no pacote.")
+
+        # Restore uploads if present
+        # The zip contains 'uploads/filename.ext' structure relative to root if exported correctly
+        # We need to move them to /app/uploads
+
+        extracted_uploads_dir = os.path.join(temp_dir, "uploads")
+        target_uploads_dir = "/app/uploads"
+
+        if os.path.exists(extracted_uploads_dir):
+            if not os.path.exists(target_uploads_dir):
+                os.makedirs(target_uploads_dir)
+
+            # Copy files
+            for root, dirs, files in os.walk(extracted_uploads_dir):
+                for file in files:
+                    src_path = os.path.join(root, file)
+                    # Determine relative path from extracted uploads dir
+                    rel_path = os.path.relpath(src_path, start=extracted_uploads_dir)
+                    dest_path = os.path.join(target_uploads_dir, rel_path)
+
+                    # Ensure dest directory exists
+                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                    shutil.copy2(src_path, dest_path)
+            print("Imagens restauradas com sucesso.")
 
         # Check metadata (optional validation)
         metadata_path = os.path.join(temp_dir, "metadata.json")
