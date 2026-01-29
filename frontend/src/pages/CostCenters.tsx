@@ -11,7 +11,9 @@ import {
     X,
     Save,
     Trash2,
-    Hash
+    Hash,
+    Upload,
+    Download
 } from 'lucide-react';
 
 const CostCenters: React.FC = () => {
@@ -22,6 +24,8 @@ const CostCenters: React.FC = () => {
     const [showForm, setShowForm] = useState(false);
     const [editingCostCenter, setEditingCostCenter] = useState<any>(null);
     const [loading, setLoading] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const canEdit = user?.role === 'ADMIN' || user?.role === 'APPROVER';
 
@@ -90,8 +94,81 @@ const CostCenters: React.FC = () => {
         reset();
     };
 
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setIsImporting(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await api.post('/cost-centers/import', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            const { success, errors } = response.data;
+
+            if (errors && errors.length > 0) {
+                showError(
+                    <div>
+                        <p className="font-bold mb-2">Importação concluída com erros:</p>
+                        <ul className="list-disc pl-4 text-sm max-h-40 overflow-y-auto">
+                            {errors.map((err: string, idx: number) => (
+                                <li key={idx}>{err}</li>
+                            ))}
+                        </ul>
+                        {success > 0 && <p className="mt-2 text-green-600 font-medium">{success} itens importados com sucesso.</p>}
+                    </div>,
+                    "IMPORT_ERROR"
+                );
+            } else {
+                showSuccess(`${success} centros de custo importados com sucesso!`);
+            }
+
+            fetchCostCenters();
+        } catch (error) {
+            console.error("Erro ao importar", error);
+            showError("Falha ao processar o arquivo. Verifique o formato e tente novamente.");
+        } finally {
+            setIsImporting(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleDownloadTemplate = async () => {
+        try {
+            const response = await api.get('/cost-centers/import/template', { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'modelo_centros_custo.csv');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error("Erro ao baixar modelo", error);
+            showError("Não foi possível baixar o modelo.");
+        }
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Hidden File Input */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept=".csv,.xlsx,.xls"
+                className="hidden"
+            />
+
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/80 backdrop-blur-md p-4 rounded-xl shadow-sm border border-slate-100/50">
                 <div>
@@ -115,20 +192,42 @@ const CostCenters: React.FC = () => {
                         />
                     </div>
                     {canEdit && (
-                        <button
-                            onClick={() => {
-                                if (showForm) handleCancel();
-                                else setShowForm(true);
-                            }}
-                            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium shadow-sm transition-all ${
-                                showForm
-                                ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-                                : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md'
-                            }`}
-                        >
-                            {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                            {showForm ? 'Cancelar' : 'Novo Centro'}
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleImportClick}
+                                disabled={isImporting}
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-sm font-medium disabled:opacity-50"
+                                title="Importar de CSV/Excel"
+                            >
+                                {isImporting ? (
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <Upload className="w-4 h-4" />
+                                )}
+                                Importar
+                            </button>
+                            <button
+                                onClick={handleDownloadTemplate}
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm font-medium"
+                                title="Baixar Modelo"
+                            >
+                                <Download className="w-4 h-4" />
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (showForm) handleCancel();
+                                    else setShowForm(true);
+                                }}
+                                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium shadow-sm transition-all ${
+                                    showForm
+                                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                                    : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md'
+                                }`}
+                            >
+                                {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                {showForm ? 'Cancelar' : 'Novo Centro'}
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>
