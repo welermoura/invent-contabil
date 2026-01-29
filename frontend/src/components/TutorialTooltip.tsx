@@ -1,5 +1,5 @@
 import React from 'react';
-import { TooltipRenderProps } from 'react-joyride';
+import type { TooltipRenderProps } from 'react-joyride';
 
 export const TutorialTooltip = ({
     continuous,
