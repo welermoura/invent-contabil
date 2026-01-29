@@ -64,7 +64,7 @@ const DashboardControls: React.FC = () => {
                             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isEditing ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300'}`}
                         >
                             {isEditing ? <Check size={18} /> : <Plus size={18} />}
-                            <span className="hidden sm:inline">{isEditing ? 'Concluir' : 'Add Widget'}</span>
+                            <span className="hidden sm:inline">{isEditing ? 'Concluir' : 'Adicionar Widget'}</span>
                         </button>
 
                          <button

@@ -55,6 +55,16 @@ export const translateLogAction = (action: string) => {
     // Creation (Legacy support)
     if (translated === 'Item created') return 'Item criado';
 
+    // Defensive translations for potential legacy english logs or fallback strings
+    if (translated.includes('Item rejected')) return translated.replace('Item rejected', 'Item rejeitado');
+    if (translated.includes('Request approved')) return translated.replace('Request approved', 'Solicitação aprovada');
+    if (translated.includes('Request rejected')) return translated.replace('Request rejected', 'Solicitação rejeitada');
+
+    // Generic fallback for English status uppercase
+    if (translated.includes('APPROVED')) translated = translated.replace('APPROVED', 'Aprovado');
+    if (translated.includes('REJECTED')) translated = translated.replace('REJECTED', 'Rejeitado');
+    if (translated.includes('PENDING')) translated = translated.replace('PENDING', 'Pendente');
+
     // The backend now sends translated strings, so we can just return the action if no legacy pattern is found.
     return translated;
 };
