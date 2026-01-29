@@ -79,54 +79,93 @@ const Layout = () => {
                 // Common Steps
                 steps.push({
                     target: '#nav-dashboard',
-                    content: 'Aqui você tem uma visão geral dos indicadores e movimentações recentes.',
+                    content: 'Painel de Controle: Visualize KPIs, gráficos de movimentação e resumos operacionais em tempo real.',
                     disableBeacon: true,
                 });
 
                 steps.push({
                     target: '#nav-inventory',
-                    content: 'Gerencie todos os itens do inventário, adicione novos bens e realize transferências.',
+                    content: 'Inventário Geral: Consulte todos os itens, filtre por status/filial e inicie ações como transferências ou baixas.',
                 });
 
-                // Role Specific
+                // Operator Specific
                 if (user.role === 'OPERATOR') {
                     steps.push({
                         target: '#nav-my-requests',
-                        content: 'Acompanhe as solicitações que você criou.',
+                        content: 'Minhas Solicitações: Acompanhe o status (pendente, aprovado, rejeitado) de tudo que você solicitou.',
                     });
                     steps.push({
                         target: '#nav-pending-actions',
-                        content: 'Confirme recebimentos de transferências e finalize baixas de itens.',
+                        content: 'Confirmações Pendentes: Realize ações operacionais que dependem de você, como confirmar o recebimento de itens transferidos.',
                     });
                 }
 
+                // Approver / Reviewer / Admin Specific
                 if (user.role === 'APPROVER' || user.role === 'ADMIN' || user.role === 'REVIEWER') {
                     steps.push({
                         target: '#nav-pending-approvals',
-                        content: 'Aprove ou rejeite solicitações de criação, transferência e baixa.',
+                        content: 'Aprovações Pendentes: Central de decisão. Analise, aprove ou rejeite solicitações de novos itens, transferências e baixas.',
                     });
                 }
 
+                // Common Management
+                steps.push({
+                    target: '#nav-branches',
+                    content: 'Filiais: Visualize e gerencie as unidades físicas e seus endereços.',
+                });
+                steps.push({
+                    target: '#nav-suppliers',
+                    content: 'Fornecedores: Cadastro de parceiros comerciais e seus dados (CNPJ, Contato).',
+                });
+
                 // Management Section
-                if (user.role === 'ADMIN' || user.role === 'APPROVER' || user.role === 'REVIEWER') {
-                     steps.push({
-                        target: '#nav-reports',
-                        content: 'Gere relatórios detalhados operacionais e financeiros.',
+                steps.push({
+                    target: '#nav-reports',
+                    content: 'Relatórios: Gere e exporte relatórios gerenciais, financeiros e operacionais (PDF/Excel).',
+                });
+
+                if (user.role !== 'OPERATOR') {
+                    steps.push({
+                        target: '#nav-categories',
+                        content: 'Categorias: Organize os itens em grupos lógicos e defina regras de depreciação.',
                     });
+                }
+
+                if (user.role === 'ADMIN' || user.role === 'APPROVER') {
+                    steps.push({
+                        target: '#nav-cost-centers',
+                        content: 'Centros de Custo: Gerencie os centros para alocação financeira dos ativos.',
+                    });
+                }
+
+                steps.push({
+                    target: '#nav-sectors',
+                    content: 'Setores: Mapeie os locais físicos ou departamentos dentro de cada filial.',
+                });
+
+                if (user.role === 'ADMIN' || user.role === 'APPROVER') {
                     steps.push({
                         target: '#nav-users',
-                        content: 'Gerencie os usuários do sistema e seus acessos.',
+                        content: 'Usuários: Controle total sobre contas, redefinição de senhas e atribuição de funções.',
+                    });
+                    steps.push({
+                        target: '#nav-user-groups',
+                        content: 'Grupos de Aprovação: Crie grupos de usuários para fluxos de aprovação coletiva.',
+                    });
+                    steps.push({
+                        target: '#nav-safeguard',
+                        content: 'Salva Guarda: Defina limites de valor (R$) que exigem aprovação especial de nível superior.',
                     });
                     steps.push({
                         target: '#nav-approval-workflows',
-                        content: 'Configure as regras e fluxos de aprovação por categoria.',
+                        content: 'Malha de Aprovação: Configure visualmente quem deve aprovar o quê, baseado em categoria e tipo de ação.',
                     });
                 }
 
                 if (user.role === 'ADMIN') {
                     steps.push({
                         target: '#nav-system-settings',
-                        content: 'Configure a aparência, e-mail (SMTP) e opções globais do sistema.',
+                        content: 'Configurações: Personalize a aparência (Logo, Cores), configure o envio de e-mails (SMTP) e faça backups.',
                     });
                 }
 
