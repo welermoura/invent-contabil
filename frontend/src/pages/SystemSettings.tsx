@@ -39,6 +39,7 @@ const SystemSettings: React.FC = () => {
             if (settings.favicon_url) setCurrentFavicon(settings.favicon_url);
             if (settings.logo_url) setCurrentLogo(settings.logo_url);
             if (settings.background_url) setCurrentBackground(settings.background_url);
+            if (settings.theme_background_color) setValue('theme_background_color', settings.theme_background_color);
 
             // SMTP Settings
             if (settings.smtp_host) setValue('smtp_host', settings.smtp_host);
@@ -87,6 +88,7 @@ const SystemSettings: React.FC = () => {
         try {
             const settingsPayload: any = {
                 app_title: data.app_title,
+                theme_background_color: data.theme_background_color,
                 smtp_host: data.smtp_host,
                 smtp_port: data.smtp_port,
                 smtp_username: data.smtp_username,
@@ -132,6 +134,18 @@ const SystemSettings: React.FC = () => {
             showError(error, "SETTINGS_SAVE_ERROR");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleClearBackground = async () => {
+        if (confirm("Deseja remover a imagem de fundo? A cor de fundo será utilizada.")) {
+            try {
+                await api.put('/settings/', { background_url: '' });
+                setCurrentBackground(null);
+                showSuccess("Imagem de fundo removida.");
+            } catch (error) {
+                showError(error, "Erro ao remover imagem.");
+            }
         }
     };
 
@@ -228,12 +242,20 @@ const SystemSettings: React.FC = () => {
 
                             <div className="flex items-center gap-4">
                                 {currentBackground && (
-                                    <div className="p-2 border border-slate-200 rounded-lg bg-slate-50">
+                                    <div className="relative p-2 border border-slate-200 rounded-lg bg-slate-50 group">
                                         <img
                                             src={`${api.defaults.baseURL}/${currentBackground}`}
                                             alt="Fundo Atual"
                                             className="w-16 h-9 object-cover rounded"
                                         />
+                                        <button
+                                            type="button"
+                                            onClick={handleClearBackground}
+                                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                                            title="Remover Imagem"
+                                        >
+                                            <div className="w-3 h-3 flex items-center justify-center font-bold text-xs">x</div>
+                                        </button>
                                     </div>
                                 )}
                                 <div className="flex-1">
@@ -243,7 +265,24 @@ const SystemSettings: React.FC = () => {
                                         accept=".jpg,.jpeg,.png,.webp,.bmp"
                                         className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all"
                                     />
-                                    <p className="text-xs text-slate-500 mt-1">A imagem será otimizada automaticamente para carregamento rápido.</p>
+                                    <p className="text-xs text-slate-500 mt-1">A imagem será otimizada automaticamente para carregamento rápido. Se removida, a cor sólida será usada.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                                <div className="w-4 h-4 rounded border border-slate-400 bg-gradient-to-br from-white to-slate-200"></div>
+                                Cor de Fundo (Sólida)
+                            </label>
+                            <div className="flex items-center gap-4">
+                                <input
+                                    type="color"
+                                    {...register('theme_background_color')}
+                                    className="h-10 w-20 p-1 rounded border border-slate-300 cursor-pointer"
+                                />
+                                <div className="text-sm text-slate-500">
+                                    Esta cor será exibida se nenhuma imagem de fundo estiver definida.
                                 </div>
                             </div>
                         </div>
