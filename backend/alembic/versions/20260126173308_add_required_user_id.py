@@ -20,30 +20,24 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Use raw SQL for atomic "IF NOT EXISTS" check handled by the DB
-    # This avoids python-side reflection race conditions
+    # 1. Add column safely using IF NOT EXISTS
     op.execute("ALTER TABLE approval_workflows ADD COLUMN IF NOT EXISTS required_user_id INTEGER")
 
-    # For the foreign key, we can try to create it.
-    # Postgres doesn't have "ADD CONSTRAINT IF NOT EXISTS" in standard ALTER TABLE until v16/recent?
-    # So we'll use a safe block.
-    try:
-        with op.batch_alter_table('approval_workflows') as batch_op:
-             batch_op.create_foreign_key('fk_approval_workflows_users', 'users', ['required_user_id'], ['id'])
-    except (ProgrammingError, OperationalError) as e:
-        if "already exists" in str(e) or "Duplicate" in str(e):
-             print("Constraint fk_approval_workflows_users likely already exists, skipping.")
-        else:
-             # It might fail if constraint exists, let's try to ignore specifically constraint errors
-             # If it's a real error (like table missing), we want to raise
-             print(f"Warning: Could not create foreign key: {e}")
+    # 2. Add constraint safely using PL/pgSQL DO block to avoid Transaction Aborted state
+    # This checks existence *before* trying to add, so no error is ever raised
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_approval_workflows_users') THEN
+                ALTER TABLE approval_workflows ADD CONSTRAINT fk_approval_workflows_users FOREIGN KEY (required_user_id) REFERENCES users(id);
+            END IF;
+        END $$;
+    """)
 
-    # Make role nullable
-    try:
-        with op.batch_alter_table('approval_workflows') as batch_op:
-            batch_op.alter_column('required_role', existing_type=sa.VARCHAR(), nullable=True)
-    except (ProgrammingError, OperationalError):
-        pass
+    # 3. Make role nullable
+    # ALTER COLUMN ... DROP NOT NULL is idempotent in Postgres (it doesn't fail if already nullable)
+    with op.batch_alter_table('approval_workflows') as batch_op:
+        batch_op.alter_column('required_role', existing_type=sa.VARCHAR(), nullable=True)
 
 
 def downgrade() -> None:
