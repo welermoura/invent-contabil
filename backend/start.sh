@@ -11,10 +11,12 @@ while ! python3 -c "import socket; s = socket.socket(socket.AF_INET, socket.SOCK
 done
 echo "Database started"
 
-# Aqui estamos apenas rodando as migrações
-echo "Running migrations..."
-alembic upgrade head
-echo "Migrations finished."
+# Smart Migration Management
+# Checks if DB exists but version is missing (restored backup / persistence issue)
+# and stamps it instead of re-running everything.
+echo "Managing database migrations..."
+python3 manage_db.py
+echo "Migration management finished."
 
 # Iniciar o servidor
 # Note: Host 0.0.0.0 allows external access. Port 8000 is the internal container port.
