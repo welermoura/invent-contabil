@@ -35,7 +35,6 @@ interface SidebarProps {
     toggleSection: (section: string) => void;
     isCollapsed: boolean;
     setIsCollapsed: (collapsed: boolean) => void;
-    disableAnimations?: boolean;
 }
 
 export default function Sidebar({
@@ -44,8 +43,7 @@ export default function Sidebar({
     openSections,
     toggleSection,
     isCollapsed,
-    setIsCollapsed,
-    disableAnimations = false
+    setIsCollapsed
 }: SidebarProps) {
     const { user } = useAuth();
     const { settings } = useSettings();
@@ -83,10 +81,6 @@ export default function Sidebar({
                 <Link
                     to={to}
                     id={id}
-                    style={{
-                        // @ts-ignore - CSS Anchor Positioning is new
-                        anchorName: id ? `--${id}` : undefined
-                    }}
                     className={`flex items-center gap-3 px-3 py-2.5 mx-2 rounded-lg transition-all duration-200
                         ${active
                             ? activeItemClass
@@ -156,8 +150,7 @@ export default function Sidebar({
                 </button>
 
                 <div
-                    className={`overflow-hidden pl-2 border-l border-white/10 ml-4
-                        ${disableAnimations ? '' : 'transition-all duration-300 ease-in-out'}
+                    className={`overflow-hidden transition-all duration-300 ease-in-out pl-2 border-l border-white/10 ml-4
                         ${isOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}
                     `}
                 >
@@ -175,7 +168,7 @@ export default function Sidebar({
                 className={`fixed inset-y-0 left-0 z-50
                 ${!settings.theme_primary_color ? 'bg-white/90' : ''}
                 backdrop-blur-md border-r border-slate-200/50
-                ${disableAnimations ? '' : 'transition-all duration-300 ease-in-out'}
+                transition-all duration-300 ease-in-out
                 lg:translate-x-0 lg:static lg:inset-auto
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
                 ${isCollapsed ? 'w-20' : 'w-64'}
