@@ -171,7 +171,7 @@ export default function Sidebar({
                 className={`fixed inset-y-0 left-0 z-50
                 ${!settings.theme_primary_color ? 'bg-white/90' : ''}
                 backdrop-blur-md border-r border-slate-200/50
-                transition-all duration-300 ease-in-out
+                ${disableAnimations ? '' : 'transition-all duration-300 ease-in-out'}
                 lg:translate-x-0 lg:static lg:inset-auto
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
                 ${isCollapsed ? 'w-20' : 'w-64'}
