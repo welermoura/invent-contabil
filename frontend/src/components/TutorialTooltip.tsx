@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import type { TooltipRenderProps } from 'react-joyride';
 
 export const TutorialTooltip = ({
@@ -12,25 +12,28 @@ export const TutorialTooltip = ({
     size,
     isLastStep,
 }: TooltipRenderProps) => {
-    // Basic support for CSS Anchor Positioning API if anchor data is present
-    const anchorStyle = step.data?.anchor ? {
-        // @ts-ignore
-        position: 'fixed',
-        // @ts-ignore
-        positionAnchor: `--${step.data.anchor}`,
-        // @ts-ignore
-        top: 'anchor(center)', // Center vertically
-        // @ts-ignore
-        left: 'anchor(right)',
-        // @ts-ignore
-        marginLeft: '12px',
-        // @ts-ignore
-        translate: '0 -50%', // Center correction
-        // @ts-ignore
-        transform: 'none', // Override lib transform
-        // @ts-ignore
-        inset: 'auto' // Override lib inset
-    } : {};
+    // Manual Fixed Positioning (The "Nuclear Option")
+    // Bypasses Popper.js, CSS Anchors, and Portals issues by calculating exact screen pixels.
+    const [manualPosition, setManualPosition] = useState<React.CSSProperties>({});
+
+    useLayoutEffect(() => {
+        if (step.data?.anchor) {
+            const element = document.getElementById(step.data.anchor);
+            if (element) {
+                const rect = element.getBoundingClientRect();
+                setManualPosition({
+                    position: 'fixed',
+                    top: rect.top + (rect.height / 2),
+                    left: rect.right + 12, // 12px gap
+                    transform: 'translateY(-50%)', // Center vertically
+                    margin: 0,
+                    inset: 'auto' // Override external styles
+                });
+            }
+        } else {
+            setManualPosition({});
+        }
+    }, [step.data?.anchor, index]); // Re-calculate on step change
 
     return (
         <div
@@ -38,7 +41,7 @@ export const TutorialTooltip = ({
             className="bg-white rounded-xl shadow-xl p-4 max-w-sm border border-slate-100 flex flex-col gap-3"
             style={{
                 zIndex: 1000,
-                ...anchorStyle
+                ...manualPosition
             }}
         >
             <div className="flex justify-between items-center border-b border-slate-100 pb-2">
