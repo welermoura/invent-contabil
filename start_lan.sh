@@ -29,11 +29,11 @@ echo "Detected LAN IP: $HOST_IP"
 
 # Create/Update .env file logic
 # We export vars so docker-compose picks them up overriding .env file if needed for THIS session
-export VITE_API_URL="http://$HOST_IP:8001"
+# export VITE_API_URL="http://$HOST_IP:8001" # Commented to allow default origin (NGINX Proxy support)
 export FRONTEND_URL="http://$HOST_IP:5173"
 export APP_BASE_URL="http://$HOST_IP:8001"
 
-echo "Setting VITE_API_URL to $VITE_API_URL"
+# echo "Setting VITE_API_URL to $VITE_API_URL"
 echo "Setting FRONTEND_URL to $FRONTEND_URL"
 echo "Setting APP_BASE_URL to $APP_BASE_URL"
 
