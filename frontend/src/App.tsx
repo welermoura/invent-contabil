@@ -279,8 +279,10 @@ const Layout = () => {
                 }}
                 floaterProps={{
                     hideArrow: false,
-                    placement: 'auto', // Smart positioning
                     disableAnimation: true, // Prevent glitches
+                    options: {
+                        strategy: 'fixed', // Force fixed positioning to match sidebar
+                    },
                     styles: {
                         floater: {
                             filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))',
