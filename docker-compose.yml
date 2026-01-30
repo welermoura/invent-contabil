@@ -54,7 +54,8 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:8001}
+      # Empty default allows frontend to use window.location.origin (NGINX proxy)
+      - VITE_API_URL=${VITE_API_URL}
       - TZ=America/Sao_Paulo
     depends_on:
       - backend
