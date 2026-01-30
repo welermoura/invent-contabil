@@ -454,14 +454,17 @@ async def get_items(
     fixed_asset_number: str = None,
     purchase_date: str = None
 ):
+    from sqlalchemy.orm import joinedload
+    # Use joinedload for single-item relationships to avoid N+1 queries effectively
+    # and reduce "loader depth" complexity warning from recursive selectinloads.
     query = select(models.Item).options(
-        selectinload(models.Item.branch),
-        selectinload(models.Item.transfer_target_branch),
-        selectinload(models.Item.category_rel),
-        selectinload(models.Item.supplier),
-        selectinload(models.Item.responsible),
-        selectinload(models.Item.cost_center),
-        selectinload(models.Item.sector)
+        joinedload(models.Item.branch),
+        joinedload(models.Item.transfer_target_branch),
+        joinedload(models.Item.category_rel),
+        joinedload(models.Item.supplier),
+        joinedload(models.Item.responsible),
+        joinedload(models.Item.cost_center),
+        joinedload(models.Item.sector)
     )
     if status:
         query = query.where(models.Item.status == status)
@@ -912,17 +915,22 @@ async def create_request(db: AsyncSession, request: schemas.RequestCreate):
     return db_request
 
 async def get_request(db: AsyncSession, request_id: int):
+    # Optimize loading depth by using specific loader options
+    # We use selectinload for the collection (items) and then joinedload for 1:1 relations inside items
+    # to avoid excessively deep recursion warnings and improve performance for 80k+ items scale.
+    from sqlalchemy.orm import joinedload
+
     query = select(models.Request).where(models.Request.id == request_id).options(
-        selectinload(models.Request.requester),
-        selectinload(models.Request.category),
+        joinedload(models.Request.requester),
+        joinedload(models.Request.category),
         selectinload(models.Request.items).options(
-             selectinload(models.Item.branch), # Need deeper loading for item display
-             selectinload(models.Item.transfer_target_branch),
-             selectinload(models.Item.category_rel),
-             selectinload(models.Item.supplier),
-             selectinload(models.Item.responsible),
-             selectinload(models.Item.cost_center),
-             selectinload(models.Item.sector)
+             joinedload(models.Item.branch),
+             joinedload(models.Item.transfer_target_branch),
+             joinedload(models.Item.category_rel),
+             joinedload(models.Item.supplier),
+             joinedload(models.Item.responsible),
+             joinedload(models.Item.cost_center),
+             joinedload(models.Item.sector)
         )
     )
     result = await db.execute(query)
