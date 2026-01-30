@@ -19,33 +19,45 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Create CostCenter table
-    op.create_table('cost_centers',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('code', sa.String(), nullable=True),
-        sa.Column('name', sa.String(), nullable=True),
-        sa.Column('description', sa.String(), nullable=True),
-        sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_cost_centers_code'), 'cost_centers', ['code'], unique=True)
-    op.create_index(op.f('ix_cost_centers_id'), 'cost_centers', ['id'], unique=False)
+    # Create CostCenter table (Idempotent)
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS cost_centers (
+            id SERIAL PRIMARY KEY,
+            code VARCHAR,
+            name VARCHAR,
+            description VARCHAR
+        )
+    """)
+    op.execute("CREATE UNIQUE INDEX IF NOT EXISTS ix_cost_centers_code ON cost_centers (code)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_cost_centers_id ON cost_centers (id)")
 
-    # Create Sector table
-    op.create_table('sectors',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('name', sa.String(), nullable=True),
-        sa.Column('branch_id', sa.Integer(), nullable=True),
-        sa.ForeignKeyConstraint(['branch_id'], ['branches.id'], ),
-        sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_sectors_id'), 'sectors', ['id'], unique=False)
-    op.create_index(op.f('ix_sectors_name'), 'sectors', ['name'], unique=False)
+    # Create Sector table (Idempotent)
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS sectors (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR,
+            branch_id INTEGER REFERENCES branches(id)
+        )
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_sectors_id ON sectors (id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_sectors_name ON sectors (name)")
 
-    # Add columns to Items
-    op.add_column('items', sa.Column('cost_center_id', sa.Integer(), nullable=True))
-    op.add_column('items', sa.Column('sector_id', sa.Integer(), nullable=True))
-    op.create_foreign_key(None, 'items', 'cost_centers', ['cost_center_id'], ['id'])
-    op.create_foreign_key(None, 'items', 'sectors', ['sector_id'], ['id'])
+    # Add columns to Items (Idempotent)
+    op.execute("ALTER TABLE items ADD COLUMN IF NOT EXISTS cost_center_id INTEGER")
+    op.execute("ALTER TABLE items ADD COLUMN IF NOT EXISTS sector_id INTEGER")
+
+    # Safe FKs
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'items_cost_center_id_fkey') THEN
+                ALTER TABLE items ADD CONSTRAINT items_cost_center_id_fkey FOREIGN KEY (cost_center_id) REFERENCES cost_centers(id);
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'items_sector_id_fkey') THEN
+                ALTER TABLE items ADD CONSTRAINT items_sector_id_fkey FOREIGN KEY (sector_id) REFERENCES sectors(id);
+            END IF;
+        END $$;
+    """)
 
 
 def downgrade() -> None:
