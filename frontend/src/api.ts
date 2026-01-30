@@ -4,7 +4,9 @@ import axios from 'axios';
 // 1. Check if we are running in browser
 // 2. If configured URL is localhost but we are on a different IP, force usage of window.location
 // 3. Otherwise use env var or fallback
-let baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+// Use window.location.origin (current host) as default if no ENV provided.
+// This assumes the frontend is served via NGINX on port 80/443 which proxies /api requests.
+let baseURL = import.meta.env.VITE_API_URL || window.location.origin;
 
 if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;

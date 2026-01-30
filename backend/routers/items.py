@@ -33,9 +33,13 @@ def build_item_details(item: models.Item) -> dict:
         }
         return m.get(s, s)
 
-    # Infer base URL from environment or fallback to localhost
+    # Infer base URL from environment or fallback to relative path (assuming proxy handles it)
     # Ensure no trailing slash
-    base_url = os.getenv("APP_BASE_URL", "http://localhost:8001").rstrip("/")
+    base_url = os.getenv("APP_BASE_URL", "").rstrip("/")
+    if not base_url:
+        # Fallback if env is missing: Use empty string to force relative URLs
+        # which browser resolves against current origin (e.g. http://inventario/uploads/...)
+        base_url = ""
 
     invoice_link = None
     if item.invoice_file:
