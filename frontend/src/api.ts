@@ -8,16 +8,8 @@ import axios from 'axios';
 // This assumes the frontend is served via NGINX on port 80/443 which proxies /api requests.
 let baseURL = import.meta.env.VITE_API_URL || window.location.origin;
 
-if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    // If user is accessing via IP/Network (not localhost) AND config points to localhost
-    // We override it to use the current hostname (assuming backend is on same host port 8001)
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1' && baseURL.includes('localhost')) {
-        const protocol = window.location.protocol;
-        baseURL = `${protocol}//${hostname}:8001`;
-        console.log('[API] Detected LAN access, overriding localhost API URL to:', baseURL);
-    }
-}
+// No override for LAN access - NGINX handles port 80/443 proxying.
+// This block was causing forced :8001 on frontend.
 
 console.log(`[API] Connecting to Backend at: ${baseURL}`);
 
