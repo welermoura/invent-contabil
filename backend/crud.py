@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy import or_, cast, String
 from backend import models, schemas
 from backend.auth import get_password_hash
@@ -15,7 +15,7 @@ async def get_user_by_email(db: AsyncSession, email: str):
 async def get_user(db: AsyncSession, user_id: int):
     result = await db.execute(
         select(models.User)
-        .options(selectinload(models.User.branches), selectinload(models.User.branch))
+        .options(selectinload(models.User.branches), joinedload(models.User.branch))
         .where(models.User.id == user_id)
     )
     return result.scalars().first()
@@ -50,8 +50,8 @@ async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100, search: s
     # Eager load branches for UserResponse
     query = select(models.User).options(
         selectinload(models.User.branches),
-        selectinload(models.User.branch),
-        selectinload(models.User.group)
+        joinedload(models.User.branch),
+        joinedload(models.User.group)
     )
     if search:
         search_filter = f"%{search}%"
@@ -68,7 +68,7 @@ async def get_users_by_role(db: AsyncSession, roles: list[models.UserRole]):
     """Fetch users by a list of roles."""
     query = select(models.User).options(
         selectinload(models.User.branches),
-        selectinload(models.User.branch)
+        joinedload(models.User.branch)
     ).where(models.User.role.in_(roles))
     result = await db.execute(query)
     return result.scalars().all()
@@ -76,7 +76,7 @@ async def get_users_by_role(db: AsyncSession, roles: list[models.UserRole]):
 async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
     result = await db.execute(
         select(models.User)
-        .options(selectinload(models.User.branches), selectinload(models.User.branch))
+        .options(selectinload(models.User.branches), joinedload(models.User.branch))
         .where(models.User.id == user_id)
     )
     db_user = result.scalars().first()
@@ -141,7 +141,7 @@ async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
         # Reload user to ensure clean state and avoid async refresh issues
         result = await db.execute(
             select(models.User)
-            .options(selectinload(models.User.branches), selectinload(models.User.branch))
+            .options(selectinload(models.User.branches), joinedload(models.User.branch))
             .where(models.User.id == user_id)
         )
         db_user = result.scalars().first()
@@ -158,6 +158,7 @@ async def delete_user(db: AsyncSession, user_id: int):
 
 # User Groups
 async def get_user_groups(db: AsyncSession, skip: int = 0, limit: int = 100):
+    # Use selectinload for 1:N collection (users)
     query = select(models.UserGroup).options(selectinload(models.UserGroup.users))
     result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
@@ -276,7 +277,7 @@ async def delete_cost_center(db: AsyncSession, cost_center_id: int):
 
 # Sectors
 async def get_sectors(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None, branch_id: int = None):
-    query = select(models.Sector).options(selectinload(models.Sector.branch))
+    query = select(models.Sector).options(joinedload(models.Sector.branch))
     if branch_id:
         query = query.where(or_(models.Sector.branch_id == branch_id, models.Sector.branch_id == None))
     if search:
@@ -402,13 +403,13 @@ async def get_items_by_ids(db: AsyncSession, item_ids: list[int]):
     if not item_ids:
         return []
     query = select(models.Item).options(
-        selectinload(models.Item.branch),
-        selectinload(models.Item.transfer_target_branch),
-        selectinload(models.Item.category_rel),
-        selectinload(models.Item.supplier),
-        selectinload(models.Item.responsible),
-        selectinload(models.Item.cost_center),
-        selectinload(models.Item.sector)
+        joinedload(models.Item.branch),
+        joinedload(models.Item.transfer_target_branch),
+        joinedload(models.Item.category_rel),
+        joinedload(models.Item.supplier),
+        joinedload(models.Item.responsible),
+        joinedload(models.Item.cost_center),
+        joinedload(models.Item.sector)
     ).where(models.Item.id.in_(item_ids))
     result = await db.execute(query)
     return result.scalars().all()
@@ -424,12 +425,12 @@ async def get_pending_action_items(db: AsyncSession, user_id: int, user_branches
     2. READY_FOR_WRITE_OFF where responsible is user OR branch in user_branches.
     """
     query = select(models.Item).options(
-        selectinload(models.Item.branch),
-        selectinload(models.Item.transfer_target_branch),
-        selectinload(models.Item.category_rel),
-        selectinload(models.Item.responsible),
-        selectinload(models.Item.cost_center),
-        selectinload(models.Item.sector)
+        joinedload(models.Item.branch),
+        joinedload(models.Item.transfer_target_branch),
+        joinedload(models.Item.category_rel),
+        joinedload(models.Item.responsible),
+        joinedload(models.Item.cost_center),
+        joinedload(models.Item.sector)
     ).where(
         or_(
             (models.Item.status == models.ItemStatus.IN_TRANSIT) & (models.Item.transfer_target_branch_id.in_(user_branches)),
@@ -507,13 +508,13 @@ async def get_items(
 
 async def get_item(db: AsyncSession, item_id: int):
     query = select(models.Item).where(models.Item.id == item_id).options(
-        selectinload(models.Item.branch),
-        selectinload(models.Item.transfer_target_branch),
-        selectinload(models.Item.category_rel),
-        selectinload(models.Item.supplier),
-        selectinload(models.Item.responsible),
-        selectinload(models.Item.cost_center),
-        selectinload(models.Item.sector)
+        joinedload(models.Item.branch),
+        joinedload(models.Item.transfer_target_branch),
+        joinedload(models.Item.category_rel),
+        joinedload(models.Item.supplier),
+        joinedload(models.Item.responsible),
+        joinedload(models.Item.cost_center),
+        joinedload(models.Item.sector)
     )
     result = await db.execute(query)
     return result.scalars().first()
@@ -551,12 +552,12 @@ async def create_item(db: AsyncSession, item: schemas.ItemCreate, action_log: st
     await db.commit()
     # Eager load relationships for Pydantic serialization
     query = select(models.Item).where(models.Item.id == db_item.id).options(
-        selectinload(models.Item.branch),
-        selectinload(models.Item.category_rel),
-        selectinload(models.Item.supplier),
-        selectinload(models.Item.responsible),
-        selectinload(models.Item.cost_center),
-        selectinload(models.Item.sector)
+        joinedload(models.Item.branch),
+        joinedload(models.Item.category_rel),
+        joinedload(models.Item.supplier),
+        joinedload(models.Item.responsible),
+        joinedload(models.Item.cost_center),
+        joinedload(models.Item.sector)
     )
     result = await db.execute(query)
     return result.scalars().first()
@@ -568,12 +569,12 @@ async def get_item_by_fixed_asset(db: AsyncSession, fixed_asset_number: str, exc
         query = query.where(models.Item.id != exclude_item_id)
 
     query = query.options(
-        selectinload(models.Item.branch),
-        selectinload(models.Item.category_rel),
-        selectinload(models.Item.supplier),
-        selectinload(models.Item.responsible),
-        selectinload(models.Item.cost_center),
-        selectinload(models.Item.sector)
+        joinedload(models.Item.branch),
+        joinedload(models.Item.category_rel),
+        joinedload(models.Item.supplier),
+        joinedload(models.Item.responsible),
+        joinedload(models.Item.cost_center),
+        joinedload(models.Item.sector)
     )
     result = await db.execute(query)
     return result.scalars().first()
@@ -649,13 +650,13 @@ async def update_item_status(db: AsyncSession, item_id: int, status: models.Item
 
         # Reload item with relationships to prevent MissingGreenlet
         query = select(models.Item).where(models.Item.id == item_id).options(
-            selectinload(models.Item.branch),
-            selectinload(models.Item.transfer_target_branch),
-            selectinload(models.Item.category_rel),
-            selectinload(models.Item.supplier),
-            selectinload(models.Item.responsible),
-            selectinload(models.Item.cost_center),
-            selectinload(models.Item.sector)
+            joinedload(models.Item.branch),
+            joinedload(models.Item.transfer_target_branch),
+            joinedload(models.Item.category_rel),
+            joinedload(models.Item.supplier),
+            joinedload(models.Item.responsible),
+            joinedload(models.Item.cost_center),
+            joinedload(models.Item.sector)
         )
         result = await db.execute(query)
         db_item = result.scalars().first()
@@ -684,8 +685,8 @@ async def update_system_setting(db: AsyncSession, key: str, value: str):
 
 async def get_all_logs(db: AsyncSession, limit: int = 1000):
     query = select(models.Log).options(
-        selectinload(models.Log.user),
-        selectinload(models.Log.item)
+        joinedload(models.Log.user),
+        joinedload(models.Log.item)
     ).order_by(models.Log.timestamp.desc()).limit(limit)
     result = await db.execute(query)
     return result.scalars().all()
@@ -705,13 +706,13 @@ async def request_write_off(db: AsyncSession, item_id: int, justification: str, 
 
         # Reload with relationships
         query = select(models.Item).where(models.Item.id == item_id).options(
-            selectinload(models.Item.branch),
-            selectinload(models.Item.transfer_target_branch),
-            selectinload(models.Item.category_rel),
-            selectinload(models.Item.supplier),
-            selectinload(models.Item.responsible),
-            selectinload(models.Item.cost_center),
-            selectinload(models.Item.sector)
+            joinedload(models.Item.branch),
+            joinedload(models.Item.transfer_target_branch),
+            joinedload(models.Item.category_rel),
+            joinedload(models.Item.supplier),
+            joinedload(models.Item.responsible),
+            joinedload(models.Item.cost_center),
+            joinedload(models.Item.sector)
         )
         result = await db.execute(query)
         db_item = result.scalars().first()
@@ -754,13 +755,13 @@ async def update_item(db: AsyncSession, item_id: int, item: schemas.ItemUpdate):
 
         # Reload with relationships
         query = select(models.Item).where(models.Item.id == item_id).options(
-            selectinload(models.Item.branch),
-            selectinload(models.Item.transfer_target_branch),
-            selectinload(models.Item.category_rel),
-            selectinload(models.Item.supplier),
-            selectinload(models.Item.responsible),
-            selectinload(models.Item.cost_center),
-            selectinload(models.Item.sector)
+            joinedload(models.Item.branch),
+            joinedload(models.Item.transfer_target_branch),
+            joinedload(models.Item.category_rel),
+            joinedload(models.Item.supplier),
+            joinedload(models.Item.responsible),
+            joinedload(models.Item.cost_center),
+            joinedload(models.Item.sector)
         )
         result = await db.execute(query)
         db_item = result.scalars().first()
@@ -792,13 +793,13 @@ async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int
 
         # Reload with relationships
         query = select(models.Item).where(models.Item.id == item_id).options(
-            selectinload(models.Item.branch),
-            selectinload(models.Item.transfer_target_branch),
-            selectinload(models.Item.category_rel),
-            selectinload(models.Item.supplier),
-            selectinload(models.Item.responsible),
-            selectinload(models.Item.cost_center),
-            selectinload(models.Item.sector)
+            joinedload(models.Item.branch),
+            joinedload(models.Item.transfer_target_branch),
+            joinedload(models.Item.category_rel),
+            joinedload(models.Item.supplier),
+            joinedload(models.Item.responsible),
+            joinedload(models.Item.cost_center),
+            joinedload(models.Item.sector)
         )
         result = await db.execute(query)
         db_item = result.scalars().first()
@@ -808,9 +809,9 @@ async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int
 # Approval Workflows
 async def get_approval_workflows(db: AsyncSession, category_id: int = None):
     query = select(models.ApprovalWorkflow).options(
-        selectinload(models.ApprovalWorkflow.category),
-        selectinload(models.ApprovalWorkflow.required_user),
-        selectinload(models.ApprovalWorkflow.required_group)
+        joinedload(models.ApprovalWorkflow.category),
+        joinedload(models.ApprovalWorkflow.required_user),
+        joinedload(models.ApprovalWorkflow.required_group)
     )
     if category_id:
         query = query.where(models.ApprovalWorkflow.category_id == category_id)
@@ -840,9 +841,9 @@ async def create_approval_workflow(db: AsyncSession, workflow: schemas.ApprovalW
     await db.refresh(db_workflow)
     # Reload relation
     query = select(models.ApprovalWorkflow).where(models.ApprovalWorkflow.id == db_workflow.id).options(
-        selectinload(models.ApprovalWorkflow.category),
-        selectinload(models.ApprovalWorkflow.required_user),
-        selectinload(models.ApprovalWorkflow.required_group)
+        joinedload(models.ApprovalWorkflow.category),
+        joinedload(models.ApprovalWorkflow.required_user),
+        joinedload(models.ApprovalWorkflow.required_group)
     )
     result = await db.execute(query)
     return result.scalars().first()
@@ -871,9 +872,9 @@ async def update_approval_workflow(db: AsyncSession, workflow_id: int, workflow_
 
         # Reload relation
         query = select(models.ApprovalWorkflow).where(models.ApprovalWorkflow.id == db_workflow.id).options(
-            selectinload(models.ApprovalWorkflow.category),
-            selectinload(models.ApprovalWorkflow.required_user),
-            selectinload(models.ApprovalWorkflow.required_group)
+            joinedload(models.ApprovalWorkflow.category),
+            joinedload(models.ApprovalWorkflow.required_user),
+            joinedload(models.ApprovalWorkflow.required_group)
         )
         result = await db.execute(query)
         db_workflow = result.scalars().first()
@@ -939,8 +940,8 @@ async def get_request(db: AsyncSession, request_id: int):
 async def get_requests(db: AsyncSession, skip: int = 0, limit: int = 100,
                        requester_id: int = None, status: models.RequestStatus = None):
     query = select(models.Request).options(
-        selectinload(models.Request.requester),
-        selectinload(models.Request.category),
+        joinedload(models.Request.requester),
+        joinedload(models.Request.category),
         selectinload(models.Request.items)
     )
     if requester_id:
@@ -964,14 +965,16 @@ async def update_request(db: AsyncSession, request_id: int, request_update: sche
         await db.refresh(db_request)
         # Reload relationships
         query = select(models.Request).where(models.Request.id == request_id).options(
-            selectinload(models.Request.requester),
-            selectinload(models.Request.category),
+            joinedload(models.Request.requester),
+            joinedload(models.Request.category),
             selectinload(models.Request.items).options(
-                 selectinload(models.Item.branch),
-                 selectinload(models.Item.transfer_target_branch),
-                 selectinload(models.Item.category_rel),
-                 selectinload(models.Item.supplier),
-                 selectinload(models.Item.responsible)
+                 joinedload(models.Item.branch),
+                 joinedload(models.Item.transfer_target_branch),
+                 joinedload(models.Item.category_rel),
+                 joinedload(models.Item.supplier),
+                 joinedload(models.Item.responsible),
+                 joinedload(models.Item.cost_center),
+                 joinedload(models.Item.sector)
             )
         )
         result = await db.execute(query)
