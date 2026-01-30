@@ -981,9 +981,47 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                         )}
 
                                         {item.invoice_file && (
-                                            <a href={`${api.defaults.baseURL}/${item.invoice_file}`} target="_blank" className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Ver NF">
-                                                <FileText size={18} />
-                                            </a>
+                                            <div className="flex gap-1">
+                                                <a href={`${api.defaults.baseURL}/${item.invoice_file}`} target="_blank" className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Ver NF">
+                                                    <FileText size={18} />
+                                                </a>
+                                                <button
+                                                    onClick={() => {
+                                                        const url = `${api.defaults.baseURL}/${item.invoice_file}`;
+                                                        if (item.invoice_file.toLowerCase().endsWith('.pdf')) {
+                                                            window.open(url, '_blank');
+                                                        } else {
+                                                            // For images, create a print window
+                                                            const printWindow = window.open('', '_blank');
+                                                            if (printWindow) {
+                                                                printWindow.document.write(`
+                                                                    <html>
+                                                                        <head>
+                                                                            <title>Imprimir Nota Fiscal - ${item.description}</title>
+                                                                            <style>
+                                                                                body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f0f0f0; }
+                                                                                img { max-width: 100%; height: auto; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+                                                                                @media print {
+                                                                                    body { background: white; }
+                                                                                    img { box-shadow: none; max-height: 100vh; }
+                                                                                }
+                                                                            </style>
+                                                                        </head>
+                                                                        <body>
+                                                                            <img src="${url}" onload="window.print();" />
+                                                                        </body>
+                                                                    </html>
+                                                                `);
+                                                                printWindow.document.close();
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                                    title="Imprimir / Salvar PDF"
+                                                >
+                                                    <Download size={18} />
+                                                </button>
+                                            </div>
                                         )}
 
                                         <button onClick={() => openDetailsModal(item)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" title="Detalhes">

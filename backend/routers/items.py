@@ -34,7 +34,8 @@ def build_item_details(item: models.Item) -> dict:
         return m.get(s, s)
 
     # Infer base URL from environment or fallback to localhost
-    base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
+    # Ensure no trailing slash
+    base_url = os.getenv("APP_BASE_URL", "http://localhost:8001").rstrip("/")
 
     invoice_link = None
     if item.invoice_file:
