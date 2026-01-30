@@ -408,15 +408,21 @@ async def create_item(
                     # Only convert single-page PDFs to avoid data loss
                     if doc.page_count == 1:
                         page = doc.load_page(0)
-                        pix = page.get_pixmap()
+
+                        # Render at higher resolution (DPI ~150-200) for better text clarity
+                        zoom = 2.0
+                        mat = fitz.Matrix(zoom, zoom)
+                        pix = page.get_pixmap(matrix=mat, alpha=False)
 
                         webp_filename = os.path.splitext(filename)[0] + ".webp"
                         webp_path = os.path.join(UPLOAD_DIR, webp_filename)
 
-                        # Convert to PIL and save as optimized WebP
+                        # Convert to PIL and save as high-quality WebP
                         img_data = pix.tobytes("png")
                         image = Image.open(io.BytesIO(img_data))
-                        image.save(webp_path, "WEBP", quality=80, method=6)
+
+                        # Save with higher quality (90) and best compression method (6)
+                        image.save(webp_path, "WEBP", quality=90, method=6)
 
                         doc.close()
                         return webp_filename
