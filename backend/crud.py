@@ -164,8 +164,15 @@ async def delete_user(db: AsyncSession, user_id: int):
 
 # User Groups
 async def get_user_groups(db: AsyncSession, skip: int = 0, limit: int = 100):
-    # Use selectinload for 1:N collection (users)
-    query = select(models.UserGroup).options(selectinload(models.UserGroup.users))
+    # Use selectinload for 1:N collection (users) but prevent recursion
+    query = select(models.UserGroup).options(
+        selectinload(models.UserGroup.users).options(
+            noload(models.User.group),
+            noload(models.User.branches),
+            noload(models.User.requests)
+        ),
+        noload(models.UserGroup.approval_workflows)
+    )
     result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
@@ -197,7 +204,12 @@ async def delete_user_group(db: AsyncSession, group_id: int):
 
 # Branches
 async def get_branches(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
-    query = select(models.Branch)
+    # Explicitly disable recursive loading for items and users
+    query = select(models.Branch).options(
+        noload(models.Branch.items),
+        noload(models.Branch.users),
+        noload(models.Branch.users_legacy)
+    )
     if search:
         search_filter = f"%{search}%"
         query = query.where(
@@ -238,7 +250,7 @@ async def delete_branch(db: AsyncSession, branch_id: int):
 
 # Cost Centers
 async def get_cost_centers(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
-    query = select(models.CostCenter)
+    query = select(models.CostCenter).options(noload(models.CostCenter.items))
     if search:
         search_filter = f"%{search}%"
         query = query.where(
@@ -283,7 +295,10 @@ async def delete_cost_center(db: AsyncSession, cost_center_id: int):
 
 # Sectors
 async def get_sectors(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None, branch_id: int = None):
-    query = select(models.Sector).options(joinedload(models.Sector.branch))
+    query = select(models.Sector).options(
+        joinedload(models.Sector.branch).options(noload(models.Branch.items), noload(models.Branch.users)),
+        noload(models.Sector.items)
+    )
     if branch_id:
         query = query.where(or_(models.Sector.branch_id == branch_id, models.Sector.branch_id == None))
     if search:
@@ -321,7 +336,11 @@ async def delete_sector(db: AsyncSession, sector_id: int):
 
 # Categories
 async def get_categories(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
-    query = select(models.Category)
+    query = select(models.Category).options(
+        noload(models.Category.items),
+        noload(models.Category.requests),
+        noload(models.Category.approval_workflows)
+    )
     if search:
         query = query.where(models.Category.name.ilike(f"%{search}%"))
     result = await db.execute(query.offset(skip).limit(limit))
@@ -361,7 +380,7 @@ async def delete_category(db: AsyncSession, category_id: int):
 
 # Suppliers
 async def get_suppliers(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
-    query = select(models.Supplier)
+    query = select(models.Supplier).options(noload(models.Supplier.items))
     if search:
         search_filter = f"%{search}%"
         query = query.where(
@@ -558,12 +577,13 @@ async def create_item(db: AsyncSession, item: schemas.ItemCreate, action_log: st
     await db.commit()
     # Eager load relationships for Pydantic serialization
     query = select(models.Item).where(models.Item.id == db_item.id).options(
-        joinedload(models.Item.branch),
-        joinedload(models.Item.category_rel),
-        joinedload(models.Item.supplier),
-        joinedload(models.Item.responsible),
-        joinedload(models.Item.cost_center),
-        joinedload(models.Item.sector)
+        joinedload(models.Item.branch).options(noload(models.Branch.items)),
+        joinedload(models.Item.transfer_target_branch),
+        joinedload(models.Item.category_rel).options(noload(models.Category.items)),
+        joinedload(models.Item.supplier).options(noload(models.Supplier.items)),
+        joinedload(models.Item.responsible).options(noload(models.User.items_responsible), noload(models.User.branches)),
+        joinedload(models.Item.cost_center).options(noload(models.CostCenter.items)),
+        joinedload(models.Item.sector).options(noload(models.Sector.items))
     )
     result = await db.execute(query)
     return result.scalars().first()
@@ -656,13 +676,13 @@ async def update_item_status(db: AsyncSession, item_id: int, status: models.Item
 
         # Reload item with relationships to prevent MissingGreenlet
         query = select(models.Item).where(models.Item.id == item_id).options(
-            joinedload(models.Item.branch),
+            joinedload(models.Item.branch).options(noload(models.Branch.items)),
             joinedload(models.Item.transfer_target_branch),
-            joinedload(models.Item.category_rel),
-            joinedload(models.Item.supplier),
-            joinedload(models.Item.responsible),
-            joinedload(models.Item.cost_center),
-            joinedload(models.Item.sector)
+            joinedload(models.Item.category_rel).options(noload(models.Category.items)),
+            joinedload(models.Item.supplier).options(noload(models.Supplier.items)),
+            joinedload(models.Item.responsible).options(noload(models.User.items_responsible), noload(models.User.branches)),
+            joinedload(models.Item.cost_center).options(noload(models.CostCenter.items)),
+            joinedload(models.Item.sector).options(noload(models.Sector.items))
         )
         result = await db.execute(query)
         db_item = result.scalars().first()
@@ -712,13 +732,13 @@ async def request_write_off(db: AsyncSession, item_id: int, justification: str, 
 
         # Reload with relationships
         query = select(models.Item).where(models.Item.id == item_id).options(
-            joinedload(models.Item.branch),
+            joinedload(models.Item.branch).options(noload(models.Branch.items)),
             joinedload(models.Item.transfer_target_branch),
-            joinedload(models.Item.category_rel),
-            joinedload(models.Item.supplier),
-            joinedload(models.Item.responsible),
-            joinedload(models.Item.cost_center),
-            joinedload(models.Item.sector)
+            joinedload(models.Item.category_rel).options(noload(models.Category.items)),
+            joinedload(models.Item.supplier).options(noload(models.Supplier.items)),
+            joinedload(models.Item.responsible).options(noload(models.User.items_responsible), noload(models.User.branches)),
+            joinedload(models.Item.cost_center).options(noload(models.CostCenter.items)),
+            joinedload(models.Item.sector).options(noload(models.Sector.items))
         )
         result = await db.execute(query)
         db_item = result.scalars().first()
@@ -761,13 +781,13 @@ async def update_item(db: AsyncSession, item_id: int, item: schemas.ItemUpdate):
 
         # Reload with relationships
         query = select(models.Item).where(models.Item.id == item_id).options(
-            joinedload(models.Item.branch),
+            joinedload(models.Item.branch).options(noload(models.Branch.items)),
             joinedload(models.Item.transfer_target_branch),
-            joinedload(models.Item.category_rel),
-            joinedload(models.Item.supplier),
-            joinedload(models.Item.responsible),
-            joinedload(models.Item.cost_center),
-            joinedload(models.Item.sector)
+            joinedload(models.Item.category_rel).options(noload(models.Category.items)),
+            joinedload(models.Item.supplier).options(noload(models.Supplier.items)),
+            joinedload(models.Item.responsible).options(noload(models.User.items_responsible), noload(models.User.branches)),
+            joinedload(models.Item.cost_center).options(noload(models.CostCenter.items)),
+            joinedload(models.Item.sector).options(noload(models.Sector.items))
         )
         result = await db.execute(query)
         db_item = result.scalars().first()
@@ -799,13 +819,13 @@ async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int
 
         # Reload with relationships
         query = select(models.Item).where(models.Item.id == item_id).options(
-            joinedload(models.Item.branch),
+            joinedload(models.Item.branch).options(noload(models.Branch.items)),
             joinedload(models.Item.transfer_target_branch),
-            joinedload(models.Item.category_rel),
-            joinedload(models.Item.supplier),
-            joinedload(models.Item.responsible),
-            joinedload(models.Item.cost_center),
-            joinedload(models.Item.sector)
+            joinedload(models.Item.category_rel).options(noload(models.Category.items)),
+            joinedload(models.Item.supplier).options(noload(models.Supplier.items)),
+            joinedload(models.Item.responsible).options(noload(models.User.items_responsible), noload(models.User.branches)),
+            joinedload(models.Item.cost_center).options(noload(models.CostCenter.items)),
+            joinedload(models.Item.sector).options(noload(models.Sector.items))
         )
         result = await db.execute(query)
         db_item = result.scalars().first()
@@ -815,9 +835,9 @@ async def request_transfer(db: AsyncSession, item_id: int, target_branch_id: int
 # Approval Workflows
 async def get_approval_workflows(db: AsyncSession, category_id: int = None):
     query = select(models.ApprovalWorkflow).options(
-        joinedload(models.ApprovalWorkflow.category),
-        joinedload(models.ApprovalWorkflow.required_user),
-        joinedload(models.ApprovalWorkflow.required_group)
+        joinedload(models.ApprovalWorkflow.category).options(noload(models.Category.items), noload(models.Category.requests)),
+        joinedload(models.ApprovalWorkflow.required_user).options(noload(models.User.branches), noload(models.User.requests)),
+        joinedload(models.ApprovalWorkflow.required_group).options(noload(models.UserGroup.users))
     )
     if category_id:
         query = query.where(models.ApprovalWorkflow.category_id == category_id)
@@ -847,9 +867,9 @@ async def create_approval_workflow(db: AsyncSession, workflow: schemas.ApprovalW
     await db.refresh(db_workflow)
     # Reload relation
     query = select(models.ApprovalWorkflow).where(models.ApprovalWorkflow.id == db_workflow.id).options(
-        joinedload(models.ApprovalWorkflow.category),
-        joinedload(models.ApprovalWorkflow.required_user),
-        joinedload(models.ApprovalWorkflow.required_group)
+        joinedload(models.ApprovalWorkflow.category).options(noload(models.Category.items), noload(models.Category.requests)),
+        joinedload(models.ApprovalWorkflow.required_user).options(noload(models.User.branches), noload(models.User.requests)),
+        joinedload(models.ApprovalWorkflow.required_group).options(noload(models.UserGroup.users))
     )
     result = await db.execute(query)
     return result.scalars().first()
@@ -878,9 +898,9 @@ async def update_approval_workflow(db: AsyncSession, workflow_id: int, workflow_
 
         # Reload relation
         query = select(models.ApprovalWorkflow).where(models.ApprovalWorkflow.id == db_workflow.id).options(
-            joinedload(models.ApprovalWorkflow.category),
-            joinedload(models.ApprovalWorkflow.required_user),
-            joinedload(models.ApprovalWorkflow.required_group)
+            joinedload(models.ApprovalWorkflow.category).options(noload(models.Category.items), noload(models.Category.requests)),
+            joinedload(models.ApprovalWorkflow.required_user).options(noload(models.User.branches), noload(models.User.requests)),
+            joinedload(models.ApprovalWorkflow.required_group).options(noload(models.UserGroup.users))
         )
         result = await db.execute(query)
         db_workflow = result.scalars().first()
