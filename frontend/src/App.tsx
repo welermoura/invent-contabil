@@ -90,12 +90,14 @@ const Layout = () => {
                     target: '#nav-dashboard',
                     content: 'Painel de Controle: Visualize KPIs, gráficos de movimentação e resumos operacionais em tempo real.',
                     disableBeacon: true,
+                    placement: 'right',
                     data: { section: 'principal' }
                 });
 
                 steps.push({
                     target: '#nav-inventory',
                     content: 'Inventário Geral: Consulte todos os itens, filtre por status/filial e inicie ações como transferências ou baixas.',
+                    placement: 'right',
                     data: { section: 'principal' }
                 });
 
@@ -103,11 +105,13 @@ const Layout = () => {
                     steps.push({
                         target: '#nav-my-requests',
                         content: 'Minhas Solicitações: Acompanhe o status (pendente, aprovado, rejeitado) de tudo que você solicitou.',
+                        placement: 'right',
                         data: { section: 'principal' }
                     });
                     steps.push({
                         target: '#nav-pending-actions',
                         content: 'Confirmações Pendentes: Realize ações operacionais que dependem de você, como confirmar o recebimento de itens transferidos.',
+                        placement: 'right',
                         data: { section: 'principal' }
                     });
                 }
@@ -116,6 +120,7 @@ const Layout = () => {
                     steps.push({
                         target: '#nav-pending-approvals',
                         content: 'Aprovações Pendentes: Central de decisão. Analise, aprove ou rejeite solicitações de novos itens, transferências e baixas.',
+                        placement: 'right',
                         data: { section: 'principal' }
                     });
                 }
@@ -124,12 +129,14 @@ const Layout = () => {
                 steps.push({
                     target: '#nav-branches',
                     content: 'Filiais: Visualize e gerencie as unidades físicas e seus endereços.',
+                    placement: 'right',
                     data: { section: 'cadastros' }
                 });
 
                 steps.push({
                     target: '#nav-sectors',
                     content: 'Setores: Mapeie os locais físicos ou departamentos dentro de cada filial.',
+                    placement: 'right',
                     data: { section: 'cadastros' }
                 });
 
@@ -137,6 +144,7 @@ const Layout = () => {
                     steps.push({
                         target: '#nav-categories',
                         content: 'Categorias: Organize os itens em grupos lógicos e defina regras de depreciação.',
+                        placement: 'right',
                         data: { section: 'cadastros' }
                     });
                 }
@@ -144,6 +152,7 @@ const Layout = () => {
                 steps.push({
                     target: '#nav-suppliers',
                     content: 'Fornecedores: Cadastro de parceiros comerciais e seus dados (CNPJ, Contato).',
+                    placement: 'right',
                     data: { section: 'cadastros' }
                 });
 
@@ -151,6 +160,7 @@ const Layout = () => {
                     steps.push({
                         target: '#nav-cost-centers',
                         content: 'Centros de Custo: Gerencie os centros para alocação financeira dos ativos.',
+                        placement: 'right',
                         data: { section: 'cadastros' }
                     });
                 }
@@ -160,21 +170,25 @@ const Layout = () => {
                     steps.push({
                         target: '#nav-users',
                         content: 'Usuários: Controle total sobre contas, redefinição de senhas e atribuição de funções.',
+                        placement: 'right',
                         data: { section: 'administracao' }
                     });
                     steps.push({
                         target: '#nav-user-groups',
                         content: 'Grupos de Aprovação: Crie grupos de usuários para fluxos de aprovação coletiva.',
+                        placement: 'right',
                         data: { section: 'administracao' }
                     });
                     steps.push({
                         target: '#nav-approval-workflows',
                         content: 'Malha de Aprovação: Configure visualmente quem deve aprovar o quê, baseado em categoria e tipo de ação.',
+                        placement: 'right',
                         data: { section: 'administracao' }
                     });
                     steps.push({
                         target: '#nav-safeguard',
                         content: 'Salva Guarda: Defina limites de valor (R$) que exigem aprovação especial de nível superior.',
+                        placement: 'right',
                         data: { section: 'administracao' }
                     });
                 }
@@ -183,6 +197,7 @@ const Layout = () => {
                     steps.push({
                         target: '#nav-system-settings',
                         content: 'Configurações: Personalize a aparência (Logo, Cores), configure o envio de e-mails (SMTP) e faça backups.',
+                        placement: 'right',
                         data: { section: 'administracao' }
                     });
                 }
@@ -191,6 +206,7 @@ const Layout = () => {
                 steps.push({
                     target: '#nav-reports',
                     content: 'Relatórios: Gere e exporte relatórios gerenciais, financeiros e operacionais (PDF/Excel).',
+                    placement: 'right',
                     data: { section: 'relatorios' }
                 });
 
