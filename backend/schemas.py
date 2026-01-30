@@ -1,0 +1,388 @@
+from pydantic import BaseModel, EmailStr, computed_field
+from typing import Optional, List, Dict, Any
+from datetime import datetime, date
+from backend.models import UserRole, ItemStatus, RequestType, RequestStatus, ApprovalActionType
+
+# Token
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+# User
+class UserBase(BaseModel):
+    # Alterado de EmailStr para str para permitir login "admin" simplificado
+    email: str
+    name: str
+    role: UserRole = UserRole.OPERATOR
+
+class UserCreate(UserBase):
+    password: str
+    branch_id: Optional[int] = None
+    branch_ids: Optional[List[int]] = []
+    group_id: Optional[int] = None
+    all_branches: Optional[bool] = False
+    can_import: Optional[bool] = False
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    role: Optional[UserRole] = None
+    branch_id: Optional[int] = None
+    branch_ids: Optional[List[int]] = None
+    group_id: Optional[int] = None
+    all_branches: Optional[bool] = None
+    can_import: Optional[bool] = None
+    password: Optional[str] = None
+
+class UserResponse(UserBase):
+    id: int
+    name: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[UserRole] = None
+    branch_id: Optional[int] = None
+    all_branches: bool = False
+    can_import: bool = False
+    branch: Optional["BranchResponse"] = None
+    branches: List["BranchResponse"] = []
+    group: Optional["UserGroupResponse"] = None
+    group_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+class UserGroupBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class UserGroupCreate(UserGroupBase):
+    pass
+
+class UserGroupUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+class UserGroupResponse(UserGroupBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+# Branch
+class BranchBase(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    cnpj: Optional[str] = None
+
+class BranchCreate(BranchBase):
+    pass
+
+class BranchResponse(BranchBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+# Cost Center
+class CostCenterBase(BaseModel):
+    code: str
+    name: str
+    description: Optional[str] = None
+
+class CostCenterCreate(CostCenterBase):
+    pass
+
+class CostCenterUpdate(BaseModel):
+    code: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+class CostCenterResponse(CostCenterBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+# Sector
+class SectorBase(BaseModel):
+    name: str
+    branch_id: Optional[int] = None
+
+class SectorCreate(SectorBase):
+    pass
+
+class SectorUpdate(BaseModel):
+    name: Optional[str] = None
+    branch_id: Optional[int] = None
+
+class SectorResponse(SectorBase):
+    id: int
+    branch: Optional[BranchResponse] = None
+    class Config:
+        from_attributes = True
+
+# Category
+class CategoryBase(BaseModel):
+    name: str
+    depreciation_months: Optional[int] = None
+
+class CategoryCreate(CategoryBase):
+    pass
+
+class CategoryResponse(CategoryBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+# Supplier
+class SupplierBase(BaseModel):
+    name: str
+    cnpj: str
+
+class SupplierCreate(SupplierBase):
+    pass
+
+class SupplierResponse(SupplierBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+# Log Forward Declaration
+class ItemSummary(BaseModel):
+    id: int
+    description: str
+    fixed_asset_number: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class LogResponse(BaseModel):
+    id: int
+    item_id: Optional[int] = None
+    user_id: Optional[int] = None
+    action: str
+    timestamp: datetime
+    user: Optional[UserResponse] = None
+    item: Optional[ItemSummary] = None
+
+    class Config:
+        from_attributes = True
+
+# Item
+class ItemBase(BaseModel):
+    description: str
+    category: str
+    purchase_date: datetime
+    invoice_value: float
+    invoice_number: str
+    serial_number: Optional[str] = None
+    branch_id: int
+    responsible_id: Optional[int] = None
+    observations: Optional[str] = None
+    supplier_id: Optional[int] = None
+    cost_center_id: Optional[int] = None
+    sector_id: Optional[int] = None
+
+class ItemCreate(ItemBase):
+    category_id: Optional[int] = None
+    fixed_asset_number: Optional[str] = None
+    status: Optional[ItemStatus] = None
+
+class ItemUpdate(BaseModel):
+    description: Optional[str] = None
+    category: Optional[str] = None
+    invoice_value: Optional[float] = None
+    status: Optional[ItemStatus] = None
+    fixed_asset_number: Optional[str] = None
+    observations: Optional[str] = None
+    supplier_id: Optional[int] = None
+    cost_center_id: Optional[int] = None
+    sector_id: Optional[int] = None
+
+class ItemResponse(ItemBase):
+    id: int
+    status: ItemStatus
+    description: Optional[str] = None
+    category: Optional[str] = None
+    purchase_date: Optional[datetime] = None
+    invoice_value: Optional[float] = None
+    invoice_number: Optional[str] = None
+    branch_id: Optional[int] = None
+    fixed_asset_number: Optional[str] = None
+    invoice_file: Optional[str] = None
+    supplier_id: Optional[int] = None
+    approval_step: Optional[int] = 1
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    branch: Optional[BranchResponse] = None
+    transfer_target_branch_id: Optional[int] = None
+    transfer_target_branch: Optional[BranchResponse] = None
+    transfer_invoice_number: Optional[str] = None
+    transfer_invoice_series: Optional[str] = None
+    transfer_invoice_date: Optional[datetime] = None
+    category_rel: Optional[CategoryResponse] = None
+    supplier: Optional[SupplierResponse] = None
+    responsible: Optional[UserResponse] = None
+    cost_center: Optional[CostCenterResponse] = None
+    sector: Optional[SectorResponse] = None
+    logs: List[LogResponse] = []
+
+    # Dynamic field for pending approvers (not in DB model)
+    current_approvers: List[str] = []
+
+    class Config:
+        from_attributes = True
+
+    @computed_field
+    @property
+    def accounting_value(self) -> float:
+        return self.calculate_accounting_value()
+
+    def calculate_accounting_value(self) -> float:
+        if self.invoice_value is None or self.purchase_date is None:
+            return 0.0
+
+        depreciation_months = None
+        if self.category_rel:
+            depreciation_months = self.category_rel.depreciation_months
+
+        # Se não houver depreciação configurada ou for 0, mantém o valor original
+        if not depreciation_months or depreciation_months <= 0:
+            return self.invoice_value
+
+        from dateutil.relativedelta import relativedelta
+
+        # Normaliza datas para evitar problemas com timezones e frações de dia (usa apenas a data)
+        start_date = self.purchase_date.date() if isinstance(self.purchase_date, datetime) else self.purchase_date
+        today = date.today()
+
+        # Calcula data final baseado nos meses
+        end_date = start_date + relativedelta(months=depreciation_months)
+
+        # Calcula dias totais de vida útil e dias passados
+        total_days = (end_date - start_date).days
+        elapsed_days = (today - start_date).days
+
+        if total_days <= 0:
+            return 0.0
+
+        if elapsed_days >= total_days:
+            return 0.0
+
+        if elapsed_days < 0:
+            return self.invoice_value
+
+        # Cálculo linear por dia
+        remaining_ratio = 1 - (elapsed_days / total_days)
+
+        # Garante que não retorne negativo (embora a checagem acima já deva prevenir)
+        final_value = max(0.0, self.invoice_value * remaining_ratio)
+
+        return round(final_value, 2)
+
+# Settings
+class SystemSettingBase(BaseModel):
+    key: str
+    value: str
+
+class SystemSettingCreate(SystemSettingBase):
+    pass
+
+class SystemSettingResponse(SystemSettingBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+class SmtpTestRequest(BaseModel):
+    host: str
+    port: int
+    username: str
+    password: str
+    from_email: str
+    to_email: str
+    security: str  # "TLS", "SSL", "None"
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+# Bulk Operations
+class BulkWriteOffRequest(BaseModel):
+    item_ids: List[int]
+    reason: str
+    justification: Optional[str] = None
+
+class BulkTransferRequest(BaseModel):
+    item_ids: List[int]
+    target_branch_id: int
+    invoice_number: Optional[str] = None
+    invoice_series: Optional[str] = None
+    invoice_date: Optional[datetime] = None
+
+# Approval Workflows
+class ApprovalWorkflowBase(BaseModel):
+    category_id: Optional[int] = None
+    action_type: ApprovalActionType
+    required_role: Optional[UserRole] = None
+    required_user_id: Optional[int] = None
+    required_group_id: Optional[int] = None
+    step_order: int = 1
+
+class ApprovalWorkflowCreate(ApprovalWorkflowBase):
+    pass
+
+class ApprovalWorkflowUpdate(BaseModel):
+    category_id: Optional[int] = None
+    action_type: Optional[ApprovalActionType] = None
+    required_role: Optional[UserRole] = None
+    required_user_id: Optional[int] = None
+    required_group_id: Optional[int] = None
+    step_order: Optional[int] = None
+
+class ApprovalWorkflowResponse(ApprovalWorkflowBase):
+    id: int
+    category: Optional["CategoryResponse"] = None
+    required_user: Optional["UserResponse"] = None
+    required_group: Optional["UserGroupResponse"] = None
+
+    class Config:
+        from_attributes = True
+
+# Requests
+class RequestBase(BaseModel):
+    type: RequestType
+    category_id: int
+    data: Optional[Dict[str, Any]] = None
+
+class RequestCreate(RequestBase):
+    requester_id: int
+
+class RequestUpdate(BaseModel):
+    status: Optional[RequestStatus] = None
+    current_step: Optional[int] = None
+
+class RequestResponse(RequestBase):
+    id: int
+    status: RequestStatus
+    requester_id: int
+    current_step: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    requester: Optional[UserResponse] = None
+    category: Optional[CategoryResponse] = None
+    items: List[ItemResponse] = []
+
+    # Dynamic
+    current_approvers: List[str] = []
+
+    class Config:
+        from_attributes = True
