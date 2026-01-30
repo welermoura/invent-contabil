@@ -35,6 +35,7 @@ interface SidebarProps {
     toggleSection: (section: string) => void;
     isCollapsed: boolean;
     setIsCollapsed: (collapsed: boolean) => void;
+    disableAnimations?: boolean;
 }
 
 export default function Sidebar({
@@ -43,7 +44,8 @@ export default function Sidebar({
     openSections,
     toggleSection,
     isCollapsed,
-    setIsCollapsed
+    setIsCollapsed,
+    disableAnimations = false
 }: SidebarProps) {
     const { user } = useAuth();
     const { settings } = useSettings();
@@ -150,7 +152,8 @@ export default function Sidebar({
                 </button>
 
                 <div
-                    className={`overflow-hidden transition-all duration-300 ease-in-out pl-2 border-l border-white/10 ml-4
+                    className={`overflow-hidden pl-2 border-l border-white/10 ml-4
+                        ${disableAnimations ? '' : 'transition-all duration-300 ease-in-out'}
                         ${isOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}
                     `}
                 >

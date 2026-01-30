@@ -281,6 +281,7 @@ const Layout = () => {
                 toggleSection={toggleSection}
                 isCollapsed={isSidebarCollapsed}
                 setIsCollapsed={setIsSidebarCollapsed}
+                disableAnimations={runTour}
             />
 
             {/* Main Content */}
