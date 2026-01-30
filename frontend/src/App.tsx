@@ -35,9 +35,6 @@ import {
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import AdaptiveContrastManager from './components/AdaptiveContrastManager';
-import Joyride, { STATUS } from 'react-joyride';
-import type { CallBackProps, Step } from 'react-joyride';
-import { TutorialTooltip } from './components/TutorialTooltip';
 
 const PrivateRoute = () => {
     const { isAuthenticated } = useAuth();
@@ -49,10 +46,6 @@ const Layout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
     const profileMenuRef = useRef<HTMLDivElement>(null);
-
-    // Tour State
-    const [runTour, setRunTour] = useState(false);
-    const [tourSteps, setTourSteps] = useState<Step[]>([]);
 
     // Sidebar Control State (Lifted from Sidebar)
     const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -80,170 +73,6 @@ const Layout = () => {
     };
 
     useEffect(() => {
-        if (user) {
-            const hasSeenTour = localStorage.getItem(`tour_completed_${user.role}`);
-            if (!hasSeenTour) {
-                const steps: Step[] = [];
-
-                // 1. Principal
-                steps.push({
-                    target: '#nav-dashboard',
-                    content: 'Painel de Controle: Visualize KPIs, gráficos de movimentação e resumos operacionais em tempo real.',
-                    disableBeacon: true,
-                    placement: 'right',
-                    data: { section: 'principal', anchor: 'nav-dashboard' }
-                });
-
-                steps.push({
-                    target: '#nav-inventory',
-                    content: 'Inventário Geral: Consulte todos os itens, filtre por status/filial e inicie ações como transferências ou baixas.',
-                    placement: 'right',
-                    data: { section: 'principal', anchor: 'nav-inventory' }
-                });
-
-                if (user.role === 'OPERATOR') {
-                    steps.push({
-                        target: '#nav-my-requests',
-                        content: 'Minhas Solicitações: Acompanhe o status (pendente, aprovado, rejeitado) de tudo que você solicitou.',
-                        placement: 'right',
-                        data: { section: 'principal', anchor: 'nav-my-requests' }
-                    });
-                    steps.push({
-                        target: '#nav-pending-actions',
-                        content: 'Confirmações Pendentes: Realize ações operacionais que dependem de você, como confirmar o recebimento de itens transferidos.',
-                        placement: 'right',
-                        data: { section: 'principal', anchor: 'nav-pending-actions' }
-                    });
-                }
-
-                if (user.role === 'APPROVER' || user.role === 'ADMIN' || user.role === 'REVIEWER') {
-                    steps.push({
-                        target: '#nav-pending-approvals',
-                        content: 'Aprovações Pendentes: Central de decisão. Analise, aprove ou rejeite solicitações de novos itens, transferências e baixas.',
-                        placement: 'right',
-                        data: { section: 'principal', anchor: 'nav-pending-approvals' }
-                    });
-                }
-
-                // 2. Cadastros
-                steps.push({
-                    target: '#nav-branches',
-                    content: 'Filiais: Visualize e gerencie as unidades físicas e seus endereços.',
-                    placement: 'right',
-                    data: { section: 'cadastros', anchor: 'nav-branches' }
-                });
-
-                steps.push({
-                    target: '#nav-sectors',
-                    content: 'Setores: Mapeie os locais físicos ou departamentos dentro de cada filial.',
-                    placement: 'right',
-                    data: { section: 'cadastros', anchor: 'nav-sectors' }
-                });
-
-                if (user.role !== 'OPERATOR') {
-                    steps.push({
-                        target: '#nav-categories',
-                        content: 'Categorias: Organize os itens em grupos lógicos e defina regras de depreciação.',
-                        placement: 'right',
-                        data: { section: 'cadastros', anchor: 'nav-categories' }
-                    });
-                }
-
-                steps.push({
-                    target: '#nav-suppliers',
-                    content: 'Fornecedores: Cadastro de parceiros comerciais e seus dados (CNPJ, Contato).',
-                    placement: 'right',
-                    data: { section: 'cadastros', anchor: 'nav-suppliers' }
-                });
-
-                if (user.role === 'ADMIN' || user.role === 'APPROVER') {
-                    steps.push({
-                        target: '#nav-cost-centers',
-                        content: 'Centros de Custo: Gerencie os centros para alocação financeira dos ativos.',
-                        placement: 'right',
-                        data: { section: 'cadastros', anchor: 'nav-cost-centers' }
-                    });
-                }
-
-                // 3. Administração
-                if (user.role === 'ADMIN' || user.role === 'APPROVER') {
-                    steps.push({
-                        target: '#nav-users',
-                        content: 'Usuários: Controle total sobre contas, redefinição de senhas e atribuição de funções.',
-                        placement: 'right',
-                        data: { section: 'administracao', anchor: 'nav-users' }
-                    });
-                    steps.push({
-                        target: '#nav-user-groups',
-                        content: 'Grupos de Aprovação: Crie grupos de usuários para fluxos de aprovação coletiva.',
-                        placement: 'right',
-                        data: { section: 'administracao', anchor: 'nav-user-groups' }
-                    });
-                    steps.push({
-                        target: '#nav-approval-workflows',
-                        content: 'Malha de Aprovação: Configure visualmente quem deve aprovar o quê, baseado em categoria e tipo de ação.',
-                        placement: 'right',
-                        data: { section: 'administracao', anchor: 'nav-approval-workflows' }
-                    });
-                    steps.push({
-                        target: '#nav-safeguard',
-                        content: 'Salva Guarda: Defina limites de valor (R$) que exigem aprovação especial de nível superior.',
-                        placement: 'right',
-                        data: { section: 'administracao', anchor: 'nav-safeguard' }
-                    });
-                }
-
-                if (user.role === 'ADMIN') {
-                    steps.push({
-                        target: '#nav-system-settings',
-                        content: 'Configurações: Personalize a aparência (Logo, Cores), configure o envio de e-mails (SMTP) e faça backups.',
-                        placement: 'right',
-                        data: { section: 'administracao', anchor: 'nav-system-settings' }
-                    });
-                }
-
-                // 4. Relatórios
-                steps.push({
-                    target: '#nav-reports',
-                    content: 'Relatórios: Gere e exporte relatórios gerenciais, financeiros e operacionais (PDF/Excel).',
-                    placement: 'right',
-                    data: { section: 'relatorios', anchor: 'nav-reports' }
-                });
-
-                setTourSteps(steps);
-                // Ensure Sidebar is open and not collapsed for the tour
-                setSidebarOpen(true);
-                setIsSidebarCollapsed(false);
-                setRunTour(true);
-            }
-        }
-    }, [user]);
-
-    const handleJoyrideCallback = (data: CallBackProps) => {
-        const { status, type, step } = data;
-
-        // Auto-expand Sidebar sections based on step metadata
-        if (type === 'step:before' || type === 'tour:start') {
-            const section = step.data?.section;
-            if (section) {
-                setOpenSections(prev => ({
-                    principal: section === 'principal',
-                    cadastros: section === 'cadastros',
-                    administracao: section === 'administracao',
-                    relatorios: section === 'relatorios'
-                }));
-            }
-        }
-
-        if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
-            setRunTour(false);
-            if (user) {
-                localStorage.setItem(`tour_completed_${user.role}`, 'true');
-            }
-        }
-    };
-
-    useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
                 setIsProfileMenuOpen(false);
@@ -259,37 +88,6 @@ const Layout = () => {
     return (
         <div className="flex h-screen font-sans text-slate-800 bg-transparent">
             <Notifications />
-            <Joyride
-                steps={tourSteps}
-                run={runTour}
-                continuous
-                showProgress={false}
-                showSkipButton
-                disableScrolling={false} // Allow scrolling
-                scrollOffset={100} // Offset to ensure target is visible
-                disableOverlayClose={true}
-                spotlightClicks={true}
-                callback={handleJoyrideCallback}
-                tooltipComponent={TutorialTooltip}
-                styles={{
-                    options: {
-                        primaryColor: '#2563eb',
-                        zIndex: 10000,
-                    }
-                }}
-                floaterProps={{
-                    hideArrow: false,
-                    disableAnimation: true, // Prevent glitches
-                    options: {
-                        strategy: 'fixed', // Force fixed positioning to match sidebar
-                    },
-                    styles: {
-                        floater: {
-                            filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))',
-                        }
-                    }
-                }}
-            />
 
             {/* Sidebar Component */}
             <Sidebar
@@ -299,7 +97,6 @@ const Layout = () => {
                 toggleSection={toggleSection}
                 isCollapsed={isSidebarCollapsed}
                 setIsCollapsed={setIsSidebarCollapsed}
-                disableAnimations={runTour}
             />
 
             {/* Main Content */}
