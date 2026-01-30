@@ -8,6 +8,12 @@ import os
 import json
 from datetime import datetime
 from backend.audit import calculate_diff
+import fitz  # PyMuPDF
+from PIL import Image
+import io
+import re
+import uuid
+from fastapi.concurrency import run_in_threadpool
 
 router = APIRouter(prefix="/items", tags=["items"])
 
@@ -374,15 +380,74 @@ async def create_item(
 
     file_path = None
     if file:
-        import os
-        import re
         filename = file.filename
+        # Sanitize filename
         filename = re.sub(r'[^A-Za-z0-9_.-]', '_', filename)
+
         safe_filename = filename
         file_location = os.path.join(UPLOAD_DIR, safe_filename)
-        with open(file_location, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        file_path = f"uploads/{safe_filename}"
+
+        # Check if PDF for WebP conversion
+        is_pdf = filename.lower().endswith('.pdf')
+
+        if is_pdf:
+            # Save temporarily with unique name to avoid race conditions
+            temp_filename = f"temp_{uuid.uuid4()}_{filename}"
+            temp_pdf_path = os.path.join(UPLOAD_DIR, temp_filename)
+
+            # Use run_in_threadpool for blocking I/O
+            def save_temp_file():
+                with open(temp_pdf_path, "wb") as buffer:
+                    shutil.copyfileobj(file.file, buffer)
+            await run_in_threadpool(save_temp_file)
+
+            def convert_pdf():
+                try:
+                    doc = fitz.open(temp_pdf_path)
+                    # Only convert single-page PDFs to avoid data loss
+                    if doc.page_count == 1:
+                        page = doc.load_page(0)
+                        pix = page.get_pixmap()
+
+                        webp_filename = os.path.splitext(filename)[0] + ".webp"
+                        webp_path = os.path.join(UPLOAD_DIR, webp_filename)
+
+                        # Convert to PIL and save as optimized WebP
+                        img_data = pix.tobytes("png")
+                        image = Image.open(io.BytesIO(img_data))
+                        image.save(webp_path, "WEBP", quality=80, method=6)
+
+                        doc.close()
+                        return webp_filename
+                    else:
+                        doc.close()
+                        return None
+                except Exception as e:
+                    print(f"Conversion error: {e}")
+                    return None
+
+            # Run conversion in thread pool
+            webp_result = await run_in_threadpool(convert_pdf)
+
+            if webp_result:
+                file_path = f"uploads/{webp_result}"
+                safe_filename = webp_result
+                # Remove temp PDF
+                if os.path.exists(temp_pdf_path):
+                    os.remove(temp_pdf_path)
+            else:
+                # Keep original PDF (multi-page or error)
+                if os.path.exists(file_location):
+                    os.remove(file_location) # Overwrite existing
+                os.rename(temp_pdf_path, file_location)
+                file_path = f"uploads/{filename}"
+        else:
+            # Standard save for images/others
+            def save_file():
+                with open(file_location, "wb") as buffer:
+                    shutil.copyfileobj(file.file, buffer)
+            await run_in_threadpool(save_file)
+            file_path = f"uploads/{safe_filename}"
 
     category_id = None
     if category:
