@@ -19,26 +19,47 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table('requests',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('type', sa.Enum('TRANSFER', 'WRITE_OFF', name='requesttype'), nullable=True),
-        sa.Column('status', sa.Enum('PENDING', 'APPROVED', 'REJECTED', name='requeststatus'), nullable=True),
-        sa.Column('requester_id', sa.Integer(), nullable=True),
-        sa.Column('category_id', sa.Integer(), nullable=True),
-        sa.Column('current_step', sa.Integer(), nullable=True),
-        sa.Column('data', sa.JSON(), nullable=True),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-        sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-        sa.ForeignKeyConstraint(['requester_id'], ['users.id'], ),
-        sa.ForeignKeyConstraint(['category_id'], ['categories.id'], ),
-        sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_requests_id'), 'requests', ['id'], unique=False)
-    op.create_index(op.f('ix_requests_status'), 'requests', ['status'], unique=False)
-    op.create_index(op.f('ix_requests_type'), 'requests', ['type'], unique=False)
+    # Safely create ENUMs first
+    # Using sqlalchemy's postgresql.ENUM with checkfirst=True doesn't always work inside op.create_table
+    # for async drivers or when types are used inline.
+    # Manual creation is safest.
 
-    op.add_column('items', sa.Column('request_id', sa.Integer(), nullable=True))
-    op.create_foreign_key(None, 'items', 'requests', ['request_id'], ['id'])
+    # 1. Create Types safely
+    postgresql.ENUM('TRANSFER', 'WRITE_OFF', name='requesttype').create(op.get_bind(), checkfirst=True)
+    postgresql.ENUM('PENDING', 'APPROVED', 'REJECTED', name='requeststatus').create(op.get_bind(), checkfirst=True)
+
+    # 2. Create Table
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS requests (
+            id SERIAL PRIMARY KEY,
+            type requesttype,
+            status requeststatus,
+            requester_id INTEGER REFERENCES users(id),
+            category_id INTEGER REFERENCES categories(id),
+            current_step INTEGER,
+            data JSON,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE
+        )
+    """)
+
+    # 3. Create Indexes safely
+    op.execute("CREATE INDEX IF NOT EXISTS ix_requests_id ON requests (id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_requests_status ON requests (status)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_requests_type ON requests (type)")
+
+    # 4. Add column to Items
+    op.execute("ALTER TABLE items ADD COLUMN IF NOT EXISTS request_id INTEGER")
+
+    # Safe FK
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'items_request_id_fkey') THEN
+                ALTER TABLE items ADD CONSTRAINT items_request_id_fkey FOREIGN KEY (request_id) REFERENCES requests(id);
+            END IF;
+        END $$;
+    """)
 
 
 def downgrade() -> None:
