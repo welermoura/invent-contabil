@@ -249,6 +249,10 @@ const Layout = () => {
                 continuous
                 showProgress={false}
                 showSkipButton
+                disableScrolling={false} // Allow scrolling
+                scrollOffset={100} // Offset to ensure target is visible
+                disableOverlayClose={true}
+                spotlightClicks={true}
                 callback={handleJoyrideCallback}
                 tooltipComponent={TutorialTooltip}
                 styles={{
@@ -259,6 +263,8 @@ const Layout = () => {
                 }}
                 floaterProps={{
                     hideArrow: false,
+                    placement: 'auto', // Smart positioning
+                    disableAnimation: true, // Prevent glitches
                     styles: {
                         floater: {
                             filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))',
