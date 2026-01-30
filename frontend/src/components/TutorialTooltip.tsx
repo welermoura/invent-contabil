@@ -19,13 +19,13 @@ export const TutorialTooltip = ({
         // @ts-ignore
         positionAnchor: `--${step.data.anchor}`,
         // @ts-ignore
-        top: 'anchor(top)',
+        top: 'anchor(center)', // Center vertically
         // @ts-ignore
         left: 'anchor(right)',
         // @ts-ignore
-        marginLeft: '12px', // gap
+        marginLeft: '12px',
         // @ts-ignore
-        alignSelf: 'start',
+        translate: '0 -50%', // Center correction
         // @ts-ignore
         transform: 'none', // Override lib transform
         // @ts-ignore
