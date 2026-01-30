@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.orm import selectinload, joinedload, noload
 from sqlalchemy import or_, cast, String
 from backend import models, schemas
 from backend.auth import get_password_hash
@@ -15,7 +15,10 @@ async def get_user_by_email(db: AsyncSession, email: str):
 async def get_user(db: AsyncSession, user_id: int):
     result = await db.execute(
         select(models.User)
-        .options(selectinload(models.User.branches), joinedload(models.User.branch))
+        .options(
+            selectinload(models.User.branches).options(noload(models.Branch.users)),
+            joinedload(models.User.branch)
+        )
         .where(models.User.id == user_id)
     )
     return result.scalars().first()
@@ -49,9 +52,9 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
 async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100, search: str = None):
     # Eager load branches for UserResponse
     query = select(models.User).options(
-        selectinload(models.User.branches),
+        selectinload(models.User.branches).options(noload(models.Branch.users)),
         joinedload(models.User.branch),
-        joinedload(models.User.group)
+        joinedload(models.User.group).options(noload(models.UserGroup.users))
     )
     if search:
         search_filter = f"%{search}%"
@@ -67,7 +70,7 @@ async def get_users(db: AsyncSession, skip: int = 0, limit: int = 100, search: s
 async def get_users_by_role(db: AsyncSession, roles: list[models.UserRole]):
     """Fetch users by a list of roles."""
     query = select(models.User).options(
-        selectinload(models.User.branches),
+        selectinload(models.User.branches).options(noload(models.Branch.users)),
         joinedload(models.User.branch)
     ).where(models.User.role.in_(roles))
     result = await db.execute(query)
@@ -76,7 +79,10 @@ async def get_users_by_role(db: AsyncSession, roles: list[models.UserRole]):
 async def update_user(db: AsyncSession, user_id: int, user: schemas.UserUpdate):
     result = await db.execute(
         select(models.User)
-        .options(selectinload(models.User.branches), joinedload(models.User.branch))
+        .options(
+            selectinload(models.User.branches).options(noload(models.Branch.users)),
+            joinedload(models.User.branch)
+        )
         .where(models.User.id == user_id)
     )
     db_user = result.scalars().first()
@@ -455,17 +461,17 @@ async def get_items(
     fixed_asset_number: str = None,
     purchase_date: str = None
 ):
-    from sqlalchemy.orm import joinedload
+    from sqlalchemy.orm import joinedload, noload
     # Use joinedload for single-item relationships to avoid N+1 queries effectively
     # and reduce "loader depth" complexity warning from recursive selectinloads.
     query = select(models.Item).options(
-        joinedload(models.Item.branch),
+        joinedload(models.Item.branch).options(noload(models.Branch.items)),
         joinedload(models.Item.transfer_target_branch),
-        joinedload(models.Item.category_rel),
-        joinedload(models.Item.supplier),
-        joinedload(models.Item.responsible),
-        joinedload(models.Item.cost_center),
-        joinedload(models.Item.sector)
+        joinedload(models.Item.category_rel).options(noload(models.Category.items)),
+        joinedload(models.Item.supplier).options(noload(models.Supplier.items)),
+        joinedload(models.Item.responsible).options(noload(models.User.items_responsible), noload(models.User.branches)),
+        joinedload(models.Item.cost_center).options(noload(models.CostCenter.items)),
+        joinedload(models.Item.sector).options(noload(models.Sector.items))
     )
     if status:
         query = query.where(models.Item.status == status)
@@ -919,19 +925,20 @@ async def get_request(db: AsyncSession, request_id: int):
     # Optimize loading depth by using specific loader options
     # We use selectinload for the collection (items) and then joinedload for 1:1 relations inside items
     # to avoid excessively deep recursion warnings and improve performance for 80k+ items scale.
-    from sqlalchemy.orm import joinedload
+    from sqlalchemy.orm import joinedload, noload
 
     query = select(models.Request).where(models.Request.id == request_id).options(
-        joinedload(models.Request.requester),
-        joinedload(models.Request.category),
+        joinedload(models.Request.requester).options(noload(models.User.requests), noload(models.User.branches)),
+        joinedload(models.Request.category).options(noload(models.Category.requests)),
         selectinload(models.Request.items).options(
-             joinedload(models.Item.branch),
+             noload(models.Item.request),
+             joinedload(models.Item.branch).options(noload(models.Branch.items)),
              joinedload(models.Item.transfer_target_branch),
-             joinedload(models.Item.category_rel),
-             joinedload(models.Item.supplier),
-             joinedload(models.Item.responsible),
-             joinedload(models.Item.cost_center),
-             joinedload(models.Item.sector)
+             joinedload(models.Item.category_rel).options(noload(models.Category.items)),
+             joinedload(models.Item.supplier).options(noload(models.Supplier.items)),
+             joinedload(models.Item.responsible).options(noload(models.User.items_responsible), noload(models.User.branches)),
+             joinedload(models.Item.cost_center).options(noload(models.CostCenter.items)),
+             joinedload(models.Item.sector).options(noload(models.Sector.items))
         )
     )
     result = await db.execute(query)
@@ -940,9 +947,13 @@ async def get_request(db: AsyncSession, request_id: int):
 async def get_requests(db: AsyncSession, skip: int = 0, limit: int = 100,
                        requester_id: int = None, status: models.RequestStatus = None):
     query = select(models.Request).options(
-        joinedload(models.Request.requester),
-        joinedload(models.Request.category),
-        selectinload(models.Request.items)
+        joinedload(models.Request.requester).options(noload(models.User.requests), noload(models.User.branches)),
+        joinedload(models.Request.category).options(noload(models.Category.requests)),
+        selectinload(models.Request.items).options(
+            noload(models.Item.request),
+            joinedload(models.Item.branch).options(noload(models.Branch.items)),
+            joinedload(models.Item.responsible).options(noload(models.User.items_responsible))
+        )
     )
     if requester_id:
         query = query.where(models.Request.requester_id == requester_id)
@@ -964,17 +975,19 @@ async def update_request(db: AsyncSession, request_id: int, request_update: sche
         await db.commit()
         await db.refresh(db_request)
         # Reload relationships
+        from sqlalchemy.orm import joinedload, noload
         query = select(models.Request).where(models.Request.id == request_id).options(
-            joinedload(models.Request.requester),
-            joinedload(models.Request.category),
+            joinedload(models.Request.requester).options(noload(models.User.requests), noload(models.User.branches)),
+            joinedload(models.Request.category).options(noload(models.Category.requests)),
             selectinload(models.Request.items).options(
-                 joinedload(models.Item.branch),
+                 noload(models.Item.request),
+                 joinedload(models.Item.branch).options(noload(models.Branch.items)),
                  joinedload(models.Item.transfer_target_branch),
-                 joinedload(models.Item.category_rel),
-                 joinedload(models.Item.supplier),
-                 joinedload(models.Item.responsible),
-                 joinedload(models.Item.cost_center),
-                 joinedload(models.Item.sector)
+                 joinedload(models.Item.category_rel).options(noload(models.Category.items)),
+                 joinedload(models.Item.supplier).options(noload(models.Supplier.items)),
+                 joinedload(models.Item.responsible).options(noload(models.User.items_responsible), noload(models.User.branches)),
+                 joinedload(models.Item.cost_center).options(noload(models.CostCenter.items)),
+                 joinedload(models.Item.sector).options(noload(models.Sector.items))
             )
         )
         result = await db.execute(query)
