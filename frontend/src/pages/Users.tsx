@@ -24,7 +24,7 @@ const Users: React.FC = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
     const [groups, setGroups] = useState<any[]>([]);
-    const { register, handleSubmit, reset, watch } = useForm();
+    const { register, handleSubmit, reset, watch, setValue } = useForm();
     const [showForm, setShowForm] = useState(false);
     const [editingUser, setEditingUser] = useState<any | null>(null);
     const [loading, setLoading] = useState(false);
@@ -70,6 +70,12 @@ const Users: React.FC = () => {
     }, []);
 
     const onSubmit = async (data: any) => {
+        // Validation: Operator cannot have all_branches
+        if (data.role === 'OPERATOR' && data.all_branches) {
+            showError("Operadores não podem ter acesso a todas as filiais. Selecione filiais específicas.");
+            return;
+        }
+
         // Validation: At least one branch or 'all_branches' must be selected
         if (!data.all_branches && (!data.branch_ids || data.branch_ids.length === 0)) {
             showError("BRANCH_REQUIRED");
@@ -219,7 +225,16 @@ const Users: React.FC = () => {
                                 <Shield className="w-4 h-4 text-gray-400" /> Função
                             </label>
                             <div className="space-y-2">
-                                <select {...register('role')} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white">
+                                <select
+                                    {...register('role')}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white"
+                                    onChange={(e) => {
+                                        register('role').onChange(e);
+                                        if (e.target.value === 'OPERATOR') {
+                                            setValue('all_branches', false);
+                                        }
+                                    }}
+                                >
                                     <option value="OPERATOR">Operador (Básico)</option>
                                     <option value="APPROVER">Aprovador (Gestor)</option>
                                     <option value="REVIEWER">Revisor (Avançado)</option>
@@ -245,14 +260,15 @@ const Users: React.FC = () => {
                                         type="checkbox"
                                         id="all_branches"
                                         {...register('all_branches')}
-                                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                        disabled={watch('role') === 'OPERATOR'}
+                                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                         // Force re-render of select below when this changes
                                         onChange={(e) => {
                                             register('all_branches').onChange(e);
                                             // Optional: clear selection if all is checked? No, keep it as is.
                                         }}
                                     />
-                                    <label htmlFor="all_branches" className="text-sm text-gray-600 cursor-pointer select-none">Todas as filiais (Acesso Total)</label>
+                                    <label htmlFor="all_branches" className={`text-sm text-gray-600 cursor-pointer select-none ${watch('role') === 'OPERATOR' ? 'opacity-50 cursor-not-allowed' : ''}`}>Todas as filiais (Acesso Total)</label>
                                 </div>
                             </label>
                             <select
@@ -266,6 +282,7 @@ const Users: React.FC = () => {
                                 ))}
                             </select>
                             {watch('all_branches') && <p className="text-xs text-indigo-600 font-medium mt-1">✓ Usuário terá acesso a todas as filiais atuais e futuras.</p>}
+                            {watch('role') === 'OPERATOR' && <p className="text-xs text-amber-600 font-medium mt-1">⚠️ Operadores devem ter filiais específicas atribuídas.</p>}
                         </div>
                         <div className="md:col-span-2 space-y-2">
                             <label className="text-sm font-medium text-gray-700 flex items-center gap-2 justify-between">
