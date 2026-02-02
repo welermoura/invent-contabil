@@ -802,6 +802,9 @@ async def update_item_status(
     # Allow Operators to confirm receipt (status IN_TRANSIT -> IN_STOCK)
     is_receipt_confirmation = (old_status == models.ItemStatus.IN_TRANSIT and status_update == models.ItemStatus.IN_STOCK)
 
+    # Allow Operators to finalize write-off (status READY_FOR_WRITE_OFF -> WRITTEN_OFF)
+    is_write_off_conclusion = (old_status == models.ItemStatus.READY_FOR_WRITE_OFF and status_update == models.ItemStatus.WRITTEN_OFF)
+
     if not is_admin_approver and not is_operator:
          raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Role não autorizada")
 
@@ -816,6 +819,16 @@ async def update_item_status(
             # Use transfer_target_branch_id because the item is technically still in the old branch until received
             if item_obj.transfer_target_branch_id not in allowed_branches:
                 raise HTTPException(status_code=403, detail="Você não tem permissão para receber itens nesta filial")
+
+        elif is_write_off_conclusion:
+             # Check if operator belongs to the branch (Standard check)
+            if not current_user.all_branches:
+                allowed_branches = [b.id for b in current_user.branches]
+                if current_user.branch_id and current_user.branch_id not in allowed_branches:
+                    allowed_branches.append(current_user.branch_id)
+                if item_obj.branch_id not in allowed_branches:
+                    raise HTTPException(status_code=403, detail="Sem permissão nesta filial")
+
         else:
             # Standard Operator Permissions
             if not current_user.all_branches:
