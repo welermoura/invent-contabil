@@ -10,8 +10,7 @@ import {
     CheckCircle,
     XCircle,
     ChevronDown,
-    ChevronUp,
-    Clock
+    ChevronUp
 } from 'lucide-react';
 
 const PendingApprovals: React.FC = () => {

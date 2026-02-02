@@ -7,6 +7,7 @@ interface WebSocketPayload {
     message: string;
     actor_id?: number;
     target_roles?: string[];
+    target_user_ids?: number[];
     target_branch_id?: number;
 }
 
@@ -84,8 +85,14 @@ const Notifications: React.FC = () => {
                         // Alternative: We can filter by Role.
                     }
 
-                    // 2. Filter by Role
-                    if (payload.target_roles && user) {
+                    // 2. Filter by Specific User IDs (Priority)
+                    if (payload.target_user_ids && payload.target_user_ids.length > 0) {
+                        if (!user || !user.id || !payload.target_user_ids.includes(user.id)) {
+                            return; // Not targeted to me specifically
+                        }
+                    }
+                    // 3. Fallback: Filter by Role (if no specific user IDs provided)
+                    else if (payload.target_roles && user) {
                         if (!payload.target_roles.includes(user.role)) {
                             return; // Not for my role
                         }
