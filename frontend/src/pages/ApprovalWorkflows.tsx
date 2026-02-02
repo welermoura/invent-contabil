@@ -9,6 +9,7 @@ interface ApprovalWorkflow {
     action_type: 'CREATE' | 'TRANSFER' | 'WRITE_OFF';
     required_role: 'ADMIN' | 'APPROVER' | 'OPERATOR' | 'AUDITOR' | null;
     required_user_id: number | null;
+    required_group_id?: number | null;
     step_order: number;
     category?: {
         id: number;

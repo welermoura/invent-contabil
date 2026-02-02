@@ -102,9 +102,16 @@ async def notify_transfer_request(db: AsyncSession, item: models.Item, frontend_
 
         if not frontend_url:
             base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
-            frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+            # Heuristic: Replace backend port 8001 with frontend port 5173 (Vite default) or 3000
+            if ":8001" in base_url:
+                frontend_url = base_url.replace(":8001", ":5173")
+            else:
+                frontend_url = base_url.rstrip("/")
 
-        action_url = f"{frontend_url}/dashboard/detalhes/item/{item.id}"
+        if item.request_id:
+            action_url = f"{frontend_url}/pending-approvals?id={item.request_id}"
+        else:
+            action_url = f"{frontend_url}/dashboard/detalhes/item/{item.id}"
 
         html = notifications.generate_html_email(
             "Solicitação de Transferência",
@@ -131,9 +138,16 @@ async def notify_write_off_request(db: AsyncSession, item: models.Item, reason: 
 
         if not frontend_url:
             base_url = os.getenv("APP_BASE_URL", "http://localhost:8001")
-            frontend_url = base_url.replace(":8001", ":3000") if "localhost" in base_url else base_url
+            # Heuristic: Replace backend port 8001 with frontend port 5173 (Vite default) or 3000
+            if ":8001" in base_url:
+                frontend_url = base_url.replace(":8001", ":5173")
+            else:
+                frontend_url = base_url.rstrip("/")
 
-        action_url = f"{frontend_url}/dashboard/detalhes/item/{item.id}"
+        if item.request_id:
+            action_url = f"{frontend_url}/pending-approvals?id={item.request_id}"
+        else:
+            action_url = f"{frontend_url}/dashboard/detalhes/item/{item.id}"
 
         html = notifications.generate_html_email(
             "Solicitação de Baixa",
@@ -498,10 +512,15 @@ async def create_item(
         if db_item.status == models.ItemStatus.PENDING:
             # WebSocket Broadcast (JSON Payload)
             from backend.websocket_manager import manager
+            # Calculate approvers for WS targeting
+            approvers = await workflow_engine.get_current_step_approvers(db, db_item, models.ApprovalActionType.CREATE)
+            approver_ids = [u.id for u in approvers]
+
             payload = {
                 "message": f"Novo item cadastrado: {db_item.description}",
                 "actor_id": current_user.id,
                 "target_roles": ["ADMIN", "APPROVER"],
+                "target_user_ids": approver_ids,
                 "target_branch_id": db_item.branch_id
             }
             await manager.broadcast(json.dumps(payload))
@@ -849,6 +868,7 @@ async def update_item_status(
 
             # Notify Next Approvers
             next_approvers = await workflow_engine.get_current_step_approvers(db, item_obj, action_type)
+            approver_ids = [u.id for u in next_approvers]
 
             msg = f"Item aguardando sua aprovação (Etapa {item_obj.approval_step})."
             title = "Ação Necessária: Aprovação Pendente"
@@ -876,6 +896,7 @@ async def update_item_status(
                 "message": f"Item {item_obj.description} avançou para etapa {item_obj.approval_step}",
                 "actor_id": current_user.id,
                 "target_roles": ["ADMIN", "APPROVER"],
+                "target_user_ids": approver_ids,
                 "target_branch_id": item_obj.branch_id
             }
             await manager.broadcast(json.dumps(payload))
@@ -942,21 +963,64 @@ async def request_transfer(
     if item.status in [models.ItemStatus.PENDING, models.ItemStatus.TRANSFER_PENDING, models.ItemStatus.WRITE_OFF_PENDING]:
         raise HTTPException(status_code=400, detail="Este item já possui uma solicitação pendente.")
 
-    item = await crud.request_transfer(db, item_id, target_branch_id, current_user.id,
-                                       transfer_invoice_number, transfer_invoice_series, transfer_invoice_date)
-    if not item:
-        raise HTTPException(status_code=404, detail="Item não encontrado")
+    # Create Request (Wrap Single Item)
+    req_data = schemas.RequestCreate(
+        type=models.RequestType.TRANSFER,
+        category_id=item.category_id,
+        requester_id=current_user.id,
+        data={
+            "target_branch_id": target_branch_id,
+            "invoice_number": transfer_invoice_number,
+            "invoice_series": transfer_invoice_series
+        }
+    )
+    new_request = await crud.create_request(db, req_data)
+
+    # Perform DB Update (similar to crud.request_transfer but linked to Request)
+    item.status = models.ItemStatus.TRANSFER_PENDING
+    item.approval_step = 1
+    item.request_id = new_request.id
+    item.transfer_target_branch_id = target_branch_id
+    if transfer_invoice_number: item.transfer_invoice_number = transfer_invoice_number
+    if transfer_invoice_series: item.transfer_invoice_series = transfer_invoice_series
+    if transfer_invoice_date: item.transfer_invoice_date = transfer_invoice_date
+
+    # Fetch branch name for log
+    target_branch = await crud.get_branch(db, target_branch_id)
+    branch_name = target_branch.name if target_branch else str(target_branch_id)
+
+    log = models.Log(item_id=item.id, user_id=current_user.id, action=f"Solicitação de transferência para {branch_name} (Request #{new_request.id})")
+    db.add(log)
+
+    await db.commit()
+
+    # Reload item with relationships
+    from sqlalchemy.future import select
+    from sqlalchemy.orm import joinedload, noload
+    query = select(models.Item).where(models.Item.id == item_id).options(
+        joinedload(models.Item.branch),
+        joinedload(models.Item.transfer_target_branch),
+        joinedload(models.Item.category_rel),
+        joinedload(models.Item.supplier),
+        joinedload(models.Item.responsible)
+    )
+    result = await db.execute(query)
+    item = result.scalars().first()
+
+    # Notify Approvers (and calculate for WS)
+    approvers = await workflow_engine.get_current_step_approvers(db, item, models.ApprovalActionType.TRANSFER)
+    approver_ids = [u.id for u in approvers]
 
     from backend.websocket_manager import manager
     payload = {
         "message": f"Solicitação de transferência para item {item.description}",
         "actor_id": current_user.id,
         "target_roles": ["ADMIN", "APPROVER"],
+        "target_user_ids": approver_ids,
         "target_branch_id": item.branch_id # Optional context
     }
     await manager.broadcast(json.dumps(payload))
 
-    # Notify Approvers
     frontend_url = request.headers.get("origin")
     await notify_transfer_request(db, item, frontend_url=frontend_url)
 
@@ -989,26 +1053,51 @@ async def request_write_off(
     if item.status in [models.ItemStatus.PENDING, models.ItemStatus.TRANSFER_PENDING, models.ItemStatus.WRITE_OFF_PENDING]:
         raise HTTPException(status_code=400, detail="Este item já possui uma solicitação pendente.")
 
-    # Combine reason and justification for the log/email message if needed,
-    # but store structured data if model supports it.
-    # Current request_write_off in crud only takes justification. We should update crud or append.
-    # Ideally we should update write_off_reason column too.
+    # Create Request (Wrap Single Item)
+    req_data = schemas.RequestCreate(
+        type=models.RequestType.WRITE_OFF,
+        category_id=item.category_id,
+        requester_id=current_user.id,
+        data={"reason": reason, "justification": justification}
+    )
+    new_request = await crud.create_request(db, req_data)
 
     full_justification = f"Motivo: {reason}. {justification or ''}"
 
-    # We update the item with the reason separately if possible
-    # But crud.request_write_off currently updates status and adds log.
-    # Ideally we should update write_off_reason column too.
+    # Perform DB Update
+    item.status = models.ItemStatus.WRITE_OFF_PENDING
+    item.approval_step = 1
+    item.request_id = new_request.id
+    item.write_off_reason = reason
 
-    item = await crud.request_write_off(db, item_id, full_justification, current_user.id, reason=reason)
-    if not item:
-        raise HTTPException(status_code=404, detail="Item não encontrado")
+    log = models.Log(item_id=item.id, user_id=current_user.id, action=f"Solicitação de baixa (Request #{new_request.id}). {full_justification}")
+    db.add(log)
+
+    await db.commit()
+
+    # Reload item with relationships
+    from sqlalchemy.future import select
+    from sqlalchemy.orm import joinedload, noload
+    query = select(models.Item).where(models.Item.id == item_id).options(
+        joinedload(models.Item.branch),
+        joinedload(models.Item.transfer_target_branch),
+        joinedload(models.Item.category_rel),
+        joinedload(models.Item.supplier),
+        joinedload(models.Item.responsible)
+    )
+    result = await db.execute(query)
+    item = result.scalars().first()
+
+    # Notify Approvers (and calculate for WS)
+    approvers = await workflow_engine.get_current_step_approvers(db, item, models.ApprovalActionType.WRITE_OFF)
+    approver_ids = [u.id for u in approvers]
 
     from backend.websocket_manager import manager
     payload = {
         "message": f"Solicitação de baixa para item {item.description}",
         "actor_id": current_user.id,
         "target_roles": ["ADMIN", "APPROVER"],
+        "target_user_ids": approver_ids,
         "target_branch_id": item.branch_id
     }
     await manager.broadcast(json.dumps(payload))
@@ -1076,10 +1165,15 @@ async def update_item(
     if existing_item.status == models.ItemStatus.REJECTED and updated_item.status == models.ItemStatus.PENDING:
          # Manually broadcast here for resubmission too
          from backend.websocket_manager import manager
+
+         approvers = await workflow_engine.get_current_step_approvers(db, updated_item, models.ApprovalActionType.CREATE)
+         approver_ids = [u.id for u in approvers]
+
          payload = {
             "message": f"Item re-enviado para aprovação: {updated_item.description}",
             "actor_id": current_user.id,
             "target_roles": ["ADMIN", "APPROVER"],
+            "target_user_ids": approver_ids,
             "target_branch_id": updated_item.branch_id
          }
          await manager.broadcast(json.dumps(payload))
