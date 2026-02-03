@@ -24,7 +24,9 @@ const Users: React.FC = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
     const [groups, setGroups] = useState<any[]>([]);
-    const { register, handleSubmit, reset, watch, setValue } = useForm();
+    const { register, handleSubmit, reset, watch, setValue } = useForm<any>({
+        defaultValues: { role: 'OPERATOR' }
+    });
     const [showForm, setShowForm] = useState(false);
     const [editingUser, setEditingUser] = useState<any | null>(null);
     const [loading, setLoading] = useState(false);
@@ -180,7 +182,7 @@ const Users: React.FC = () => {
                     <button
                         onClick={() => {
                             if (showForm) handleCancel();
-                            else { setShowForm(true); setEditingUser(null); reset({}); }
+                            else { setShowForm(true); setEditingUser(null); reset({ role: 'OPERATOR' }); }
                         }}
                         className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium shadow-sm transition-all ${
                             showForm
