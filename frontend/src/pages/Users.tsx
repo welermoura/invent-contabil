@@ -24,7 +24,7 @@ const Users: React.FC = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [branches, setBranches] = useState<any[]>([]);
     const [groups, setGroups] = useState<any[]>([]);
-    const { register, handleSubmit, reset, watch } = useForm();
+    const { register, handleSubmit, reset, watch, setValue } = useForm();
     const [showForm, setShowForm] = useState(false);
     const [editingUser, setEditingUser] = useState<any | null>(null);
     const [loading, setLoading] = useState(false);
@@ -70,6 +70,12 @@ const Users: React.FC = () => {
     }, []);
 
     const onSubmit = async (data: any) => {
+        // Validation: Operator cannot have all_branches
+        if (data.role === 'OPERATOR' && data.all_branches) {
+            showError("Operadores não podem ter acesso a todas as filiais. Selecione filiais específicas.");
+            return;
+        }
+
         // Validation: At least one branch or 'all_branches' must be selected
         if (!data.all_branches && (!data.branch_ids || data.branch_ids.length === 0)) {
             showError("BRANCH_REQUIRED");
@@ -219,7 +225,17 @@ const Users: React.FC = () => {
                                 <Shield className="w-4 h-4 text-gray-400" /> Função
                             </label>
                             <div className="space-y-2">
-                                <select {...register('role')} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white">
+                                <select
+                                    {...register('role')}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white"
+                                    onChange={(e) => {
+                                        register('role').onChange(e);
+                                        if (e.target.value === 'OPERATOR') {
+                                            setValue('all_branches', false);
+                                            setValue('group_id', "");
+                                        }
+                                    }}
+                                >
                                     <option value="OPERATOR">Operador (Básico)</option>
                                     <option value="APPROVER">Aprovador (Gestor)</option>
                                     <option value="REVIEWER">Revisor (Avançado)</option>
@@ -240,20 +256,21 @@ const Users: React.FC = () => {
                         <div className="md:col-span-2 space-y-2">
                             <label className="text-sm font-medium text-gray-700 flex items-center gap-2 justify-between">
                                 <div className="flex items-center gap-2"><Building2 className="w-4 h-4 text-gray-400" /> Filiais (Permissão)</div>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        id="all_branches"
-                                        {...register('all_branches')}
-                                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                                        // Force re-render of select below when this changes
-                                        onChange={(e) => {
-                                            register('all_branches').onChange(e);
-                                            // Optional: clear selection if all is checked? No, keep it as is.
-                                        }}
-                                    />
-                                    <label htmlFor="all_branches" className="text-sm text-gray-600 cursor-pointer select-none">Todas as filiais (Acesso Total)</label>
-                                </div>
+                                {watch('role') !== 'OPERATOR' && (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            id="all_branches"
+                                            {...register('all_branches')}
+                                            className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                            // Force re-render of select below when this changes
+                                            onChange={(e) => {
+                                                register('all_branches').onChange(e);
+                                            }}
+                                        />
+                                        <label htmlFor="all_branches" className="text-sm text-gray-600 cursor-pointer select-none">Todas as filiais (Acesso Total)</label>
+                                    </div>
+                                )}
                             </label>
                             <select
                                 {...register('branch_ids')}
@@ -266,31 +283,39 @@ const Users: React.FC = () => {
                                 ))}
                             </select>
                             {watch('all_branches') && <p className="text-xs text-indigo-600 font-medium mt-1">✓ Usuário terá acesso a todas as filiais atuais e futuras.</p>}
-                        </div>
-                        <div className="md:col-span-2 space-y-2">
-                            <label className="text-sm font-medium text-gray-700 flex items-center gap-2 justify-between">
-                                <div className="flex items-center gap-2">
-                                    <UsersIcon className="w-4 h-4 text-gray-400" /> Grupo de Usuários
+                            {watch('role') === 'OPERATOR' && (
+                                <div className="mt-1 flex flex-col gap-1">
+                                    <p className="text-xs text-amber-600 font-medium">⚠️ Operadores devem ter filiais específicas atribuídas.</p>
+                                    <p className="text-xs text-gray-500 italic">Dica: Segure a tecla <strong>CTRL</strong> (ou Command) para selecionar mais de uma filial.</p>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => { window.open('/users/groups', '_blank'); }}
-                                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
-                                >
-                                    + Gerenciar Grupos
-                                </button>
-                            </label>
-                            <select
-                                {...register('group_id')}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white"
-                            >
-                                <option value="">Nenhum Grupo</option>
-                                {groups.map(g => (
-                                    <option key={g.id} value={g.id}>{g.name}</option>
-                                ))}
-                            </select>
-                            <p className="text-xs text-gray-500">O usuário pode pertencer a apenas um grupo.</p>
+                            )}
                         </div>
+                        {watch('role') !== 'OPERATOR' && (
+                            <div className="md:col-span-2 space-y-2">
+                                <label className="text-sm font-medium text-gray-700 flex items-center gap-2 justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <UsersIcon className="w-4 h-4 text-gray-400" /> Grupo de Usuários
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => { window.open('/users/groups', '_blank'); }}
+                                        className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                                    >
+                                        + Gerenciar Grupos
+                                    </button>
+                                </label>
+                                <select
+                                    {...register('group_id')}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white"
+                                >
+                                    <option value="">Nenhum Grupo</option>
+                                    {groups.map(g => (
+                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-gray-500">O usuário pode pertencer a apenas um grupo.</p>
+                            </div>
+                        )}
                         <div className="md:col-span-2 flex justify-end gap-3 pt-2">
                             <button
                                 type="button"

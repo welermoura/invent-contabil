@@ -13,7 +13,8 @@ export const translateStatus = (status: string) => {
         'WRITTEN_OFF': 'Baixado',
         'MAINTENANCE': 'Em Manutenção',
         'IN_STOCK': 'Em Estoque',
-        'IN_TRANSIT': 'Em Trânsito'
+        'IN_TRANSIT': 'Em Trânsito',
+        'READY_FOR_WRITE_OFF': 'Aguardando Baixa'
     };
     return map[cleanStatus] || cleanStatus;
 };

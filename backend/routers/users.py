@@ -49,6 +49,9 @@ async def create_user(
     if current_user.role == models.UserRole.APPROVER and user.role == models.UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Aprovadores não podem criar Administradores")
 
+    if user.role == models.UserRole.OPERATOR and user.all_branches:
+        raise HTTPException(status_code=400, detail="Operadores não podem ter acesso a todas as filiais")
+
     db_user = await crud.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="E-mail já cadastrado")
@@ -73,6 +76,13 @@ async def update_user(
              raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Aprovadores não podem editar Administradores")
         if user.role == models.UserRole.ADMIN:
              raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Aprovadores não podem promover usuários a Administrador")
+
+    # Validate Operator constraint
+    final_role = user.role if user.role is not None else target_user.role
+    final_all_branches = user.all_branches if user.all_branches is not None else target_user.all_branches
+
+    if final_role == models.UserRole.OPERATOR and final_all_branches:
+        raise HTTPException(status_code=400, detail="Operadores não podem ter acesso a todas as filiais")
 
     updated_user = await crud.update_user(db, user_id, user)
     return updated_user

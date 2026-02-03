@@ -18,6 +18,7 @@ const StatusBadge = ({ status }: { status: string }) => {
         REJECTED: { label: 'Rejeitado', class: 'bg-red-50 text-red-700 border-red-200 ring-red-600/20' },
         TRANSFER_PENDING: { label: 'Transf. Pendente', class: 'bg-blue-50 text-blue-700 border-blue-200 ring-blue-600/20' },
         WRITE_OFF_PENDING: { label: 'Baixa Pendente', class: 'bg-orange-50 text-orange-700 border-orange-200 ring-orange-600/20' },
+        READY_FOR_WRITE_OFF: { label: 'Aguardando Baixa', class: 'bg-amber-50 text-amber-700 border-amber-200 ring-amber-600/20' },
         WRITTEN_OFF: { label: 'Baixado', class: 'bg-slate-100 text-slate-600 border-slate-200 ring-slate-500/20' },
         MAINTENANCE: { label: 'Manutenção', class: 'bg-purple-50 text-purple-700 border-purple-200 ring-purple-600/20' },
         IN_STOCK: { label: 'Estoque', class: 'bg-cyan-50 text-cyan-700 border-cyan-200 ring-cyan-600/20' },
@@ -861,6 +862,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                             <option value="IN_TRANSIT">Em Trânsito</option>
                                             <option value="TRANSFER_PENDING">Transf. Pendente</option>
                                             <option value="WRITE_OFF_PENDING">Baixa Pendente</option>
+                                            <option value="READY_FOR_WRITE_OFF">Aguardando Baixa</option>
                                         </select>
                                     </div>
                                 </th>
