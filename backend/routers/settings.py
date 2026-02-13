@@ -18,15 +18,43 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 
 @router.get("/", response_model=Dict[str, str])
 @cache_response(ttl=300, key_prefix="settings")
-async def read_settings(request: Request, db: AsyncSession = Depends(get_db)):
-    # Public access allowed for title/favicon on login screen
+async def read_settings(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[models.User] = Depends(auth.get_current_user_optional)
+):
     settings_list = await crud.get_system_settings(db)
+    all_settings = {s.key: s.value for s in settings_list}
     result = {}
-    for s in settings_list:
-        if s.key == "smtp_password" and s.value:
-            result[s.key] = "********"
-        else:
-            result[s.key] = s.value
+
+    # 1. Unauthenticated (Public): Only UI settings
+    if not current_user:
+        public_keys = [
+            "app_title", "logo_url", "favicon_url", "background_url",
+            "theme_primary_color", "theme_text_color", "theme_background_color"
+        ]
+        for key in public_keys:
+            if key in all_settings:
+                result[key] = all_settings[key]
+        return result
+
+    # 2. Authenticated Users
+    is_admin = current_user.role == models.UserRole.ADMIN
+    sensitive_prefixes = ["smtp_", "openai_", "auth_", "security_"]
+
+    for key, value in all_settings.items():
+        # Hide technical/sensitive settings from non-admins
+        if not is_admin:
+            if any(key.startswith(p) for p in sensitive_prefixes):
+                continue
+
+        # Mask passwords/secrets for everyone (even admins, to prevent exposure in network tab)
+        if key.endswith("_password") and value:
+            result[key] = "********"
+            continue
+
+        result[key] = value
+
     return result
 
 @router.put("/", response_model=Dict[str, str])
@@ -47,7 +75,7 @@ async def update_settings(
     updated = {}
     for key, value in settings.items():
         # Prevent overwriting password with mask
-        if key == "smtp_password" and value == "********":
+        if key.endswith("_password") and value == "********":
             updated[key] = "********"
             continue
 
