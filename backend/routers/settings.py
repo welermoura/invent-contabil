@@ -21,7 +21,13 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 async def read_settings(request: Request, db: AsyncSession = Depends(get_db)):
     # Public access allowed for title/favicon on login screen
     settings_list = await crud.get_system_settings(db)
-    return {s.key: s.value for s in settings_list}
+    result = {}
+    for s in settings_list:
+        if s.key == "smtp_password" and s.value:
+            result[s.key] = "********"
+        else:
+            result[s.key] = s.value
+    return result
 
 @router.put("/", response_model=Dict[str, str])
 async def update_settings(
@@ -40,6 +46,11 @@ async def update_settings(
 
     updated = {}
     for key, value in settings.items():
+        # Prevent overwriting password with mask
+        if key == "smtp_password" and value == "********":
+            updated[key] = "********"
+            continue
+
         s = await crud.update_system_setting(db, key, value)
         updated[s.key] = s.value
 
