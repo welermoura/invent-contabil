@@ -6,7 +6,7 @@ import { useAuth } from '../AuthContext';
 import { useError } from '../hooks/useError';
 import { useSearchParams } from 'react-router-dom';
 import { translateStatus, translateLogAction } from '../utils/translations';
-import { Edit2, Eye, CheckCircle, XCircle, ArrowRightLeft, FileText, Search, Plus, FileWarning, AlertCircle, Download, FileSpreadsheet, Table as TableIcon, ChevronDown, Wrench, Archive, RefreshCw, Upload, Truck, PackageCheck, Layers, X, Trash2 } from 'lucide-react';
+import { Columns, Edit2, Eye, CheckCircle, XCircle, ArrowRightLeft, FileText, Search, Plus, FileWarning, AlertCircle, Download, FileSpreadsheet, Table as TableIcon, ChevronDown, Wrench, Archive, RefreshCw, Upload, Truck, PackageCheck, Layers, X, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -98,6 +98,26 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
     const [globalSearch, setGlobalSearch] = useState('');
     const [isChangeStatusModalOpen, setIsChangeStatusModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+    type ColumnKey = 'description' | 'category' | 'branch' | 'fixedAsset' | 'purchaseDate' | 'sector' | 'costCenter' | 'invoiceValue' | 'accountingValue' | 'status' | 'actions';
+    const defaultVisibleColumns: Record<ColumnKey, boolean> = {
+        description: true, category: true, branch: true, fixedAsset: true,
+        purchaseDate: true, sector: true, costCenter: true, invoiceValue: true,
+        accountingValue: true, status: true, actions: true
+    };
+    const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(() => {
+        const saved = localStorage.getItem('inventoryVisibleColumns');
+        return saved ? JSON.parse(saved) : defaultVisibleColumns;
+    });
+    const [isColumnsMenuOpen, setIsColumnsMenuOpen] = useState(false);
+
+    useEffect(() => {
+        localStorage.setItem('inventoryVisibleColumns', JSON.stringify(visibleColumns));
+    }, [visibleColumns]);
+
+    const toggleColumn = (key: ColumnKey) => {
+        setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }));
+    };
     const [importFile, setImportFile] = useState<File | null>(null);
     const [importBranch, setImportBranch] = useState('');
     const [isUploading, setIsUploading] = useState(false);
@@ -750,6 +770,44 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                         </div>
                     )}
 
+                    {/* Columns Toggle Menu */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setIsColumnsMenuOpen(!isColumnsMenuOpen)}
+                            className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 px-4 py-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors text-sm font-medium flex items-center gap-2"
+                        >
+                            <Columns size={16} /> Colunas
+                            <ChevronDown size={14} />
+                        </button>
+                         {isColumnsMenuOpen && (
+                            <>
+                                <div className="fixed inset-0 z-10" onClick={() => setIsColumnsMenuOpen(false)}></div>
+                                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-xl py-2 z-20 border border-slate-100 dark:border-slate-700 max-h-96 overflow-y-auto">
+                                    <h3 className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100 dark:border-slate-700 mb-1">Colunas Visíveis</h3>
+                                    {(Object.keys(defaultVisibleColumns) as ColumnKey[]).map(key => {
+                                        const labels: Record<ColumnKey, string> = {
+                                            description: 'Descrição', category: 'Categoria', branch: 'Filial',
+                                            fixedAsset: 'Ativo Fixo', purchaseDate: 'Data Compra', sector: 'Setor',
+                                            costCenter: 'Centro de Custo', invoiceValue: 'Valor Compra',
+                                            accountingValue: 'Valor Contábil', status: 'Status', actions: 'Ações'
+                                        };
+                                        return (
+                                            <label key={key} className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={visibleColumns[key]}
+                                                    onChange={() => toggleColumn(key)}
+                                                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                                                />
+                                                <span className="text-sm text-slate-700 dark:text-slate-200">{labels[key]}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        )}
+                    </div>
+
                     <div className="relative">
                         <button
                             onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
@@ -806,64 +864,76 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                         <CheckCircle size={16} className="mx-auto text-slate-400" />
                                     </th>
                                 )}
-                                <th className="px-6 py-4 min-w-[200px]">
-                                    <div className="flex flex-col gap-2">
-                                        <span>Descrição</span>
-                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white/50 dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterDescription} onChange={e => setFilterDescription(e.target.value)} />
-                                    </div>
-                                </th>
-                                <th className="px-6 py-4 min-w-[150px]">
-                                     <div className="flex flex-col gap-2">
-                                        <span>Categoria</span>
-                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterCategory} onChange={e => setFilterCategory(e.target.value)} />
-                                    </div>
-                                </th>
-                                <th className="px-6 py-4 min-w-[150px]">
-                                     <div className="flex flex-col gap-2">
-                                        <span>Filial</span>
-                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterBranch} onChange={e => setFilterBranch(e.target.value)} />
-                                    </div>
-                                </th>
-                                <th className="px-6 py-4 min-w-[130px]">
-                                     <div className="flex flex-col gap-2">
-                                        <span>Ativo Fixo</span>
-                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterFixedAsset} onChange={e => setFilterFixedAsset(e.target.value)} />
-                                    </div>
-                                </th>
-                                <th className="px-6 py-4 min-w-[130px]">
-                                     <div className="flex flex-col gap-2">
-                                        <span>Data Compra</span>
-                                        <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterPurchaseDate} onChange={e => setFilterPurchaseDate(e.target.value)} />
-                                    </div>
-                                </th>
-                                <th className="px-6 py-4 whitespace-nowrap min-w-[120px]">Setor</th>
-                                <th className="px-6 py-4 whitespace-nowrap min-w-[120px]">C. Custo</th>
-                                <th className="px-6 py-4 whitespace-nowrap min-w-[140px]">Valor Compra</th>
-                                <th className="px-6 py-4 whitespace-nowrap min-w-[140px]">Valor Contábil</th>
-                                <th className="px-6 py-4 min-w-[130px]">
-                                     <div className="flex flex-col gap-2">
-                                        <span>Status</span>
-                                        <select
-                                            className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200"
-                                            value={filterStatus}
-                                            onChange={e => setFilterStatus(e.target.value)}
-                                            disabled={embedded}
-                                        >
-                                            <option value="">Todos</option>
-                                            <option value="APPROVED">Aprovado</option>
-                                            <option value="PENDING">Pendente</option>
-                                            <option value="REJECTED">Rejeitado</option>
-                                            <option value="MAINTENANCE">Manutenção</option>
-                                            <option value="IN_STOCK">Estoque</option>
-                                            <option value="WRITTEN_OFF">Baixado</option>
-                                            <option value="IN_TRANSIT">Em Trânsito</option>
-                                            <option value="TRANSFER_PENDING">Transf. Pendente</option>
-                                            <option value="WRITE_OFF_PENDING">Baixa Pendente</option>
-                                            <option value="READY_FOR_WRITE_OFF">Aguardando Baixa</option>
-                                        </select>
-                                    </div>
-                                </th>
-                                <th className="px-6 py-4 text-right min-w-[200px]">Ações</th>
+                                {visibleColumns.description && (
+                                    <th className="px-6 py-4 min-w-[200px]">
+                                        <div className="flex flex-col gap-2">
+                                            <span>Descrição</span>
+                                            <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white/50 dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterDescription} onChange={e => setFilterDescription(e.target.value)} />
+                                        </div>
+                                    </th>
+                                )}
+                                {visibleColumns.category && (
+                                    <th className="px-6 py-4 min-w-[150px]">
+                                         <div className="flex flex-col gap-2">
+                                            <span>Categoria</span>
+                                            <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterCategory} onChange={e => setFilterCategory(e.target.value)} />
+                                        </div>
+                                    </th>
+                                )}
+                                {visibleColumns.branch && (
+                                    <th className="px-6 py-4 min-w-[150px]">
+                                         <div className="flex flex-col gap-2">
+                                            <span>Filial</span>
+                                            <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterBranch} onChange={e => setFilterBranch(e.target.value)} />
+                                        </div>
+                                    </th>
+                                )}
+                                {visibleColumns.fixedAsset && (
+                                    <th className="px-6 py-4 min-w-[130px]">
+                                         <div className="flex flex-col gap-2">
+                                            <span>Ativo Fixo</span>
+                                            <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterFixedAsset} onChange={e => setFilterFixedAsset(e.target.value)} />
+                                        </div>
+                                    </th>
+                                )}
+                                {visibleColumns.purchaseDate && (
+                                    <th className="px-6 py-4 min-w-[130px]">
+                                         <div className="flex flex-col gap-2">
+                                            <span>Data Compra</span>
+                                            <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterPurchaseDate} onChange={e => setFilterPurchaseDate(e.target.value)} />
+                                        </div>
+                                    </th>
+                                )}
+                                {visibleColumns.sector && <th className="px-6 py-4 whitespace-nowrap min-w-[120px]">Setor</th>}
+                                {visibleColumns.costCenter && <th className="px-6 py-4 whitespace-nowrap min-w-[120px]">C. Custo</th>}
+                                {visibleColumns.invoiceValue && <th className="px-6 py-4 whitespace-nowrap min-w-[140px]">Valor Compra</th>}
+                                {visibleColumns.accountingValue && <th className="px-6 py-4 whitespace-nowrap min-w-[140px]">Valor Contábil</th>}
+                                {visibleColumns.status && (
+                                    <th className="px-6 py-4 min-w-[130px]">
+                                         <div className="flex flex-col gap-2">
+                                            <span>Status</span>
+                                            <select
+                                                className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200"
+                                                value={filterStatus}
+                                                onChange={e => setFilterStatus(e.target.value)}
+                                                disabled={embedded}
+                                            >
+                                                <option value="">Todos</option>
+                                                <option value="APPROVED">Aprovado</option>
+                                                <option value="PENDING">Pendente</option>
+                                                <option value="REJECTED">Rejeitado</option>
+                                                <option value="MAINTENANCE">Manutenção</option>
+                                                <option value="IN_STOCK">Estoque</option>
+                                                <option value="WRITTEN_OFF">Baixado</option>
+                                                <option value="IN_TRANSIT">Em Trânsito</option>
+                                                <option value="TRANSFER_PENDING">Transf. Pendente</option>
+                                                <option value="WRITE_OFF_PENDING">Baixa Pendente</option>
+                                                <option value="READY_FOR_WRITE_OFF">Aguardando Baixa</option>
+                                            </select>
+                                        </div>
+                                    </th>
+                                )}
+                                {visibleColumns.actions && <th className="px-6 py-4 text-right min-w-[200px]">Ações</th>}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -880,42 +950,57 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                             />
                                         </td>
                                     )}
-                                    <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">{item.description}</td>
-                                    <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{item.category}</td>
-                                    <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
-                                        {item.status === 'IN_TRANSIT' ? (
-                                           <div className='flex flex-col'>
-                                                <span className='line-through text-xs'>{item.branch?.name}</span>
-                                                <span className='text-blue-600 dark:text-blue-400 font-semibold text-xs flex items-center gap-1'><ArrowRightLeft size={10}/> {item.transfer_target_branch?.name}</span>
-                                           </div>
-                                        ) : (
-                                            item.branch?.name || '-'
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 text-slate-600 dark:text-slate-400 font-mono text-xs">
-                                        {item.fixed_asset_number ? (
-                                            <span className="bg-slate-50 dark:bg-slate-700/50 px-2 py-1 rounded border border-slate-100 dark:border-slate-600">{item.fixed_asset_number}</span>
-                                        ) : '-'}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-slate-400">{item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '-'}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-slate-400 text-xs">
-                                        {item.sector?.name || '-'}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-slate-400 text-xs font-mono">
-                                        {item.cost_center?.code ? <span title={item.cost_center.name}>{item.cost_center.code}</span> : '-'}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-700 dark:text-slate-200">
-                                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.invoice_value)}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-600 dark:text-slate-300">
-                                        {item.accounting_value !== undefined
-                                            ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.accounting_value)
-                                            : '-'}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <StatusBadge status={item.status} />
-                                    </td>
-                                    <td className="px-6 py-4 flex justify-end gap-2 items-center whitespace-nowrap min-w-[200px]">
+                                    {visibleColumns.description && <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">{item.description}</td>}
+                                    {visibleColumns.category && <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{item.category}</td>}
+                                    {visibleColumns.branch && (
+                                        <td className="px-6 py-4 text-slate-500 dark:text-slate-400">
+                                            {item.status === 'IN_TRANSIT' ? (
+                                               <div className='flex flex-col'>
+                                                    <span className='line-through text-xs'>{item.branch?.name}</span>
+                                                    <span className='text-blue-600 dark:text-blue-400 font-semibold text-xs flex items-center gap-1'><ArrowRightLeft size={10}/> {item.transfer_target_branch?.name}</span>
+                                               </div>
+                                            ) : (
+                                                item.branch?.name || '-'
+                                            )}
+                                        </td>
+                                    )}
+                                    {visibleColumns.fixedAsset && (
+                                        <td className="px-6 py-4 text-slate-600 dark:text-slate-400 font-mono text-xs">
+                                            {item.fixed_asset_number ? (
+                                                <span className="bg-slate-50 dark:bg-slate-700/50 px-2 py-1 rounded border border-slate-100 dark:border-slate-600">{item.fixed_asset_number}</span>
+                                            ) : '-'}
+                                        </td>
+                                    )}
+                                    {visibleColumns.purchaseDate && <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-slate-400">{item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '-'}</td>}
+                                    {visibleColumns.sector && (
+                                        <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-slate-400 text-xs">
+                                            {item.sector?.name || '-'}
+                                        </td>
+                                    )}
+                                    {visibleColumns.costCenter && (
+                                        <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-slate-400 text-xs font-mono">
+                                            {item.cost_center?.code ? <span title={item.cost_center.name}>{item.cost_center.code}</span> : '-'}
+                                        </td>
+                                    )}
+                                    {visibleColumns.invoiceValue && (
+                                        <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-700 dark:text-slate-200">
+                                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.invoice_value)}
+                                        </td>
+                                    )}
+                                    {visibleColumns.accountingValue && (
+                                        <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-600 dark:text-slate-300">
+                                            {item.accounting_value !== undefined
+                                                ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.accounting_value)
+                                                : '-'}
+                                        </td>
+                                    )}
+                                    {visibleColumns.status && (
+                                        <td className="px-6 py-4">
+                                            <StatusBadge status={item.status} />
+                                        </td>
+                                    )}
+                                    {visibleColumns.actions && (
+                                        <td className="px-6 py-4 flex justify-end gap-2 items-center whitespace-nowrap min-w-[200px]">
                                         {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && item.status === 'PENDING' && (
                                             <>
                                                 <button onClick={() => openApproveModal(item)} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Aprovar">
