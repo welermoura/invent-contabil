@@ -341,3 +341,105 @@ async def upload_categories(
         await invalidate_cache("categories:*")
 
     return {"success": success_count, "errors": errors}
+
+# ==========================================
+# IMPORT SUPPLIERS
+# ==========================================
+
+SUPPLIER_HEADER = ["NOME", "CNPJ"]
+SUPPLIER_ROW = ["EMPRESA DE TI LTDA", "00.000.000/0000-00"]
+
+@router.get("/suppliers/example-csv")
+async def get_sup_example_csv():
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=';', quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(SUPPLIER_HEADER)
+    writer.writerow(SUPPLIER_ROW)
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=modelo_fornecedores.csv"}
+    )
+
+@router.get("/suppliers/example-xlsx")
+async def get_sup_example_xlsx():
+    output = io.BytesIO()
+    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+    worksheet = workbook.add_worksheet()
+    for col_num, data in enumerate(SUPPLIER_HEADER):
+        worksheet.write(0, col_num, data)
+    for col_num, data in enumerate(SUPPLIER_ROW):
+        worksheet.write(1, col_num, data)
+    workbook.close()
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=modelo_fornecedores.xlsx"}
+    )
+
+@router.post("/suppliers/upload")
+async def upload_suppliers(
+    file: UploadFile = File(...),
+    update_existing: bool = Form(False),
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissão negada")
+
+    contents = await file.read()
+    filename = file.filename.lower()
+    rows = []
+
+    try:
+        if filename.endswith(".csv"):
+            decoded = contents.decode('utf-8-sig', errors='replace')
+            reader = csv.DictReader(io.StringIO(decoded), delimiter=';')
+            rows = [row for row in reader]
+        elif filename.endswith(".xlsx"):
+            df = pd.read_excel(io.BytesIO(contents), dtype=str)
+            df = df.replace({pd.NA: None, float('nan'): None, 'nan': None})
+            rows = df.to_dict('records')
+        else:
+            raise HTTPException(status_code=400, detail="Formato de arquivo não suportado. Use CSV ou XLSX.")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro ao ler arquivo: {str(e)}")
+
+    success_count = 0
+    errors = []
+    
+    import re
+    
+    for index, row in enumerate(rows):
+        try:
+            name = str(row.get("NOME", "")).strip().upper()
+            cnpj_raw = str(row.get("CNPJ", "")).strip()
+            
+            if not name or name == "NONE":
+                continue
+            
+            clean_cnpj = re.sub(r'\D', '', cnpj_raw)
+            if not clean_cnpj:
+                errors.append(f"Linha {index+2}: Fornecedor '{name}' ignorado (CNPJ inválido).")
+                continue
+
+            existing = await crud.get_supplier_by_cnpj(db, clean_cnpj)
+            if existing:
+                if not update_existing:
+                    errors.append(f"Linha {index+2}: Fornecedor com CNPJ '{cnpj_raw}' já existe.")
+                    continue
+                else:
+                    sup_update = schemas.SupplierBase(name=name, cnpj=clean_cnpj)
+                    await crud.update_supplier(db, existing.id, sup_update)
+                    success_count += 1
+            else:
+                sup_create = schemas.SupplierCreate(name=name, cnpj=clean_cnpj)
+                await crud.create_supplier(db, sup_create)
+                success_count += 1
+                
+        except Exception as e:
+            errors.append(f"Linha {index+2}: {str(e)}")
+
+    return {"success": success_count, "errors": errors}

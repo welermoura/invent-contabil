@@ -12,7 +12,10 @@ import {
     X,
     Save,
     Building2,
-    FileText
+    FileText,
+    UploadCloud,
+    AlertCircle,
+    Download
 } from 'lucide-react';
 
 interface Supplier {
@@ -39,6 +42,11 @@ const Suppliers: React.FC = () => {
     const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
     const [loading, setLoading] = useState(false);
     const { showError, showSuccess } = useError();
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [importErrors, setImportErrors] = useState<string[]>([]);
+    const [hasOverwriteOption, setHasOverwriteOption] = useState(false);
 
     const cnpjValue = watch("cnpj");
 
@@ -101,6 +109,61 @@ const Suppliers: React.FC = () => {
     // Edit permission: Admin or Approver
     const canEdit = user?.role === 'ADMIN' || user?.role === 'APPROVER';
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            setImportFile(e.target.files[0]);
+            setImportErrors([]);
+            setHasOverwriteOption(false);
+        }
+    };
+
+    const handleImportSubmit = async (e: React.FormEvent, forceUpdate: boolean = false) => {
+        e.preventDefault();
+        if (!importFile) return;
+
+        setIsUploading(true);
+        setImportErrors([]);
+        
+        const formData = new FormData();
+        formData.append('file', importFile);
+        if (forceUpdate) {
+            formData.append('update_existing', 'true');
+        }
+
+        try {
+            const res = await api.post('/import/suppliers/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            
+            if (res.data.errors && res.data.errors.length > 0) {
+                setImportErrors(res.data.errors);
+                // If it mentions that it already exists, provide the option to overwrite
+                const hasDuplications = res.data.errors.some((err: string) => err.includes('já existe'));
+                setHasOverwriteOption(hasDuplications && !forceUpdate);
+                if (res.data.success > 0) {
+                    showSuccess(`${res.data.success} fornecedor(es) importado(s) com sucesso, mas houve erros.`);
+                    fetchSuppliers();
+                }
+            } else {
+                showSuccess(`${res.data.success} fornecedor(es) importado(s) com sucesso!`);
+                handleImportModalClose();
+                fetchSuppliers();
+            }
+        } catch (error: any) {
+            console.error("Erro na importação", error);
+            showError(error);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleImportModalClose = () => {
+        setIsImportModalOpen(false);
+        setImportFile(null);
+        setImportErrors([]);
+        setHasOverwriteOption(false);
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
@@ -124,6 +187,15 @@ const Suppliers: React.FC = () => {
                             onChange={(e) => fetchSuppliers(e.target.value)}
                         />
                     </div>
+                    {canEdit && (
+                        <button
+                            onClick={() => setIsImportModalOpen(true)}
+                            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium shadow-sm transition-all bg-white text-indigo-600 hover:bg-indigo-50 border border-indigo-200"
+                        >
+                            <UploadCloud className="w-4 h-4" />
+                            Importar
+                        </button>
+                    )}
                     <button
                         onClick={() => {
                             if (showForm) handleCancel();
@@ -259,6 +331,113 @@ const Suppliers: React.FC = () => {
                     </table>
                 </div>
             </div>
+
+            {/* Import Modal */}
+            {isImportModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                <UploadCloud className="w-5 h-5 text-indigo-600" />
+                                Importar Fornecedores
+                            </h3>
+                            <button onClick={handleImportModalClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 overflow-y-auto">
+                            <form id="import-form" onSubmit={(e) => handleImportSubmit(e, false)} className="space-y-6">
+                                <div className="space-y-3">
+                                    <label className="text-sm font-medium text-gray-700 block">
+                                        Arquivo de Importação (.csv, .xlsx)
+                                    </label>
+                                    <div className="flex flex-col gap-3">
+                                        <input
+                                            type="file"
+                                            accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                                            onChange={handleFileChange}
+                                            className="block w-full text-sm text-gray-500
+                                            file:mr-4 file:py-2 file:px-4
+                                            file:rounded-lg file:border-0
+                                            file:text-sm file:font-medium
+                                            file:bg-indigo-50 file:text-indigo-700
+                                            hover:file:bg-indigo-100 transition-colors
+                                            border border-gray-200 rounded-lg"
+                                        />
+                                        <p className="text-xs text-gray-500">
+                                            Baixe um arquivo de modelo para organizar seus dados antes de importar:
+                                        </p>
+                                        <div className="flex gap-2">
+                                            <a href={`${api.defaults.baseURL}/import/suppliers/example-xlsx`} className="text-xs flex items-center gap-1 bg-white px-3 py-1.5 rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors font-medium">
+                                                <Download className="w-3 h-3" /> Modelo Excel
+                                            </a>
+                                            <a href={`${api.defaults.baseURL}/import/suppliers/example-csv`} className="text-xs flex items-center gap-1 bg-white px-3 py-1.5 rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors font-medium">
+                                                <Download className="w-3 h-3" /> Modelo CSV
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+
+                            {importErrors.length > 0 && (
+                                <div className="mt-6 p-4 bg-red-50 border border-red-100 rounded-lg">
+                                    <div className="flex items-start gap-2">
+                                        <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                                        <div className="flex-1">
+                                            <h4 className="text-sm font-medium text-red-800 mb-2">Atenção aos problemas encontrados:</h4>
+                                            <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
+                                                {importErrors.map((err, i) => (
+                                                    <li key={i}>{err}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-between items-center">
+                            <div>
+                                {hasOverwriteOption && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => handleImportSubmit(e, true)}
+                                        disabled={isUploading}
+                                        className="text-sm text-orange-600 hover:text-orange-700 font-medium px-3 py-2 rounded-lg border border-orange-200 hover:bg-orange-50 transition-colors disabled:opacity-50"
+                                    >
+                                        Sobrescrever Duplicadas
+                                    </button>
+                                )}
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={handleImportModalClose}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    form="import-form"
+                                    type="submit"
+                                    disabled={!importFile || isUploading}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    {isUploading ? (
+                                        <>
+                                            <div className="animate-spin w-4 h-4 border-2 border-white/20 border-t-white rounded-full" />
+                                            Enviando...
+                                        </>
+                                    ) : (
+                                        'Importar Arquivo'
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
