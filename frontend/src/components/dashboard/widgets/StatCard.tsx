@@ -25,18 +25,18 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, subtext, icon: Icon, 
             `}
             onClick={onClick}
         >
-            <div className="flex items-start justify-between">
-                <div>
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{title}</p>
+            <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate" title={title}>{title}</p>
                     {isLoading ? (
                         <div className="h-8 w-24 bg-slate-100 dark:bg-slate-700 rounded animate-pulse mt-2"></div>
                     ) : (
-                        <h3 className={`text-2xl lg:text-3xl font-bold mt-2 text-slate-800 dark:text-white`}>
+                        <h3 className={`text-2xl lg:text-3xl font-bold mt-2 text-slate-800 dark:text-white truncate`} title={String(value)}>
                             {value}
                         </h3>
                     )}
                 </div>
-                <div className={`p-3 rounded-lg bg-${colorName}-50 dark:bg-${colorName}-900/20`}>
+                <div className={`flex-shrink-0 p-3 rounded-lg bg-${colorName}-50 dark:bg-${colorName}-900/20`}>
                     <Icon className={colorClass} size={24} />
                 </div>
             </div>
