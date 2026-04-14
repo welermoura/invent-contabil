@@ -348,7 +348,6 @@ const Categories: React.FC = () => {
                     </table>
                 </div>
             </div>
-            </div>
 
             {/* Import Modal */}
             {isImportModalOpen && (
