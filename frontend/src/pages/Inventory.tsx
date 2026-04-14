@@ -698,7 +698,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
     }
 
     return (
-        <div className={`space-y-6 animate-fade-in ${embedded ? 'p-1' : ''}`}>
+        <div className={`space-y-6 animate-fade-in w-full min-w-0 overflow-x-hidden ${embedded ? 'p-1' : ''}`}>
             <div className={`flex flex-col md:flex-row justify-between items-center gap-4 bg-white/80 backdrop-blur-md dark:bg-slate-800/80 p-4 rounded-xl shadow-sm border border-slate-100/50 dark:border-slate-700/50 z-30 ${embedded ? 'sticky top-0 border-none shadow-none p-0 pb-4' : 'relative'}`}>
                 {!embedded && (
                 <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
@@ -796,8 +796,8 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                 </div>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-md dark:bg-slate-800/80 rounded-xl shadow-sm border border-slate-100/50 dark:border-slate-700/50 overflow-hidden">
-                <div className="overflow-auto max-h-[calc(100vh-200px)] min-h-[300px]">
+            <div className="bg-white/80 backdrop-blur-md dark:bg-slate-800/80 rounded-xl shadow-sm border border-slate-100/50 dark:border-slate-700/50 overflow-hidden w-full min-w-0">
+                <div className="overflow-auto w-full max-w-full max-h-[calc(100vh-200px)] min-h-[300px]">
                     <table className="min-w-full text-sm text-left relative">
                         <thead className="bg-slate-50/80 dark:bg-slate-700/80 border-b border-slate-100/50 dark:border-slate-700/50 text-slate-500 dark:text-slate-300 font-semibold uppercase tracking-wider text-xs sticky top-0 z-30">
                             <tr>
