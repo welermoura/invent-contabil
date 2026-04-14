@@ -389,10 +389,10 @@ const Categories: React.FC = () => {
                                     Baixe um arquivo de modelo para organizar seus dados antes de importar:
                                 </p>
                                 <div className="flex gap-2">
-                                    <a href={`${import.meta.env.VITE_API_URL}/import/categories/example-xlsx`} className="text-xs flex items-center gap-1 bg-white px-3 py-1.5 rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors font-medium">
+                                    <a href={`${api.defaults.baseURL}/import/categories/example-xlsx`} className="text-xs flex items-center gap-1 bg-white px-3 py-1.5 rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors font-medium">
                                         <Download className="w-3 h-3" /> Modelo Excel
                                     </a>
-                                    <a href={`${import.meta.env.VITE_API_URL}/import/categories/example-csv`} className="text-xs flex items-center gap-1 bg-white px-3 py-1.5 rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors font-medium">
+                                    <a href={`${api.defaults.baseURL}/import/categories/example-csv`} className="text-xs flex items-center gap-1 bg-white px-3 py-1.5 rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors font-medium">
                                         <Download className="w-3 h-3" /> Modelo CSV
                                     </a>
                                 </div>
