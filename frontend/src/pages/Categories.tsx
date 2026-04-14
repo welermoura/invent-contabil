@@ -12,7 +12,12 @@ import {
     X,
     Save,
     Trash2,
-    CalendarClock
+    CalendarClock,
+    Upload,
+    AlertCircle,
+    CheckCircle,
+    Download,
+    Hash
 } from 'lucide-react';
 
 const Categories: React.FC = () => {
@@ -23,6 +28,13 @@ const Categories: React.FC = () => {
     const [showForm, setShowForm] = useState(false);
     const [editingCategory, setEditingCategory] = useState<any>(null);
     const [loading, setLoading] = useState(false);
+
+    // Import states
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [importErrors, setImportErrors] = useState<string[]>([]);
+    const [hasOverwriteOption, setHasOverwriteOption] = useState(false);
 
     const fetchCategories = async (search?: string) => {
         setLoading(true);
@@ -65,6 +77,7 @@ const Categories: React.FC = () => {
         setEditingCategory(category);
         setValue('name', category.name);
         setValue('depreciation_months', category.depreciation_months);
+        setValue('asset_class', category.asset_class);
         setShowForm(true);
     };
 
@@ -88,6 +101,48 @@ const Categories: React.FC = () => {
     };
 
     const canEdit = user?.role === 'ADMIN' || user?.role === 'APPROVER';
+
+    const handleImportSubmit = async (e: React.FormEvent, overwrite: boolean = false) => {
+        e.preventDefault();
+        if (!importFile) return;
+
+        const formData = new FormData();
+        formData.append('file', importFile);
+        formData.append('update_existing', overwrite ? "true" : "false");
+        // No branch needed for categories but if backend complains we can add.
+        // Wait, the API upload_categories does not require branch_id
+
+        setIsUploading(true);
+        setImportErrors([]);
+        setHasOverwriteOption(false);
+        try {
+            const res = await api.post('/import/categories/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            const data = res.data;
+            if (data.errors && data.errors.length > 0) {
+                setImportErrors(data.errors);
+                const hasExisting = data.errors.some((err: string) => err.includes("já existe"));
+                setHasOverwriteOption(hasExisting);
+                if (data.success > 0) {
+                     showSuccess(`${data.success} categorias importadas. Verifique os erros.`);
+                     fetchCategories();
+                } else {
+                     showError("Foram encontrados erros na importação. Verifique a lista.");
+                }
+            } else {
+                showSuccess(`${data.success} categorias importadas com sucesso!`);
+                setIsImportModalOpen(false);
+                setImportFile(null);
+                fetchCategories();
+            }
+        } catch (error: any) {
+            console.error("Erro na importação:", error);
+            showError(error.response?.data?.detail || "Erro estrutural ao tentar importar o arquivo.");
+        } finally {
+            setIsUploading(false);
+        }
+    };
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -114,20 +169,29 @@ const Categories: React.FC = () => {
                         />
                     </div>
                     {canEdit && (
-                        <button
-                            onClick={() => {
-                                if (showForm) handleCancel();
-                                else setShowForm(true);
-                            }}
-                            className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium shadow-sm transition-all ${
-                                showForm
-                                ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-                                : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md'
-                            }`}
-                        >
-                            {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                            {showForm ? 'Cancelar' : 'Nova Categoria'}
-                        </button>
+                        <div className="flex gap-2 w-full md:w-auto">
+                            <button
+                                onClick={() => setIsImportModalOpen(true)}
+                                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium shadow-sm transition-all bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-md"
+                            >
+                                <Upload className="w-4 h-4" />
+                                Importar
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (showForm) handleCancel();
+                                    else setShowForm(true);
+                                }}
+                                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium shadow-sm transition-all ${
+                                    showForm
+                                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                                    : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md'
+                                }`}
+                            >
+                                {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                {showForm ? 'Cancelar' : 'Nova Categoria'}
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>
@@ -139,7 +203,7 @@ const Categories: React.FC = () => {
                         {editingCategory ? <Edit2 className="w-5 h-5 text-indigo-600" /> : <Plus className="w-5 h-5 text-indigo-600" />}
                         {editingCategory ? 'Editar Categoria' : 'Nova Categoria'}
                     </h2>
-                    <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Nome da Categoria</label>
                             <div className="relative">
@@ -167,7 +231,19 @@ const Categories: React.FC = () => {
                                 />
                             </div>
                         </div>
-                        <div className="md:col-span-2 flex justify-end gap-3 pt-2">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Classe / Grupo</label>
+                            <div className="relative">
+                                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input
+                                    type="number"
+                                    {...register('asset_class')}
+                                    className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                                    placeholder="Ex: 1045"
+                                />
+                            </div>
+                        </div>
+                        <div className="md:col-span-3 flex justify-end gap-3 pt-2">
                             <button
                                 type="button"
                                 onClick={handleCancel}
@@ -195,6 +271,7 @@ const Categories: React.FC = () => {
                             <tr>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Classe</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Depreciação (Meses)</th>
                                 {canEdit && <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>}
                             </tr>
@@ -226,6 +303,13 @@ const Categories: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                             {category.name}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {category.asset_class ? (
+                                                <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded font-mono text-xs border border-gray-200">{category.asset_class}</span>
+                                            ) : (
+                                                <span className="text-gray-400">-</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {category.depreciation_months ? (
@@ -264,6 +348,112 @@ const Categories: React.FC = () => {
                     </table>
                 </div>
             </div>
+            </div>
+
+            {/* Import Modal */}
+            {isImportModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                <Upload className="w-5 h-5 text-indigo-600" />
+                                Importar Categorias
+                            </h2>
+                            <button onClick={() => { setIsImportModalOpen(false); setImportErrors([]); setHasOverwriteOption(false); setImportFile(null); }} className="text-gray-400 hover:text-gray-600 transition-colors">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto">
+                            <form id="importForm" onSubmit={(e) => handleImportSubmit(e, false)} className="space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-gray-700">Arquivo Excel ou CSV</label>
+                                    <div className="relative">
+                                        <input
+                                            type="file"
+                                            accept=".xlsx,.xls,.csv"
+                                            onChange={(e) => setImportFile(e.target.files ? e.target.files[0] : null)}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-medium text-sm"
+                                            required
+                                        />
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">Formatos suportados: .xlsx, .xls, .csv</p>
+                                </div>
+                            </form>
+
+                            <div className="mt-6 p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+                                <h3 className="text-sm font-bold text-indigo-900 mb-2 flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4" />
+                                    Modelos de Importação
+                                </h3>
+                                <p className="text-xs text-indigo-700 mb-3">
+                                    Baixe um arquivo de modelo para organizar seus dados antes de importar:
+                                </p>
+                                <div className="flex gap-2">
+                                    <a href={`${import.meta.env.VITE_API_URL}/import/categories/example-xlsx`} className="text-xs flex items-center gap-1 bg-white px-3 py-1.5 rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors font-medium">
+                                        <Download className="w-3 h-3" /> Modelo Excel
+                                    </a>
+                                    <a href={`${import.meta.env.VITE_API_URL}/import/categories/example-csv`} className="text-xs flex items-center gap-1 bg-white px-3 py-1.5 rounded border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors font-medium">
+                                        <Download className="w-3 h-3" /> Modelo CSV
+                                    </a>
+                                </div>
+                            </div>
+
+                            {importErrors.length > 0 && (
+                                <div className="mt-6 p-4 bg-red-50 rounded-lg border border-red-100 max-h-60 overflow-y-auto">
+                                    <h3 className="text-sm font-bold text-red-900 mb-2 flex items-center gap-2">
+                                        <XCircle className="w-4 h-4" />
+                                        Erros encontrados ({importErrors.length})
+                                    </h3>
+                                    <ul className="text-xs text-red-700 space-y-1 list-disc list-inside">
+                                        {importErrors.map((err, i) => (
+                                            <li key={i}>{err}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 shrink-0 flex-wrap">
+                            <button
+                                type="button"
+                                onClick={() => { setIsImportModalOpen(false); setImportErrors([]); setHasOverwriteOption(false); setImportFile(null); }}
+                                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                            >
+                                Cancelar
+                            </button>
+                            {hasOverwriteOption && (
+                                <button
+                                    onClick={(e) => handleImportSubmit(e, true)}
+                                    disabled={isUploading || !importFile}
+                                    className="px-4 py-2 text-white bg-amber-600 border border-transparent rounded-lg hover:bg-amber-700 transition-colors font-medium text-sm flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    {isUploading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
+                                    Sobrescrever Duplicadas
+                                </button>
+                            )}
+                            <button
+                                form="importForm"
+                                type="submit"
+                                disabled={isUploading || !importFile}
+                                className="px-4 py-2 text-white bg-indigo-600 border border-transparent rounded-lg hover:bg-indigo-700 transition-colors font-medium text-sm flex items-center gap-2 disabled:opacity-50 shadow-sm"
+                            >
+                                {isUploading ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Processando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Upload className="w-4 h-4" />
+                                        Importar Arquivo
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

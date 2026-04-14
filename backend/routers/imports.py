@@ -237,3 +237,107 @@ async def upload_import(
             errors.append(f"Linha {index+2}: {str(e)}")
 
     return {"success": success_count, "errors": errors}
+
+CAT_HEADER = ["NOME", "DEPRECIACAO_MESES", "CLASSE"]
+CAT_ROW = ["EQUIPAMENTOS DE TI", "60", "1234"]
+
+@router.get("/categories/example-csv")
+async def get_cat_example_csv():
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=';', quoting=csv.QUOTE_MINIMAL)
+    writer.writerow(CAT_HEADER)
+    writer.writerow(CAT_ROW)
+    output.seek(0)
+    mem = io.BytesIO()
+    mem.write(output.getvalue().encode('utf-8-sig'))
+    mem.seek(0)
+    return StreamingResponse(mem, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=exemplo_categorias.csv"})
+
+@router.get("/categories/example-xlsx")
+async def get_cat_example_xlsx():
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Categorias"
+    ws.append(CAT_HEADER)
+    ws.append(CAT_ROW)
+    mem = io.BytesIO()
+    wb.save(mem)
+    mem.seek(0)
+    return StreamingResponse(mem, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers={"Content-Disposition": "attachment; filename=exemplo_categorias.xlsx"})
+
+@router.post("/categories/upload")
+async def upload_categories(
+    update_existing: bool = Form(False),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if current_user.role not in [models.UserRole.ADMIN, models.UserRole.APPROVER] and not current_user.can_import:
+        raise HTTPException(status_code=403, detail="Sem permissão para importar categorias")
+
+    contents = await file.read()
+    filename = file.filename.lower()
+    rows = []
+    
+    try:
+        if filename.endswith('.csv'):
+            content_str = contents.decode('utf-8-sig')
+            reader = csv.DictReader(io.StringIO(content_str), delimiter=';')
+            reader.fieldnames = [f.strip().upper() for f in reader.fieldnames] if reader.fieldnames else []
+            rows = list(reader)
+        elif filename.endswith(('.xls', '.xlsx')):
+            wb = openpyxl.load_workbook(io.BytesIO(contents), data_only=True)
+            ws = wb.active
+            data_rows = list(ws.iter_rows(values_only=True))
+            if data_rows:
+                headers = [str(h).strip().upper() if h else f"COL_{i}" for i, h in enumerate(data_rows[0])]
+                for row_values in data_rows[1:]:
+                    if any(row_values):
+                        rows.append(dict(zip(headers, row_values)))
+        else:
+            raise HTTPException(status_code=400, detail="Formato não suportado. Use .csv ou .xlsx")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro ao ler arquivo: {str(e)}")
+
+    success_count = 0
+    errors = []
+    
+    from backend.cache import invalidate_cache
+    
+    for index, row in enumerate(rows):
+        try:
+            name = str(row.get("NOME", "")).strip().upper()
+            if not name or name == "NONE":
+                continue
+            
+            depr_raw = row.get("DEPRECIACAO_MESES")
+            if not depr_raw: depr_raw = row.get("DEPRECIACAO")
+            depr_months = None
+            if depr_raw and str(depr_raw).strip() and str(depr_raw).strip() != "NONE":
+                try: depr_months = int(float(str(depr_raw).strip()))
+                except: pass
+                
+            classe_raw = row.get("CLASSE", "")
+            asset_class = str(classe_raw).strip() if classe_raw and str(classe_raw).strip() != "NONE" else None
+
+            existing = await crud.get_category_by_name(db, name)
+            if existing:
+                if not update_existing:
+                    errors.append(f"Linha {index+2}: Categoria '{name}' já existe.")
+                    continue
+                else:
+                    cat_update = schemas.CategoryBase(name=name, depreciation_months=depr_months, asset_class=asset_class)
+                    await crud.update_category(db, existing.id, cat_update)
+                    success_count += 1
+            else:
+                cat_create = schemas.CategoryCreate(name=name, depreciation_months=depr_months, asset_class=asset_class)
+                await crud.create_category(db, cat_create)
+                success_count += 1
+                
+        except Exception as e:
+            errors.append(f"Linha {index+2}: {str(e)}")
+
+    if success_count > 0:
+        await invalidate_cache("categories:*")
+
+    return {"success": success_count, "errors": errors}

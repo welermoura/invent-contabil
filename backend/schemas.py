@@ -125,6 +125,7 @@ class SectorResponse(SectorBase):
 class CategoryBase(BaseModel):
     name: str
     depreciation_months: Optional[int] = None
+    asset_class: Optional[str] = None
 
 class CategoryCreate(CategoryBase):
     pass

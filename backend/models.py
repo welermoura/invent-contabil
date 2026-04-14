@@ -108,6 +108,7 @@ class Category(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, unique=True)
     depreciation_months = Column(Integer, nullable=True)
+    asset_class = Column(String, nullable=True)
 
     items = relationship("Item", back_populates="category_rel", lazy="selectin")
     approval_workflows = relationship("ApprovalWorkflow", back_populates="category", lazy="selectin")
