@@ -797,9 +797,9 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
             </div>
 
             <div className="bg-white/80 backdrop-blur-md dark:bg-slate-800/80 rounded-xl shadow-sm border border-slate-100/50 dark:border-slate-700/50 overflow-hidden">
-                <div className="overflow-x-auto min-h-[500px]">
+                <div className="overflow-auto max-h-[calc(100vh-200px)] min-h-[300px]">
                     <table className="min-w-full text-sm text-left relative">
-                        <thead className="bg-slate-50/80 dark:bg-slate-700/80 border-b border-slate-100/50 dark:border-slate-700/50 text-slate-500 dark:text-slate-300 font-semibold uppercase tracking-wider text-xs">
+                        <thead className="bg-slate-50/80 dark:bg-slate-700/80 border-b border-slate-100/50 dark:border-slate-700/50 text-slate-500 dark:text-slate-300 font-semibold uppercase tracking-wider text-xs sticky top-0 z-30">
                             <tr>
                                 {selectionMode && (
                                     <th className="px-3 py-4 w-12 text-center">
@@ -863,7 +863,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                         </select>
                                     </div>
                                 </th>
-                                <th className="px-6 py-4 text-right sticky right-0 bg-slate-50 dark:bg-slate-700 shadow-[0_0_10px_rgba(0,0,0,0.05)] z-20">Ações</th>
+                                <th className="px-6 py-4 text-right sticky right-0 bg-slate-50 dark:bg-slate-700 shadow-[0_0_10px_rgba(0,0,0,0.05)] z-40">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
