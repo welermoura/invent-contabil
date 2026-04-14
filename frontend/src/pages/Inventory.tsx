@@ -836,10 +836,10 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                         <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterPurchaseDate} onChange={e => setFilterPurchaseDate(e.target.value)} />
                                     </div>
                                 </th>
-                                <th className="px-6 py-4">Setor</th>
-                                <th className="px-6 py-4">C. Custo</th>
-                                <th className="px-6 py-4">Valor Compra</th>
-                                <th className="px-6 py-4">Valor Contábil</th>
+                                <th className="px-6 py-4 whitespace-nowrap min-w-[120px]">Setor</th>
+                                <th className="px-6 py-4 whitespace-nowrap min-w-[120px]">C. Custo</th>
+                                <th className="px-6 py-4 whitespace-nowrap min-w-[140px]">Valor Compra</th>
+                                <th className="px-6 py-4 whitespace-nowrap min-w-[140px]">Valor Contábil</th>
                                 <th className="px-6 py-4 min-w-[130px]">
                                      <div className="flex flex-col gap-2">
                                         <span>Status</span>
@@ -897,17 +897,17 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                             <span className="bg-slate-50 dark:bg-slate-700/50 px-2 py-1 rounded border border-slate-100 dark:border-slate-600">{item.fixed_asset_number}</span>
                                         ) : '-'}
                                     </td>
-                                    <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '-'}</td>
-                                    <td className="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs">
+                                    <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-slate-400">{item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('pt-BR') : '-'}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-slate-400 text-xs">
                                         {item.sector?.name || '-'}
                                     </td>
-                                    <td className="px-6 py-4 text-slate-500 dark:text-slate-400 text-xs font-mono">
+                                    <td className="px-6 py-4 whitespace-nowrap text-slate-500 dark:text-slate-400 text-xs font-mono">
                                         {item.cost_center?.code ? <span title={item.cost_center.name}>{item.cost_center.code}</span> : '-'}
                                     </td>
-                                    <td className="px-6 py-4 font-medium text-slate-700 dark:text-slate-200">
+                                    <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-700 dark:text-slate-200">
                                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.invoice_value)}
                                     </td>
-                                    <td className="px-6 py-4 font-medium text-slate-600 dark:text-slate-300">
+                                    <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-600 dark:text-slate-300">
                                         {item.accounting_value !== undefined
                                             ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.accounting_value)
                                             : '-'}
