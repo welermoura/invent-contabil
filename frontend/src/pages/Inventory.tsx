@@ -863,12 +863,12 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                         </select>
                                     </div>
                                 </th>
-                                <th className="px-6 py-4 text-right">Ações</th>
+                                <th className="px-6 py-4 text-right sticky right-0 bg-slate-50 dark:bg-slate-700 shadow-[0_0_10px_rgba(0,0,0,0.05)] z-20">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                             {items.map((item) => (
-                                <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors text-slate-700 dark:text-slate-300">
+                                <tr key={item.id} className="group hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors text-slate-700 dark:text-slate-300">
                                     {selectionMode && (
                                         <td className="px-3 py-4 text-center">
                                             <input
@@ -915,7 +915,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                     <td className="px-6 py-4">
                                         <StatusBadge status={item.status} />
                                     </td>
-                                    <td className="px-6 py-4 flex justify-end gap-2 items-center">
+                                    <td className="px-6 py-4 flex justify-end gap-2 items-center sticky right-0 bg-white dark:bg-slate-800 group-hover:bg-slate-50/80 dark:group-hover:bg-slate-700/50 shadow-[-4px_0_10px_-2px_rgba(0,0,0,0.05)] dark:shadow-[-4px_0_10px_-2px_rgba(0,0,0,0.2)] z-10">
                                         {(user?.role === 'ADMIN' || user?.role === 'APPROVER') && item.status === 'PENDING' && (
                                             <>
                                                 <button onClick={() => openApproveModal(item)} className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Aprovar">
