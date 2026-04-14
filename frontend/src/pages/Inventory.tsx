@@ -1122,6 +1122,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                             </button>
                                         )}
                                     </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
