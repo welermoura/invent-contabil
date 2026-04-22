@@ -167,13 +167,21 @@ const DraggableGrid: React.FC = () => {
 
     const getColSpan = (id: string) => {
         const size = widgetSizes[id];
-        if (size === 'small') return 'md:col-span-1 lg:col-span-1';
-        if (size === 'medium') return 'md:col-span-1 lg:col-span-2';
-        if (size === 'large') return 'md:col-span-2 lg:col-span-3';
-        if (size === 'full') return 'md:col-span-2 lg:col-span-4';
+        let span = WIDGETS[id]?.className || 'col-span-1';
+        
+        if (size === 'small') span = 'md:col-span-1 lg:col-span-1';
+        if (size === 'medium') span = 'md:col-span-1 lg:col-span-2';
+        if (size === 'large') span = 'md:col-span-2 lg:col-span-3';
+        if (size === 'full') span = 'md:col-span-2 lg:col-span-4';
 
-        // Default
-        return WIDGETS[id]?.className || 'col-span-1';
+        const type = WIDGETS[id]?.type;
+        if (type === 'chart') {
+            span += ' row-span-2';
+        } else if (type === 'kpi') {
+            span += ' row-span-1';
+        }
+
+        return span;
     };
 
     // Initial load check
@@ -273,7 +281,7 @@ const DraggableGrid: React.FC = () => {
             onDragEnd={handleDragEnd}
         >
             <SortableContext items={items} strategy={rectSortingStrategy}>
-                <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-10 ${isEditing ? 'p-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl bg-slate-50/50 dark:bg-slate-900/50 min-h-[500px]' : ''}`} id="dashboard-container">
+                <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 grid-flow-row-dense auto-rows-[minmax(140px,auto)] gap-6 pb-10 ${isEditing ? 'p-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl bg-slate-50/50 dark:bg-slate-900/50 min-h-[500px]' : ''}`} id="dashboard-container">
                     {items.map((id: string) => {
                         return (
                             <SortableItem

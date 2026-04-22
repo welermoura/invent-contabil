@@ -19,8 +19,8 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, subtext, icon: Icon, 
     return (
         <div
             className={`
-                bg-white/80 backdrop-blur-md dark:bg-slate-800/80 p-6 rounded-xl shadow-sm border border-slate-100/50 dark:border-slate-700/50
-                transition-all duration-300 hover:shadow-md hover:bg-white/90
+                h-full bg-white/80 backdrop-blur-md dark:bg-slate-800/80 p-6 rounded-xl shadow-sm border border-slate-100/50 dark:border-slate-700/50
+                transition-all duration-300 hover:shadow-md hover:bg-white/90 flex flex-col justify-center
                 ${onClick ? 'cursor-pointer hover:-translate-y-1' : ''}
             `}
             onClick={onClick}

@@ -32,6 +32,63 @@ const StatusBadge = ({ status }: { status: string }) => {
     );
 };
 
+const SearchableSelect = ({ options, value, onChange, placeholder }: any) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [search, setSearch] = useState("");
+    const selected = options.find((o: any) => o.value == value);
+    const filtered = options.filter((o: any) => o.label.toLowerCase().includes(search.toLowerCase()));
+    
+    return (
+        <div className="relative">
+            <div 
+                className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 cursor-pointer flex justify-between items-center"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <span className="truncate">{selected ? selected.label : placeholder}</span>
+                <ChevronDown size={12} className="ml-1 opacity-50 flex-shrink-0" />
+            </div>
+            {isOpen && (
+                <>
+                    <div className="fixed inset-0 z-[100]" onClick={() => setIsOpen(false)}></div>
+                    <div className="absolute z-[110] mt-1 w-full min-w-[150px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl">
+                        <div className="p-2 border-b border-slate-100 dark:border-slate-700">
+                            <input 
+                                type="text" 
+                                autoFocus
+                                className="w-full px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-600 rounded bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500" 
+                                placeholder="Buscar..." 
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                            />
+                        </div>
+                        <div className="max-h-48 overflow-y-auto">
+                            <div 
+                                className="px-3 py-2 text-xs cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors font-medium text-slate-500 dark:text-slate-400"
+                                onClick={() => { onChange(""); setIsOpen(false); setSearch(""); }}
+                            >
+                                Todas
+                            </div>
+                            {filtered.length === 0 ? (
+                                <div className="px-3 py-2 text-xs text-slate-400">Nenhum resultado...</div>
+                            ) : (
+                                filtered.map((o: any) => (
+                                    <div 
+                                        key={o.value} 
+                                        className={`px-3 py-2 text-xs cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors truncate ${value == o.value ? 'bg-blue-50 text-blue-700 dark:bg-slate-700 dark:text-blue-400 font-medium' : 'text-slate-700 dark:text-slate-200'}`}
+                                        onClick={() => { onChange(o.value); setIsOpen(false); setSearch(""); }}
+                                    >
+                                        {o.label}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
 interface InventoryProps {
     embedded?: boolean;
     defaultStatus?: string;
@@ -509,6 +566,44 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
         doc.save('inventario.pdf');
     };
 
+    const exportSAP = async () => {
+        try {
+            const statusFilter = searchParams.get('status');
+            const params: any = {
+                search: globalSearch,
+                skip: 0,
+                limit: 100000,
+                status: statusFilter || undefined,
+                category: filterCategory || undefined,
+                branch_id: filterBranch || undefined,
+                description: filterDescription || undefined,
+                fixed_asset_number: filterFixedAsset || undefined,
+                purchase_date: filterPurchaseDate || undefined
+            };
+
+            const response = await api.get('/reports/export/sap', { 
+                params,
+                responseType: 'blob'
+            });
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'export_sap.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (error: any) {
+            console.error("Erro ao exportar para SAP", error);
+            if (error.response && error.response.status === 403) {
+                showError("Acesso Negado para esta operação.");
+            } else {
+                showError("Falha na exportação SAP.");
+            }
+        }
+    };
+
+
     const onSubmit = async (data: any) => {
         if (data.fixed_asset_number) {
             try {
@@ -819,7 +914,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                          {isExportMenuOpen && (
                             <>
                                 <div className="fixed inset-0 z-10" onClick={() => setIsExportMenuOpen(false)}></div>
-                                <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-slate-800 rounded-lg shadow-xl py-1 z-20 border border-slate-100 dark:border-slate-700">
+                                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-xl py-1 z-20 border border-slate-100 dark:border-slate-700">
                                     <button onClick={() => { exportXLSX(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 dark:hover:text-blue-400 flex items-center gap-2">
                                         <FileSpreadsheet size={16} className="text-green-600 dark:text-green-400" /> Excel (.xlsx)
                                     </button>
@@ -829,6 +924,11 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                     <button onClick={() => { exportPDF(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 dark:hover:text-blue-400 flex items-center gap-2">
                                         <FileText size={16} className="text-red-600 dark:text-red-400" /> PDF (.pdf)
                                     </button>
+                                    {user?.role !== 'OPERATOR' && (
+                                        <button onClick={() => { exportSAP(); setIsExportMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 hover:text-blue-700 dark:hover:text-blue-400 flex items-center gap-2 border-t border-slate-100 dark:border-slate-700 mt-1 pt-2">
+                                            <Archive size={16} className="text-orange-600 dark:text-orange-400" /> SAP (.xlsx)
+                                        </button>
+                                    )}
                                 </div>
                             </>
                         )}
@@ -876,7 +976,12 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                     <th className="px-6 py-4 min-w-[150px]">
                                          <div className="flex flex-col gap-2">
                                             <span>Categoria</span>
-                                            <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterCategory} onChange={e => setFilterCategory(e.target.value)} />
+                                            <SearchableSelect 
+                                                options={categories.map((cat: any) => ({ value: cat.name, label: cat.name }))}
+                                                value={filterCategory}
+                                                onChange={(val: any) => setFilterCategory(val)}
+                                                placeholder="Todas"
+                                            />
                                         </div>
                                     </th>
                                 )}
@@ -884,7 +989,12 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                     <th className="px-6 py-4 min-w-[150px]">
                                          <div className="flex flex-col gap-2">
                                             <span>Filial</span>
-                                            <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterBranch} onChange={e => setFilterBranch(e.target.value)} />
+                                            <SearchableSelect 
+                                                options={branches.map((branch: any) => ({ value: branch.id, label: branch.name }))}
+                                                value={filterBranch}
+                                                onChange={(val: any) => setFilterBranch(val)}
+                                                placeholder="Todas"
+                                            />
                                         </div>
                                     </th>
                                 )}
@@ -900,7 +1010,7 @@ const Inventory: React.FC<InventoryProps> = ({ embedded = false, defaultStatus }
                                     <th className="px-6 py-4 min-w-[130px]">
                                          <div className="flex flex-col gap-2">
                                             <span>Data Compra</span>
-                                            <input type="text" placeholder="Filtrar..." className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterPurchaseDate} onChange={e => setFilterPurchaseDate(e.target.value)} />
+                                            <input type="date" className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded font-normal normal-case bg-white dark:bg-slate-800 dark:text-slate-200 placeholder-slate-400" value={filterPurchaseDate} onChange={e => setFilterPurchaseDate(e.target.value)} />
                                         </div>
                                     </th>
                                 )}
