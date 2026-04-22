@@ -149,7 +149,10 @@ async def export_inventory_sap(
         num_inventario = item.fixed_asset_number or ""
         
         data_formatada = item.purchase_date.strftime("%d%m%Y") if item.purchase_date else ""
-        montante = item.invoice_value or 0.0
+        
+        # Formatando o montante para o padrão brasileiro (ex: 1.234,56)
+        valor = item.invoice_value or 0.0
+        montante = f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
         # TEXTO DO ITEM: repete Texto do nº principal do imobilizado
         texto_item = texto_principal
