@@ -45,11 +45,14 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db), current_user: 
     result_write_off = await db.execute(query_write_off)
     write_off_count = result_write_off.scalar()
 
-    # Items by Category (Pending only? Request says "Itens Pendentes" behavior... usually dashboard shows aggregates.
-    # Let's filter aggregates by the user's branch if they are an operator, otherwise all.)
+    # Items by Category (Only approved/active items)
     query_category = select(models.Item.category, func.count(models.Item.id))
-    # Note: User request implies "Inventory button empty... items pending white page".
-    # The stats should also reflect what they can see.
+    
+    # Exclude pending, rejected, and written-off items
+    query_category = query_category.where(
+        ~models.Item.status.in_([models.ItemStatus.PENDING, models.ItemStatus.REJECTED, models.ItemStatus.WRITTEN_OFF])
+    )
+
     if branch_filter is not None:
         query_category = query_category.where(branch_filter)
 
@@ -57,9 +60,14 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_db), current_user: 
     result_category = await db.execute(query_category)
     items_by_category = [{"category": row[0], "count": row[1]} for row in result_category.all()]
 
-    # Items by Branch
-    # We need to join with Branch table to get branch name and ID
+    # Items by Branch (Only approved/active items)
     query_branch = select(models.Branch.id, models.Branch.name, func.count(models.Item.id)).join(models.Branch, models.Item.branch_id == models.Branch.id)
+    
+    # Exclude pending, rejected, and written-off items
+    query_branch = query_branch.where(
+        ~models.Item.status.in_([models.ItemStatus.PENDING, models.ItemStatus.REJECTED, models.ItemStatus.WRITTEN_OFF])
+    )
+
     if branch_filter is not None:
         query_branch = query_branch.where(branch_filter)
 

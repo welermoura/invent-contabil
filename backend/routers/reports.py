@@ -130,14 +130,17 @@ async def export_inventory_sap(
         nf = item.invoice_number or ""
         desc = item.description or ""
         fornecedor = item.supplier.name if item.supplier else ""
+        
+        # Formata a NF adicionando o prefixo NF se existir
+        nf_formatada = f"NF{nf}" if nf else ""
 
         # Denominação do imobilizado: Descrição do Item - a NF
-        desc_imobilizado = f"{desc} - {nf}".strip(" - ")
-        # Truncating to 50 chars as SAP usually limits these fields, although user didn't mention. I will truncate just in case, or maybe not. The user said exactly what it is. I will limit to 50 just to be safe, or just leave it. Let's leave it full.
+        desc_imobilizado = f"{desc} - {nf_formatada}".strip(" - ")
+        # Truncating to 50 chars as SAP usually limits these fields
         desc_curta = desc_imobilizado[:50]
 
         # Denominação do imobilizado (continuação): a NF - Nome do Fornecedor
-        desc_cont = f"{nf} - {fornecedor}".strip(" - ")
+        desc_cont = f"{nf_formatada} - {fornecedor}".strip(" - ")
 
         # Texto do nº principal do imobilizado: repete Denominação do imobilizado
         texto_principal = desc_imobilizado
